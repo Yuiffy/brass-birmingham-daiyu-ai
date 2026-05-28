@@ -592,3 +592,55 @@ function isBreweryFarm(locationId) {
 function isCity(locationId) {
     return !!CITIES[locationId];
 }
+
+const GAME_DATA_EXPORTS = {
+    INDUSTRY_TYPES,
+    RESOURCE_TYPES,
+    ERA,
+    ACTIONS,
+    CARD_TYPES,
+    PLAYER_COLORS,
+    PLAYER_NAMES,
+    PLAYER_BG_COLORS,
+    INDUSTRY_DATA,
+    INDUSTRY_DISPLAY,
+    CITIES,
+    REGION_COLORS,
+    BREWERY_FARMS,
+    MERCHANTS,
+    MERCHANT_TILES,
+    CONNECTIONS,
+    CARD_DECK,
+    COAL_MARKET_PRICES,
+    COAL_MARKET_INITIAL,
+    IRON_MARKET_PRICES,
+    IRON_MARKET_INITIAL,
+    INITIAL_MONEY,
+    INITIAL_INCOME,
+    LOAN_AMOUNT,
+    LOAN_INCOME_PENALTY,
+    MAX_INCOME,
+    MIN_INCOME,
+    CANAL_LINK_COST,
+    RAIL_LINK_COST,
+    RAIL_DOUBLE_LINK_COST,
+    COAL_PER_RAIL_LINK,
+    BEER_FOR_DOUBLE_RAIL,
+    HAND_SIZE,
+    ACTIONS_PER_TURN,
+    FIRST_ROUND_ACTIONS,
+    getLocationPosition,
+    isMerchantLocation,
+    isBreweryFarm,
+    isCity,
+    isResourceIndustry,
+    isSellableIndustry,
+};
+
+if (typeof globalThis !== 'undefined') {
+    Object.assign(globalThis, GAME_DATA_EXPORTS);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GAME_DATA_EXPORTS;
+}

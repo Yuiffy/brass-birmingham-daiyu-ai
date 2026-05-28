@@ -2,6 +2,44 @@
 // Brass: Birmingham - Game State Management
 // ============================================================================
 
+const __gameData = (typeof module !== 'undefined' && module.exports)
+    ? require('./gameData.js')
+    : globalThis;
+
+const {
+    INDUSTRY_TYPES,
+    CARD_TYPES,
+    PLAYER_COLORS,
+    PLAYER_BG_COLORS,
+    PLAYER_NAMES,
+    INDUSTRY_DATA,
+    INDUSTRY_DISPLAY,
+    CITIES,
+    MERCHANT_TILES,
+    CONNECTIONS,
+    CARD_DECK,
+    COAL_MARKET_PRICES,
+    COAL_MARKET_INITIAL,
+    IRON_MARKET_PRICES,
+    IRON_MARKET_INITIAL,
+    INITIAL_MONEY,
+    INITIAL_INCOME,
+    LOAN_AMOUNT,
+    LOAN_INCOME_PENALTY,
+    MAX_INCOME,
+    MIN_INCOME,
+    CANAL_LINK_COST,
+    RAIL_LINK_COST,
+    HAND_SIZE,
+    ACTIONS_PER_TURN,
+    FIRST_ROUND_ACTIONS,
+    isResourceIndustry,
+    isSellableIndustry,
+    isMerchantLocation,
+    isBreweryFarm,
+    isCity,
+} = __gameData;
+
 class GameState {
     constructor(numPlayers, playerNames) {
         this.numPlayers = numPlayers;
@@ -819,4 +857,12 @@ class GameState {
             drawDeckSize: this.drawDeck.length,
         };
     }
+}
+
+if (typeof globalThis !== 'undefined') {
+    globalThis.GameState = GameState;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameState;
 }

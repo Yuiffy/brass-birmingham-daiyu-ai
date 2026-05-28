@@ -2,6 +2,27 @@
 // Brass: Birmingham - Game Logic
 // ============================================================================
 
+const __gameLogicData = (typeof module !== 'undefined' && module.exports)
+    ? require('./gameData.js')
+    : globalThis;
+
+const {
+    INDUSTRY_TYPES,
+    ACTIONS,
+    CARD_TYPES,
+    INDUSTRY_DISPLAY,
+    CITIES,
+    MERCHANTS,
+    CONNECTIONS,
+    CANAL_LINK_COST,
+    RAIL_LINK_COST,
+    LOAN_AMOUNT,
+    LOAN_INCOME_PENALTY,
+    isSellableIndustry,
+    isCity,
+    isBreweryFarm,
+} = __gameLogicData;
+
 class GameLogic {
     constructor(gameState) {
         this.state = gameState;
@@ -185,13 +206,13 @@ class GameLogic {
         const player = this.state.players[playerId];
         const key = `${cityId}_${slotIndex}`;
 
-        // Get the tile to place
-        const tileData = this.state.useNextTile(playerId, industryType);
-        if (!tileData) return { success: false, message: 'No tile available' };
-
         // Calculate and pay costs
         const cost = this.calculateBuildCost(playerId, industryType, cityId);
         if (!cost) return { success: false, message: 'Cannot afford this build' };
+
+        // Get the tile to place after confirming the build is legal
+        const tileData = this.state.useNextTile(playerId, industryType);
+        if (!tileData) return { success: false, message: 'No tile available' };
 
         this.state.spendMoney(playerId, cost.total);
 
@@ -777,4 +798,12 @@ class GameLogic {
 
         return validIndices;
     }
+}
+
+if (typeof globalThis !== 'undefined') {
+    globalThis.GameLogic = GameLogic;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameLogic;
 }

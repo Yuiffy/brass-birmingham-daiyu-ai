@@ -138,6 +138,38 @@ Open [http://localhost:8080](http://localhost:8080) in your browser. No build st
 
 ![Setup screen](screenshots/board_start.png)
 
+### Node CLI Auto-Run
+
+The core game logic can also run headless in Node.js with a simple bot:
+
+```
+node scripts/autorun.js --games 200 --players 4 --seed 1
+```
+
+Parameters:
+
+- `--games` number of full games to simulate
+- `--players` player count from 2 to 4
+- `--seed` base seed for deterministic shuffling and bot tie-breaking
+- `--log-file` optional JSON output path for the full per-turn log bundle
+
+The CLI prints one summary line per game and a final aggregate report with:
+
+- each game's final VP totals
+- average final score
+- action distribution across the whole run
+- action distribution split by canal era and rail era
+
+The simulator reuses the existing `js/gameData.js`, `js/gameState.js`, and `js/gameLogic.js` files directly, so no browser globals or bundler are required.
+
+To capture everything for downstream AI analysis, run:
+
+```
+node scripts/autorun.js --games 200 --players 4 --seed 1 --log-file logs/autorun-200.json
+```
+
+That file contains one JSON object with all games, each game's action-by-action timeline, pre/post state snapshots, and final score table.
+
 ### On Your Turn
 
 1. **Select an action** from the action panel (Build, Network, Develop, Sell, Loan, Scout, or Pass)
@@ -186,6 +218,7 @@ Pure HTML/CSS/JS — no build tools, no frameworks, no external images.
 | `js/boardRenderer.js` | SVG board with texture filters, styled connections, geometric icons |
 | `js/uiManager.js` | Phase bar, card selection mode, game log, turn transitions, modals |
 | `js/main.js` | Entry point, setup screen |
+| `scripts/autorun.js` | Node CLI bot runner for headless simulation |
 
 ---
 
