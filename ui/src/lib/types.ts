@@ -1,3 +1,5 @@
+export type GameControlMode = 'manual' | 'human-vs-ai' | 'ai-vs-ai';
+
 export interface PendingDevelopment {
 	industry: string;
 	level: number;

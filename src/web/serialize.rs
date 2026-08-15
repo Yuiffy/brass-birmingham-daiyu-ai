@@ -137,16 +137,25 @@ pub struct ChoiceOptionJson {
     pub label: String,
 }
 
-pub fn serialize_game_state(runner: &GameRunner) -> FullGameState {
+pub fn observer_player_index(runner: &GameRunner, observer_player: Option<usize>) -> usize {
+    let current_player = runner.framework.current_player;
+    observer_player
+        .filter(|&player_idx| player_idx < runner.framework.board.state.players.len())
+        .unwrap_or(current_player)
+}
+
+pub fn serialize_game_state(runner: &GameRunner, observer_player: Option<usize>) -> FullGameState {
     let state = &runner.framework.board.state;
     let num_players = state.players.len();
+    let observer_player = observer_player_index(runner, observer_player);
+    let observer_controls_current = observer_player == runner.framework.current_player;
 
     let players: Vec<PlayerJson> = state
         .players
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let hand: Vec<CardJson> = if i == runner.framework.current_player {
+            let hand: Vec<CardJson> = if i == observer_player {
                 p.hand
                     .cards
                     .iter()
@@ -199,25 +208,32 @@ pub fn serialize_game_state(runner: &GameRunner) -> FullGameState {
     let trade_posts = serialize_trade_posts(state);
 
     let current_hand = &state.players[runner.framework.current_player].hand.cards;
-    let choice_set = runner
-        .framework
-        .get_next_choice_set()
+    let choice_set = observer_controls_current
+        .then(|| runner.framework.get_next_choice_set())
+        .flatten()
         .map(|cs| serialize_choice_set(&cs, current_hand));
 
-    let pending_developments = serialize_pending_developments(runner);
+    let pending_developments = if observer_controls_current {
+        serialize_pending_developments(runner)
+    } else {
+        Vec::new()
+    };
     let turn_action_history = runner
         .turn_action_history()
         .iter()
         .map(|a| serialize_turn_action(a, state, runner.framework.current_player, None))
         .collect();
-    let current_action_selections = runner.framework.current_session().map(|s| {
-        serialize_turn_action(
-            &s.intent,
-            state,
-            runner.framework.current_player,
-            Some(current_hand),
-        )
-    });
+    let current_action_selections = observer_controls_current
+        .then(|| runner.framework.current_session())
+        .flatten()
+        .map(|s| {
+            serialize_turn_action(
+                &s.intent,
+                state,
+                runner.framework.current_player,
+                Some(current_hand),
+            )
+        });
     let discard_history = runner
         .discard_history()
         .iter()
@@ -255,6 +271,44 @@ pub fn serialize_game_state(runner: &GameRunner) -> FullGameState {
         has_pending_shortfall: runner.has_pending_shortfall(),
         game_over: runner.is_game_finished(),
         turn_order: state.turn_order.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_observer_sees_only_their_own_hand() {
+        let runner = GameRunner::new(2, Some(20_260_816));
+        let current_player = runner.framework.current_player;
+        let observer_player = 1 - current_player;
+
+        let state = serialize_game_state(&runner, Some(observer_player));
+
+        assert_eq!(
+            state.players[observer_player].hand.len(),
+            state.players[observer_player].hand_size
+        );
+        assert!(!state.players[observer_player].hand.is_empty());
+        assert!(state.players[current_player].hand.is_empty());
+    }
+
+    #[test]
+    fn observer_cannot_see_an_opponents_active_action_session() {
+        let mut runner = GameRunner::new(2, Some(20_260_817));
+        let current_player = runner.framework.current_player;
+        let observer_player = 1 - current_player;
+        let _ = runner.start_turn();
+        let _ = runner.start_action(ActionType::Pass);
+
+        let acting_view = serialize_game_state(&runner, Some(current_player));
+        let observer_view = serialize_game_state(&runner, Some(observer_player));
+
+        assert!(acting_view.choice_set.is_some());
+        assert!(acting_view.current_action_selections.is_some());
+        assert!(observer_view.choice_set.is_none());
+        assert!(observer_view.current_action_selections.is_none());
     }
 }
 

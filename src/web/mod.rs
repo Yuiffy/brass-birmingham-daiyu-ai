@@ -26,13 +26,14 @@ use crate::game::search::{
     BatchedNeuralPuctSearch, RootSearchConfig, RootSearchReport,
 };
 
-use analysis::{explain_analysis_question, serialize_analysis};
+use analysis::{explain_analysis_question_for_observer, serialize_analysis_for_observer};
 use model_inference::ModelInferenceClient;
 use serialize::*;
 
 pub struct ServerState {
     pub runner: Option<GameRunner>,
     pub active_game_id: Option<i64>,
+    pub observer_player: Option<usize>,
     pub db_path: String,
     inference_client: Option<ModelInferenceClient>,
     revision: u64,
@@ -106,6 +107,7 @@ pub async fn start_server(port: u16) {
     let state: SharedState = Arc::new(Mutex::new(ServerState {
         runner: None,
         active_game_id: None,
+        observer_player: None,
         db_path,
         inference_client,
         revision: 0,
@@ -117,6 +119,7 @@ pub async fn start_server(port: u16) {
         .route("/api/games", get(api_games))
         .route("/api/load_game", post(api_load_game))
         .route("/api/state", get(api_state))
+        .route("/api/set_observer", post(api_set_observer))
         .route("/api/industry_data", get(api_industry_data))
         .route("/api/analyze", post(api_analyze))
         .route("/api/explain", post(api_explain))
@@ -166,11 +169,27 @@ fn init_db(path: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn with_actions_if_available(runner: &GameRunner, gs: &mut FullGameState) {
-    if runner.framework.current_session().is_none() && runner.actions_remaining_in_turn > 0 {
+fn with_actions_if_available(
+    runner: &GameRunner,
+    observer_player: Option<usize>,
+    gs: &mut FullGameState,
+) {
+    if observer_player_index(runner, observer_player) == runner.framework.current_player
+        && runner.framework.current_session().is_none()
+        && runner.actions_remaining_in_turn > 0
+    {
         let actions = runner.framework.get_valid_root_actions();
         gs.available_actions = Some(actions.iter().map(|a| action_type_str(*a)).collect());
     }
+}
+
+fn serialize_state_for_observer(
+    runner: &GameRunner,
+    observer_player: Option<usize>,
+) -> FullGameState {
+    let mut game_state = serialize_game_state(runner, observer_player);
+    with_actions_if_available(runner, observer_player, &mut game_state);
+    game_state
 }
 
 fn append_event_and_update_meta(
@@ -370,10 +389,10 @@ async fn api_new_game(
 
     guard.active_game_id = Some(game_id);
     guard.runner = Some(runner);
+    guard.observer_player = None;
     guard.mark_position_changed();
     let runner = guard.runner.as_ref().unwrap();
-    let mut gs = serialize_game_state(runner);
-    with_actions_if_available(runner, &mut gs);
+    let gs = serialize_state_for_observer(runner, guard.observer_player);
     Json(serde_json::json!({"ok": true, "state": gs}))
 }
 
@@ -456,10 +475,10 @@ async fn api_load_game(
     }
     guard.active_game_id = Some(req.game_id);
     guard.runner = Some(runner);
+    guard.observer_player = None;
     guard.mark_position_changed();
     let runner = guard.runner.as_ref().unwrap();
-    let mut gs = serialize_game_state(runner);
-    with_actions_if_available(runner, &mut gs);
+    let gs = serialize_state_for_observer(runner, guard.observer_player);
     Json(serde_json::json!({"ok": true, "state": gs}))
 }
 
@@ -467,12 +486,49 @@ async fn api_state(State(state): State<SharedState>) -> Json<serde_json::Value> 
     let guard = state.lock().await;
     match guard.runner.as_ref() {
         Some(runner) => {
-            let mut gs = serialize_game_state(runner);
-            with_actions_if_available(runner, &mut gs);
+            let gs = serialize_state_for_observer(runner, guard.observer_player);
             Json(serde_json::json!({"ok": true, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
+}
+
+#[derive(Deserialize)]
+struct SetObserverRequest {
+    player_index: Option<usize>,
+}
+
+async fn api_set_observer(
+    State(state): State<SharedState>,
+    Json(req): Json<SetObserverRequest>,
+) -> Json<serde_json::Value> {
+    let mut guard = state.lock().await;
+    let Some(player_count) = guard
+        .runner
+        .as_ref()
+        .map(|runner| runner.framework.board.state.players.len())
+    else {
+        return Json(serde_json::json!({"ok": false, "error": "No game in progress"}));
+    };
+    if let Some(player_index) = req.player_index {
+        if player_index >= player_count {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!(
+                    "observer player index {player_index} is out of range for {player_count} players"
+                )
+            }));
+        }
+    }
+
+    guard.observer_player = req.player_index;
+    let runner = guard.runner.as_ref().expect("runner was checked above");
+    let game_state = serialize_state_for_observer(runner, guard.observer_player);
+    Json(serde_json::json!({
+        "ok": true,
+        "observer_player": guard.observer_player,
+        "state": game_state
+    }))
 }
 
 async fn api_industry_data() -> Json<serde_json::Value> {
@@ -585,7 +641,6 @@ async fn api_analyze(
         }
     };
     let elapsed_ms = started.elapsed().as_millis();
-    let analysis = serialize_analysis(&report, &runner, revision, elapsed_ms);
 
     let mut guard = state.lock().await;
     if guard.revision != revision {
@@ -594,6 +649,15 @@ async fn api_analyze(
             "error": "The position changed while analysis was running. Analyze the current position again."
         }));
     }
+    let reveal_private_cards =
+        observer_player_index(&runner, guard.observer_player) == report.root_player;
+    let analysis = serialize_analysis_for_observer(
+        &report,
+        &runner,
+        revision,
+        elapsed_ms,
+        reveal_private_cards,
+    );
     guard.last_analysis = Some(CachedAnalysis {
         revision,
         runner,
@@ -620,7 +684,7 @@ async fn api_explain(
             "error": "question must contain between 1 and 500 characters"
         }));
     }
-    let cached = {
+    let (cached, reveal_private_cards) = {
         let guard = state.lock().await;
         if guard.revision != req.revision {
             return Json(serde_json::json!({
@@ -640,15 +704,18 @@ async fn api_explain(
                 "error": "The cached analysis is stale"
             }));
         }
-        cached.clone()
+        let reveal_private_cards = observer_player_index(&cached.runner, guard.observer_player)
+            == cached.report.root_player;
+        (cached.clone(), reveal_private_cards)
     };
 
-    match explain_analysis_question(
+    match explain_analysis_question_for_observer(
         &cached.report,
         &cached.runner,
         cached.revision,
         &req.action_key,
         question,
+        reveal_private_cards,
     ) {
         Ok(explanation) => Json(serde_json::json!({"ok": true, "explanation": explanation})),
         Err(error) => Json(serde_json::json!({"ok": false, "error": error})),
@@ -693,6 +760,7 @@ async fn api_apply_analyzed_action(
 
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     let runner = guard
         .runner
         .as_mut()
@@ -734,8 +802,7 @@ async fn api_apply_analyzed_action(
         }
     }
 
-    let mut game_state = serialize_game_state(runner);
-    with_actions_if_available(runner, &mut game_state);
+    let game_state = serialize_state_for_observer(runner, observer_player);
     guard.mark_position_changed();
     let revision = guard.revision;
     Json(serde_json::json!({
@@ -750,12 +817,12 @@ async fn api_resolve_shortfalls(State(state): State<SharedState>) -> Json<serde_
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     let Some(runner) = guard.runner.as_mut() else {
         return Json(serde_json::json!({"ok": false, "error": "No game in progress"}));
     };
     if !runner.has_pending_shortfall() {
-        let mut game_state = serialize_game_state(runner);
-        with_actions_if_available(runner, &mut game_state);
+        let game_state = serialize_state_for_observer(runner, observer_player);
         return Json(serde_json::json!({
             "ok": true,
             "resolved": [],
@@ -790,8 +857,7 @@ async fn api_resolve_shortfalls(State(state): State<SharedState>) -> Json<serde_
         }
     }
 
-    let mut game_state = serialize_game_state(runner);
-    with_actions_if_available(runner, &mut game_state);
+    let game_state = serialize_state_for_observer(runner, observer_player);
     guard.mark_position_changed();
     Json(serde_json::json!({
         "ok": true,
@@ -816,12 +882,11 @@ async fn api_start_turn(State(state): State<SharedState>) -> Json<serde_json::Va
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
-            let actions = runner.start_turn();
-            let action_strs: Vec<&str> = actions.iter().map(|a| action_type_str(*a)).collect();
-            let mut gs = serialize_game_state(runner);
-            gs.available_actions = Some(action_strs);
+            let _ = runner.start_turn();
+            let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
                 let _ = append_event_and_update_meta(
                     &db_path,
@@ -849,6 +914,7 @@ async fn api_start_action(
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
             let action = match action_type_from_str(&req.action_type) {
@@ -860,7 +926,7 @@ async fn api_start_action(
                 }
             };
             let _choice_set = runner.start_action(action);
-            let mut gs = serialize_game_state(runner);
+            let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
                 let _ = append_event_and_update_meta(
                     &db_path,
@@ -871,7 +937,6 @@ async fn api_start_action(
                     runner,
                 );
             }
-            with_actions_if_available(runner, &mut gs);
             guard.mark_position_changed();
             Json(serde_json::json!({"ok": true, "state": gs}))
         }
@@ -892,6 +957,7 @@ async fn api_apply_choice(
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
             let choice = match parse_choice(&req.choice_kind, &req.value) {
@@ -900,7 +966,7 @@ async fn api_apply_choice(
             };
             match runner.apply_choice(choice) {
                 _ => {
-                    let mut gs = serialize_game_state(runner);
+                    let gs = serialize_state_for_observer(runner, observer_player);
                     if let Some(game_id) = active_game_id {
                         let _ = append_event_and_update_meta(
                             &db_path,
@@ -912,7 +978,6 @@ async fn api_apply_choice(
                             runner,
                         );
                     }
-                    with_actions_if_available(runner, &mut gs);
                     guard.mark_position_changed();
                     Json(serde_json::json!({"ok": true, "state": gs}))
                 }
@@ -926,10 +991,11 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => match runner.confirm_action() {
             Ok(()) => {
-                let mut gs = serialize_game_state(runner);
+                let gs = serialize_state_for_observer(runner, observer_player);
                 if let Some(game_id) = active_game_id {
                     let _ = append_event_and_update_meta(
                         &db_path,
@@ -938,7 +1004,6 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
                         runner,
                     );
                 }
-                with_actions_if_available(runner, &mut gs);
                 guard.mark_position_changed();
                 Json(serde_json::json!({"ok": true, "state": gs}))
             }
@@ -952,10 +1017,11 @@ async fn api_cancel_action(State(state): State<SharedState>) -> Json<serde_json:
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
             runner.framework.cancel_action_session();
-            let mut gs = serialize_game_state(runner);
+            let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
                 let _ = append_event_and_update_meta(
                     &db_path,
@@ -964,7 +1030,6 @@ async fn api_cancel_action(State(state): State<SharedState>) -> Json<serde_json:
                     runner,
                 );
             }
-            with_actions_if_available(runner, &mut gs);
             guard.mark_position_changed();
             Json(serde_json::json!({"ok": true, "state": gs}))
         }
@@ -976,13 +1041,12 @@ async fn api_undo_last_action(State(state): State<SharedState>) -> Json<serde_js
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => match runner.undo_last_confirmed_action() {
             Ok(()) => {
-                let actions = runner.start_turn();
-                let action_strs: Vec<&str> = actions.iter().map(|a| action_type_str(*a)).collect();
-                let mut gs = serialize_game_state(runner);
-                gs.available_actions = Some(action_strs);
+                let _ = runner.start_turn();
+                let gs = serialize_state_for_observer(runner, observer_player);
                 if let Some(game_id) = active_game_id {
                     let _ = append_event_and_update_meta(
                         &db_path,
@@ -1004,15 +1068,15 @@ async fn api_end_turn(State(state): State<SharedState>) -> Json<serde_json::Valu
     let mut guard = state.lock().await;
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
+    let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
             runner.end_turn();
-            let mut gs = serialize_game_state(runner);
+            let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
                 let _ =
                     append_event_and_update_meta(&db_path, game_id, PersistEvent::EndTurn, runner);
             }
-            with_actions_if_available(runner, &mut gs);
             guard.mark_position_changed();
             Json(serde_json::json!({"ok": true, "state": gs}))
         }

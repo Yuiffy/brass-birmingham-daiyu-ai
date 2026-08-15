@@ -21,7 +21,9 @@
 		analysisError,
 		analysisLoading,
 		analysisReport,
+		aiControlsPlayer,
 		gameState,
+		playerName,
 		selectedAnalysisCandidate,
 		selectedAnalysisKey,
 		turnPhase,
@@ -35,9 +37,11 @@
 		resolveShortfalls,
 		startTurn
 	} from '$lib/api';
-	import type { AnalysisCandidate, AnalysisExplanation, AnalysisReport } from '$lib/types';
+	import type { AnalysisCandidate, AnalysisExplanation, AnalysisReport, GameControlMode, GameState } from '$lib/types';
 
 	const dispatch = createEventDispatcher();
+	export let controlMode: GameControlMode = 'human-vs-ai';
+	export let humanPlayerIndex = 0;
 	const budgets = [
 		{ value: 800, label: '快速' },
 		{ value: 3000, label: '标准' },
@@ -69,13 +73,22 @@
 	$: selected = $selectedAnalysisCandidate;
 	$: phase = $turnPhase;
 	$: gs = $gameState;
+	$: aiCanMove = gs
+		? aiControlsPlayer(controlMode, humanPlayerIndex, gs.current_player)
+		: false;
+	$: humanName = gs ? playerName(gs, humanPlayerIndex) : '你';
 	$: canAnalyze = phase === 'choosing_action' && !gs?.game_over && !gs?.has_pending_shortfall;
-	$: canRunAi = !gs?.game_over && phase !== 'in_session';
+	$: canRunAi = aiCanMove && !gs?.game_over && phase !== 'in_session';
 	$: effects = selected ? immediateEffects(selected) : [];
 	$: if (selected?.action_key !== previousSelection) {
 		previousSelection = selected?.action_key ?? null;
 		exchanges = [];
 		continuationOpen = false;
+	}
+	$: if (!aiCanMove && $aiPlayback.status === 'running') pauseAutoplay();
+
+	function stateAllowsAi(state: GameState): boolean {
+		return aiControlsPlayer(controlMode, humanPlayerIndex, state.current_player);
 	}
 
 	async function runAnalysis() {
@@ -118,12 +131,12 @@
 
 	async function prepareAiDecision(): Promise<boolean> {
 		let state = get(gameState);
-		if (!state || state.game_over) return false;
+		if (!state || state.game_over || !stateAllowsAi(state)) return false;
 		if (state.has_pending_shortfall) {
 			const resolved = await resolveShortfalls();
 			if (!resolved) throw new Error('欠款处理失败');
 			state = get(gameState);
-			if (!state || state.game_over) return false;
+			if (!state || state.game_over || !stateAllowsAi(state)) return false;
 		}
 
 		const currentPhase = get(turnPhase);
@@ -131,9 +144,11 @@
 		if (currentPhase === 'turn_done') {
 			if (!await endTurn()) throw new Error('结束回合失败');
 			state = get(gameState);
-			if (!state || state.game_over) return false;
+			if (!state || state.game_over || !stateAllowsAi(state)) return false;
 		}
 		if (get(turnPhase) === 'awaiting_start') {
+			state = get(gameState);
+			if (!state || !stateAllowsAi(state)) return false;
 			if (!await startTurn()) throw new Error('开始回合失败');
 		}
 		return get(turnPhase) === 'choosing_action';
@@ -174,11 +189,21 @@
 	async function autoplayLoop(generation: number) {
 		try {
 			while (generation === loopGeneration && get(aiPlayback).status === 'running') {
+				const stateAtLoopStart = get(gameState);
+				if (!stateAtLoopStart || !stateAllowsAi(stateAtLoopStart)) {
+					aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
+					return;
+				}
 				let currentReport = get(analysisReport);
 				if (!currentReport) currentReport = await analyzeForPlayback();
 				if (!currentReport) {
 					if (get(gameState)?.game_over) {
 						aiPlayback.update(state => ({ ...state, status: 'complete' }));
+						return;
+					}
+					const currentState = get(gameState);
+					if (currentState && !stateAllowsAi(currentState)) {
+						aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
 						return;
 					}
 					throw new Error('当前局面无法分析');
@@ -196,6 +221,10 @@
 				aiPlayback.update(state => ({ ...state, moves: state.moves + 1 }));
 				if (result.state?.game_over) {
 					aiPlayback.update(state => ({ ...state, status: 'complete' }));
+					return;
+				}
+				if (!stateAllowsAi(result.state as GameState)) {
+					aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
 					return;
 				}
 			}
@@ -241,14 +270,24 @@
 			applying = false;
 			if (!result) throw new Error('AI 落子失败');
 			aiPlayback.update(state => ({ ...state, moves: state.moves + 1, status: result.state?.game_over ? 'complete' : 'paused', error: null }));
-			if (!result.state?.game_over) await analyzeForPlayback();
+			if (!result.state?.game_over && stateAllowsAi(result.state as GameState)) await analyzeForPlayback();
 		} catch (error) {
 			applying = false;
 			aiPlayback.update(state => ({ ...state, status: 'error', error: error instanceof Error ? error.message : String(error) }));
 		}
 	}
 
-	function playbackStatus(status: AiPlaybackStatus, moves: number): string {
+	function playbackStatus(
+		status: AiPlaybackStatus,
+		moves: number,
+		canMove: boolean,
+		mode: GameControlMode,
+		playerName: string
+	): string {
+		if (!canMove) {
+			if (mode === 'manual') return '全部手动';
+			return `${playerName} 回合`;
+		}
 		switch (status) {
 			case 'running': return `运行中 · ${moves} 手`;
 			case 'paused': return `已暂停 · ${moves} 手`;
@@ -342,7 +381,7 @@
 		<div class="playback-main">
 			<div class="playback-title">
 				<span class="playback-icon" class:live={$aiPlayback.status === 'running'}><Bot size={17} aria-hidden="true" /></span>
-				<div><strong>AI 对局</strong><span>{playbackStatus($aiPlayback.status, $aiPlayback.moves)}</span></div>
+				<div><strong>AI 对局</strong><span>{playbackStatus($aiPlayback.status, $aiPlayback.moves, aiCanMove, controlMode, humanName)}</span></div>
 			</div>
 			<div class="playback-buttons">
 				<button on:click={startAutoplay} disabled={!canRunAi || $analysisLoading || applying || $aiPlayback.status === 'running'} title={$aiPlayback.status === 'paused' ? '继续' : '播放'} aria-label={$aiPlayback.status === 'paused' ? '继续 AI 对局' : '播放 AI 对局'}>

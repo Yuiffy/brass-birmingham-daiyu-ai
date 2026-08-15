@@ -487,3 +487,30 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - First-version follow-up: add explicit human/AI seat assignment so human-vs-AI play no longer relies
   on the player choosing which turns to operate manually. The documented analysis/apply loop is the
   supported first-version workflow.
+
+## 2026-08-16 explicit human-vs-AI seat control
+
+- Added explicit `人机对练`, `AI 观战`, and `全部手动` modes plus a Coade/Brunel human-seat
+  selector. The default two-player setup is human-vs-AI with Coade assigned to the human.
+- Added a server-side observer seat. Only that seat's hand is serialized; opponent action sessions,
+  choice sets, available manual actions, pending development choices, and private discard labels in
+  AI analysis/explanations are hidden when the observer is not the acting player.
+- Human hands remain visible and non-interactive through the AI turn. Manual controls lock on AI
+  turns, the analysis inspector opens automatically, and AI playback stops only after the complete
+  opponent turn returns control to the human seat.
+- Browser QA used seed `20260820` to switch both seats and all three modes, analyze a human turn with
+  800 neural PUCT visits, inspect Top 1/2/3, ask a free-form Chinese comparison question, inspect a
+  redacted opponent analysis, single-step one AI move, and autoplay a later two-action AI turn back
+  to the human. Desktop 1280x720 and mobile 390x844 had no horizontal overflow or overlap.
+- HTTP regression verified an observer on player 1 sees 8 player-1 cards and zero player-0 cards
+  while player 0 acts, receives no private choice session, sees redacted analysis and explanation
+  text, and regains legal manual actions when player 1 becomes current. Invalid observer indices are
+  rejected.
+- Final verification passed 182 Rust all-target tests, the Svelte production build, `git diff
+  --check`, and the supplied web-game client. Its final nonblank screenshot and matching state are
+  under `output/web-game-seat-control-final-3/`, with no console-error artifact. Switching an
+  already-started AI turn to the acting human seat also restored the cached legal-action controls.
+- First-version champion remains checkpoint step 242 with model ID
+  `sha256:8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f` on CUDA. It is an
+  improvement over the smoke baseline only; calibration and strong-human/external evaluation are
+  still required before any top-level-strength claim.

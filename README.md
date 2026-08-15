@@ -128,20 +128,31 @@ Open `http://127.0.0.1:5173`, create a two-player game, and enter the `AI 分析
 panel can show the Top 3 candidate moves, answer follow-up questions about the selected move, apply
 one recommendation, or advance the AI side one move at a time.
 
-The first version does not yet assign human and AI seats automatically. Pick one seat as your own
-(for example player 1) and use this loop:
+The control bar defaults to `人机对练`. Choose `Coade` or `Brunel` under `你的席位`; the other
+seat is then controlled by the AI. Your hand stays visible during the opponent's turn, while the
+AI's private cards remain hidden.
 
-1. Play your seat normally in the `对局` tab.
-2. When the other seat becomes current, open `AI 分析`, choose `快速`, `标准`, or `深入`, and click
-   `分析局面`.
-3. Select any Top 3 row to inspect it. Use `选择依据`, `胜率可信度`, `主要风险`, `对比一选`, or the
-   free-form question box to ask about that exact move.
-4. Click `采用此步` to play the selected move for the AI seat. Repeat the analysis/apply cycle if
-   that seat still has another action, then return to `对局` when your seat becomes current again.
+On your turn:
 
-The play, pause, step, and stop icons under `AI 对局` are intended for AI-vs-AI observation. In a
-human-vs-AI game, `采用此步` is the safer control because it returns to the game view after exactly
-one selected action.
+1. Use `对局` to make the move manually, or open `AI 分析` for coaching.
+2. Choose `快速`, `标准`, or `深入`, then click `分析局面`.
+3. Inspect the first, second, and third choices. Select any row to see its exact action and search
+   statistics.
+4. Ask `选择依据`, `胜率可信度`, `主要风险`, or enter a temporary free-form question such as
+   `为什么一选比二选好？`.
+5. Click `采用此步` if you want the AI to play that recommendation for you.
+
+On the AI's turn, the interface opens `AI 分析` automatically. Use the controls under `AI 对局`:
+
+- Play runs the complete AI turn and pauses as soon as control returns to your seat.
+- Pause keeps the current Top 3 visible so you can ask a question before the move is applied.
+- Step analyzes without moving when no report exists; press it again to apply the current first
+  choice exactly once.
+- Stop clears the playback session.
+
+Use `AI 观战` to let the AI control both seats, or `全部手动` to operate every seat yourself.
+Search visit share, backed-up model value, and policy prior are separate estimates; the displayed
+model value is not yet a calibrated real-world win probability.
 
 ## AI Status
 

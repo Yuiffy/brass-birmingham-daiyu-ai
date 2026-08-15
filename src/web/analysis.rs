@@ -122,6 +122,16 @@ pub fn serialize_analysis(
     revision: u64,
     elapsed_ms: u128,
 ) -> AnalysisJson {
+    serialize_analysis_for_observer(report, runner, revision, elapsed_ms, true)
+}
+
+pub fn serialize_analysis_for_observer(
+    report: &RootSearchReport,
+    runner: &GameRunner,
+    revision: u64,
+    elapsed_ms: u128,
+    reveal_private_cards: bool,
+) -> AnalysisJson {
     let root_action_count = report.root_action_count;
     AnalysisJson {
         revision,
@@ -158,7 +168,9 @@ pub fn serialize_analysis(
         recommendations: report
             .recommendations
             .iter()
-            .map(|candidate| serialize_candidate(candidate, runner, report.root_player))
+            .map(|candidate| {
+                serialize_candidate(candidate, runner, report.root_player, reveal_private_cards)
+            })
             .collect(),
     }
 }
@@ -170,13 +182,25 @@ pub fn explain_analysis_question(
     action_key: &str,
     question: &str,
 ) -> Result<ExplanationJson, String> {
+    explain_analysis_question_for_observer(report, runner, revision, action_key, question, true)
+}
+
+pub fn explain_analysis_question_for_observer(
+    report: &RootSearchReport,
+    runner: &GameRunner,
+    revision: u64,
+    action_key: &str,
+    question: &str,
+    reveal_private_cards: bool,
+) -> Result<ExplanationJson, String> {
     let candidate = report
         .recommendations
         .iter()
         .find(|candidate| candidate.action_key == action_key)
         .ok_or_else(|| "the selected recommendation is not in the cached analysis".to_string())?;
     let top = report.recommendations.first();
-    let serialized = serialize_candidate(candidate, runner, report.root_player);
+    let serialized =
+        serialize_candidate(candidate, runner, report.root_player, reveal_private_cards);
     let question_lower = question.to_lowercase();
     let asks_probability = question_lower.contains("胜率")
         || question_lower.contains("概率")
@@ -300,11 +324,18 @@ pub fn explain_analysis_question(
         if let Some(other) = comparison {
             let candidate_label = choice_rank_label(candidate.rank);
             let other_label = choice_rank_label(other.rank);
-            let other_serialized = serialize_candidate(other, runner, report.root_player);
+            let other_serialized =
+                serialize_candidate(other, runner, report.root_player, reveal_private_cards);
             paragraphs.push(format!(
                 "与{}“{}”相比，{}的搜索访问数为 {} 对 {}，{}为 {} 对 {}。当前排序先按搜索访问数，再用价值估计打破访问数平局；差距仍受模型误差和隐藏牌样本量影响。",
                 other_label,
-                describe_action(&other.action.intent, runner, report.root_player).0,
+                describe_action(
+                    &other.action.intent,
+                    runner,
+                    report.root_player,
+                    reveal_private_cards,
+                )
+                .0,
                 candidate_label,
                 candidate.visits,
                 other.visits,
@@ -416,8 +447,14 @@ fn serialize_candidate(
     candidate: &RootActionEstimate,
     runner: &GameRunner,
     root_player: usize,
+    reveal_private_cards: bool,
 ) -> AnalysisCandidateJson {
-    let (summary, selections) = describe_action(&candidate.action.intent, runner, root_player);
+    let (summary, selections) = describe_action(
+        &candidate.action.intent,
+        runner,
+        root_player,
+        reveal_private_cards,
+    );
     let effect = &candidate.immediate_effect;
     AnalysisCandidateJson {
         rank: candidate.rank,
@@ -496,6 +533,7 @@ fn describe_action(
     intent: &ActionIntent,
     runner: &GameRunner,
     player_idx: usize,
+    reveal_private_cards: bool,
 ) -> (String, Vec<String>) {
     let mut selections = Vec::new();
     if let Some(industry) = intent.selected_industry {
@@ -506,12 +544,20 @@ fn describe_action(
             selections.push(format!("再研发 {}", industry_str(industry)));
         }
     }
-    if let Some(card_idx) = intent.selected_card_idx {
-        selections.push(format!("弃 {}", card_label(runner, player_idx, card_idx)));
-    }
-    if intent.action_type == ActionType::Scout {
-        for card_idx in &intent.scout_additional_discard_indices {
-            selections.push(format!("弃 {}", card_label(runner, player_idx, *card_idx)));
+    if reveal_private_cards {
+        if let Some(card_idx) = intent.selected_card_idx {
+            selections.push(format!("弃 {}", card_label(runner, player_idx, card_idx)));
+        }
+        if intent.action_type == ActionType::Scout {
+            for card_idx in &intent.scout_additional_discard_indices {
+                selections.push(format!("弃 {}", card_label(runner, player_idx, *card_idx)));
+            }
+        }
+    } else {
+        let hidden_discard_count = usize::from(intent.selected_card_idx.is_some())
+            + intent.scout_additional_discard_indices.len();
+        if hidden_discard_count > 0 {
+            selections.push(format!("弃 {hidden_discard_count} 张手牌（暗牌）"));
         }
     }
     if let Some(location) = intent.selected_build_location {
@@ -773,6 +819,7 @@ fn action_type_label(action_type: ActionType, era: Era) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::legal_actions::enumerate_legal_actions;
     use crate::game::search::{search_top_actions, RootSearchConfig};
 
     #[test]
@@ -801,6 +848,7 @@ mod tests {
             &report.recommendations[1].action.intent,
             &runner,
             report.root_player,
+            true,
         )
         .0;
 
@@ -817,6 +865,43 @@ mod tests {
         assert!(explanation.answer.contains(&second_summary));
         assert!(explanation.answer.contains("当前排序先按搜索访问数"));
         assert!(explanation.answer.contains("二选的即时结果"));
+    }
+
+    #[test]
+    fn observer_analysis_redacts_the_acting_players_card_identity() {
+        let runner = GameRunner::new(2, Some(8_203));
+        let action = enumerate_legal_actions(&runner)
+            .expect("initial actions should enumerate")
+            .into_iter()
+            .find(|action| action.intent.selected_card_idx.is_some())
+            .expect("an initial legal action should discard a card");
+        let card_idx = action.intent.selected_card_idx.unwrap();
+        let card_name = format_card_label(
+            &runner.framework.board.state.players[runner.framework.current_player]
+                .hand
+                .cards[card_idx]
+                .card_type,
+        );
+
+        let (_, visible_selections) = describe_action(
+            &action.intent,
+            &runner,
+            runner.framework.current_player,
+            true,
+        );
+        let (_, redacted_selections) = describe_action(
+            &action.intent,
+            &runner,
+            runner.framework.current_player,
+            false,
+        );
+
+        let private_discard = format!("弃 {card_name}");
+        assert!(visible_selections.contains(&private_discard));
+        assert!(redacted_selections
+            .iter()
+            .any(|selection| selection.contains("手牌（暗牌）")));
+        assert!(!redacted_selections.contains(&private_discard));
     }
 
     #[test]

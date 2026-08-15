@@ -122,6 +122,14 @@ export async function newGame(numPlayers: number, seed: number | null = null) {
 	return data;
 }
 
+export async function setObserverPlayer(playerIndex: number | null) {
+	const data = await api('set_observer', { player_index: playerIndex });
+	if (data?.state && get(turnPhase) === 'choosing_action') {
+		actionsAvailable.set(data.state.available_actions ?? []);
+	}
+	return data;
+}
+
 export async function startTurn() {
 	invalidateAnalysis();
 	const name = cpName();

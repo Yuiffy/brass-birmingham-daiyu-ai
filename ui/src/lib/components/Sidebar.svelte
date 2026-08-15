@@ -6,6 +6,8 @@
 	import { startTurn, selectAction, applyChoice, confirmAction, cancelAction, endTurn, undoLastAction } from '$lib/api';
 
 	const dispatch = createEventDispatcher();
+	export let interactionLocked = false;
+	export let viewerPlayerIndex: number | null = null;
 
 	$: gs = $gameState;
 	$: cs = $choiceSet;
@@ -73,7 +75,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	const MODAL_KINDS = new Set(['industry', 'card', 'free_development', 'second_industry']);
 
 	function onChoice(opt: any) {
-		if (!cs) return;
+		if (!cs || interactionLocked) return;
 		if (cs.kind === 'confirm') confirmAction();
 		else applyChoice(cs.kind, opt.value);
 	}
@@ -164,17 +166,17 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 
 	<section class="panel controls">
 		{#if phase === 'awaiting_start' && !gs.game_over}
-			<button class="btn primary" on:click={startTurn}>Start Turn</button>
+			<button class="btn primary" on:click={startTurn} disabled={interactionLocked}>Start Turn</button>
 		{/if}
 		{#if phase === 'turn_done' && !gs.game_over}
-			<button class="btn secondary" on:click={endTurn}>End Turn</button>
+			<button class="btn secondary" on:click={endTurn} disabled={interactionLocked}>End Turn</button>
 		{/if}
 		{#if gs.game_over}
 			<div class="game-over">Game Over!</div>
 		{/if}
-		<button class="btn mat-btn" on:click={() => dispatch('openMat', { playerIndex: gs.current_player })}>My Industry Mat</button>
-		<button class="btn mat-btn" on:click={() => dispatch('openDiscard', { playerIndex: gs.current_player })}>My Discard</button>
-		{#if (phase === 'in_session' || phase === 'choosing_action' || phase === 'turn_done') && (gs.turn_action_history?.length ?? 0) > 0}
+		<button class="btn mat-btn" on:click={() => dispatch('openMat', { playerIndex: viewerPlayerIndex ?? gs.current_player })}>My Industry Mat</button>
+		<button class="btn mat-btn" on:click={() => dispatch('openDiscard', { playerIndex: viewerPlayerIndex ?? gs.current_player })}>My Discard</button>
+		{#if !interactionLocked && (phase === 'in_session' || phase === 'choosing_action' || phase === 'turn_done') && (gs.turn_action_history?.length ?? 0) > 0}
 			<button class="btn undo-btn" on:click={undoLastAction}>Undo Previous Action</button>
 		{/if}
 	</section>
@@ -220,17 +222,21 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	{#if phase === 'choosing_action' && actions}
 	<section class="panel">
 		<h3>Actions</h3>
-		<div class="btn-grid">
-			{#each actions as a}
-				<button class="btn action" on:click={() => selectAction(a)}>
-					{ACTION_LABELS[a] || a}
-				</button>
-			{/each}
-		</div>
+		{#if interactionLocked}
+			<div class="locked-actions"><span class="locked-dot"></span>AI controls {gs.players.find(player => player.index === gs.current_player)?.name}</div>
+		{:else}
+			<div class="btn-grid">
+				{#each actions as a}
+					<button class="btn action" on:click={() => selectAction(a)}>
+						{ACTION_LABELS[a] || a}
+					</button>
+				{/each}
+			</div>
+		{/if}
 	</section>
 	{/if}
 
-	{#if phase === 'in_session' && cs && !MAP_KINDS.has(cs.kind) && !MODAL_KINDS.has(cs.kind)}
+	{#if !interactionLocked && phase === 'in_session' && cs && !MAP_KINDS.has(cs.kind) && !MODAL_KINDS.has(cs.kind)}
 	<section class="panel choice-panel">
 		<h3>{CHOICE_TITLES[cs.kind] || 'Choose'}</h3>
 		<div class="btn-grid">
@@ -244,7 +250,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	</section>
 	{/if}
 
-	{#if phase === 'in_session' && cs && MAP_KINDS.has(cs.kind)}
+	{#if !interactionLocked && phase === 'in_session' && cs && MAP_KINDS.has(cs.kind)}
 	<section class="panel hint-panel">
 		<h3>{CHOICE_TITLES[cs.kind] || 'Choose on map'}</h3>
 		<p class="hint-text">Click a highlighted location on the board</p>
@@ -252,7 +258,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	</section>
 	{/if}
 
-	{#if phase === 'in_session' && cs && (cs.kind === 'industry' || cs.kind === 'free_development' || cs.kind === 'second_industry')}
+	{#if !interactionLocked && phase === 'in_session' && cs && (cs.kind === 'industry' || cs.kind === 'free_development' || cs.kind === 'second_industry')}
 	<section class="panel hint-panel develop-hint">
 		<h3>{CHOICE_TITLES[cs.kind] || 'Choose'}</h3>
 		{#if pendingDevs.length > 0}
@@ -271,7 +277,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	</section>
 	{/if}
 
-	{#if phase === 'in_session' && cs && cs.kind === 'card'}
+	{#if !interactionLocked && phase === 'in_session' && cs && cs.kind === 'card'}
 	<section class="panel hint-panel">
 		<h3>Choose Card</h3>
 		<p class="hint-text">Click a card from your hand</p>
@@ -394,6 +400,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer;
 		font-size: 12px; font-weight: 600; color: #fff; transition: background 0.15s;
 	}
+	.btn:disabled { opacity: .45; cursor: not-allowed; }
 	.btn.primary { background: #087f5b; }
 	.btn.primary:hover { background: #066b4c; }
 	.btn.secondary { background: #343936; }
@@ -410,6 +417,8 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	.btn.undo-btn:hover { background: #943327; }
 
 	.btn-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+	.locked-actions { display: flex; align-items: center; gap: 7px; min-height: 34px; color: #8f3e33; font-size: 12px; font-weight: 700; }
+	.locked-dot { width: 8px; height: 8px; border-radius: 50%; background: #b54031; box-shadow: 0 0 0 3px rgba(181,64,49,.1); }
 
 	.hint-panel { text-align: center; }
 	.hint-text { color: #087f5b; font-size: 13px; margin: 8px 0; }

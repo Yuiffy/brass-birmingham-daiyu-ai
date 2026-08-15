@@ -1,23 +1,29 @@
 <script lang="ts">
-	import { choiceSet, currentPlayer } from '$lib/store';
+	import { choiceSet, gameState } from '$lib/store';
 	import { applyChoice } from '$lib/api';
 	import { cardImage, isLocationCard, townCardColor } from '$lib/coords';
 	import type { Card } from '$lib/types';
 
-	$: cp = $currentPlayer;
+	export let playerIndex: number | null = null;
+	export let ownerLabel = '';
+	export let interactionLocked = false;
+
+	$: cp = $gameState?.players.find(player => player.index === (playerIndex ?? $gameState?.current_player)) ?? null;
 	$: hand = cp?.hand ?? [];
-	$: isCardChoice = $choiceSet?.kind === 'card';
+	$: hasCardChoice = $choiceSet?.kind === 'card';
+	$: isCardChoice = hasCardChoice && !interactionLocked;
 	$: cardChoiceValues = isCardChoice
 		? new Set(($choiceSet?.options ?? []).map(o => o.value as number))
 		: new Set<number>();
 
 	function selectCard(card: Card) {
-		if (!isCardChoice || !cardChoiceValues.has(card.index)) return;
+		if (interactionLocked || !isCardChoice || !cardChoiceValues.has(card.index)) return;
 		applyChoice('card', card.index);
 	}
 </script>
 
 <div class="hand-container">
+	{#if ownerLabel}<div class="hand-owner">{ownerLabel}</div>{/if}
 	{#if hand.length === 0 && cp}
 		<div class="hand-hidden">{cp.hand_size} cards (hidden)</div>
 	{/if}
@@ -51,9 +57,11 @@
 
 <style>
 	.hand-container {
+		position: relative;
 		padding: 8px 0;
 		min-height: 130px;
 	}
+	.hand-owner { position: absolute; top: 1px; left: 0; z-index: 120; color: #aeb6b1; font-size: 10px; font-weight: 700; }
 	.hand-hidden {
 		color: #64748b;
 		text-align: center;

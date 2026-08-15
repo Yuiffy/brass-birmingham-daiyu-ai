@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { AnalysisReport, GameState, IndustryLevelData } from './types';
+import type { AnalysisReport, GameControlMode, GameState, IndustryLevelData } from './types';
 
 export const gameState = writable<GameState | null>(null);
 export type TurnPhase = 'awaiting_start' | 'choosing_action' | 'in_session' | 'turn_done';
@@ -65,6 +65,23 @@ export const pendingDevelopments = derived(
 
 export function playerName(gs: GameState, idx: number): string {
 	return gs.players.find(p => p.index === idx)?.name ?? `P${idx}`;
+}
+
+export function aiControlsPlayer(
+	mode: GameControlMode,
+	humanPlayerIndex: number,
+	playerIndex: number
+): boolean {
+	if (mode === 'ai-vs-ai') return true;
+	return mode === 'human-vs-ai' && playerIndex !== humanPlayerIndex;
+}
+
+export function viewerPlayerIndex(
+	mode: GameControlMode,
+	humanPlayerIndex: number,
+	currentPlayerIndex: number
+): number {
+	return mode === 'human-vs-ai' ? humanPlayerIndex : currentPlayerIndex;
 }
 
 export function invalidateAnalysis() {
