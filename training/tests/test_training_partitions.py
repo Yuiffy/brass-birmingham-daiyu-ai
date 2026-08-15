@@ -14,7 +14,14 @@ from training.checkpoint import load_model_checkpoint
 from training.data import SelfPlayDataset, collate_positions
 from training.model import BrassPolicyValueNet, ModelConfig
 from training.schema import FeatureSchema
-from training.train import _evaluate, _load_datasets, _validate_args, build_parser, train
+from training.train import (
+    _evaluate,
+    _load_datasets,
+    _restore_optimizer_state,
+    _validate_args,
+    build_parser,
+    train,
+)
 
 
 SCHEMA = {
@@ -171,6 +178,119 @@ class TrainingPartitionTests(unittest.TestCase):
         for name in metrics[0]:
             self.assertAlmostEqual(metrics[0][name], metrics[1][name], places=6)
         dataset.close()
+
+    def test_resume_keeps_optimizer_moments_but_uses_explicit_hyperparameters(
+        self,
+    ) -> None:
+        model = BrassPolicyValueNet(
+            ModelConfig(
+                state_dim=2,
+                action_dim=4,
+                state_hidden_dim=8,
+                action_embedding_dim=4,
+                trunk_dim=8,
+            )
+        )
+        previous = torch.optim.AdamW(
+            model.parameters(),
+            lr=3e-4,
+            weight_decay=1e-4,
+        )
+        resumed_payload = {"optimizer_state_dict": previous.state_dict()}
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=1e-4,
+            weight_decay=5e-5,
+        )
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                "training.jsonl",
+                "--output",
+                "model.pt",
+                "--learning-rate",
+                "0.0001",
+                "--weight-decay",
+                "0.00005",
+            ]
+        )
+
+        _restore_optimizer_state(optimizer, resumed_payload, args)
+
+        self.assertTrue(
+            all(group["lr"] == 1e-4 for group in optimizer.param_groups)
+        )
+        self.assertTrue(
+            all(group["weight_decay"] == 5e-5 for group in optimizer.param_groups)
+        )
+
+    def test_max_steps_counts_only_steps_from_the_current_resume(self) -> None:
+        training = self.root / "training.jsonl"
+        initial_checkpoint = self.root / "initial.pt"
+        resumed_checkpoint = self.root / "resumed.pt"
+        _write_shard(training, engine_revision="engine-a", game_seed=101)
+        model_args = [
+            "--state-hidden-dim",
+            "8",
+            "--action-embedding-dim",
+            "4",
+            "--trunk-dim",
+            "8",
+        ]
+        initial_args = build_parser().parse_args(
+            [
+                "--shards",
+                str(training),
+                "--output",
+                str(initial_checkpoint),
+                "--device",
+                "cpu",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "1",
+                *model_args,
+            ]
+        )
+        with redirect_stdout(io.StringIO()):
+            train(initial_args)
+
+        resumed_args = build_parser().parse_args(
+            [
+                "--shards",
+                str(training),
+                "--output",
+                str(resumed_checkpoint),
+                "--resume",
+                str(initial_checkpoint),
+                "--device",
+                "cpu",
+                "--epochs",
+                "5",
+                "--batch-size",
+                "1",
+                "--max-steps",
+                "2",
+                *model_args,
+            ]
+        )
+        with redirect_stdout(io.StringIO()):
+            train(resumed_args)
+
+        schema = FeatureSchema.from_schema_dict(SCHEMA)
+        _model, initial_payload = load_model_checkpoint(
+            initial_checkpoint,
+            expected_schema=schema,
+        )
+        _model, resumed_payload = load_model_checkpoint(
+            resumed_checkpoint,
+            expected_schema=schema,
+        )
+        initial_step = initial_payload["metadata"]["training"]["global_step"]
+        metadata = resumed_payload["metadata"]["training"]
+        self.assertEqual(metadata["starting_global_step"], initial_step)
+        self.assertEqual(metadata["steps_this_run"], 2)
+        self.assertEqual(metadata["global_step"], initial_step + 2)
 
 
 def _write_shard(

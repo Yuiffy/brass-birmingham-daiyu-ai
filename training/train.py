@@ -129,11 +129,11 @@ def _train_loaded_datasets(
     )
     global_step = 0
     if resumed_payload is not None:
-        optimizer_state = resumed_payload.get("optimizer_state_dict")
-        if optimizer_state is not None:
-            optimizer.load_state_dict(optimizer_state)
+        _restore_optimizer_state(optimizer, resumed_payload, args)
         training_metadata = resumed_payload["metadata"].get("training", {})
         global_step = int(training_metadata.get("global_step", 0))
+    starting_global_step = global_step
+    steps_this_run = 0
 
     print(
         json.dumps(
@@ -218,6 +218,7 @@ def _train_loaded_datasets(
             gradient_norm = clip_grad_norm_(model.parameters(), args.gradient_clip)
             optimizer.step()
             global_step += 1
+            steps_this_run += 1
             batches += 1
             training_positions += batch_positions
             metrics = losses.detached_metrics()
@@ -240,7 +241,7 @@ def _train_loaded_datasets(
                     ),
                     flush=True,
                 )
-            if args.max_steps and global_step >= args.max_steps:
+            if args.max_steps and steps_this_run >= args.max_steps:
                 stop = True
                 break
 
@@ -299,11 +300,21 @@ def _train_loaded_datasets(
         optimizer=optimizer,
         training_metadata={
             "global_step": global_step,
+            "starting_global_step": starting_global_step,
+            "steps_this_run": steps_this_run,
             "completed_epoch": best_epoch if best_model_state is not None else last_epoch,
             "last_global_step": last_global_step,
             "last_completed_epoch": last_epoch,
             "selected_epoch": best_epoch if best_model_state is not None else last_epoch,
             "seed": args.seed,
+            "learning_rate": args.learning_rate,
+            "weight_decay": args.weight_decay,
+            "shared_win_weight": args.shared_win_weight,
+            "vp_margin_weight": args.vp_margin_weight,
+            "max_steps": args.max_steps,
+            "resume_checkpoint": (
+                str(Path(args.resume).resolve()) if args.resume else None
+            ),
             "positions": len(dataset),
             "training_positions": len(dataset),
             "validation_positions": (
@@ -386,6 +397,19 @@ def _make_loader(
         persistent_workers=args.num_workers > 0,
         generator=generator,
     )
+
+
+def _restore_optimizer_state(
+    optimizer: torch.optim.Optimizer,
+    resumed_payload: dict,
+    args: argparse.Namespace,
+) -> None:
+    optimizer_state = resumed_payload.get("optimizer_state_dict")
+    if optimizer_state is not None:
+        optimizer.load_state_dict(optimizer_state)
+    for parameter_group in optimizer.param_groups:
+        parameter_group["lr"] = args.learning_rate
+        parameter_group["weight_decay"] = args.weight_decay
 
 
 def _load_datasets(

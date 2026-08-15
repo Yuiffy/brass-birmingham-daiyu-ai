@@ -371,6 +371,35 @@ class ModelSelfPlayTests(unittest.TestCase):
             output=self.root / "remote.jsonl",
             inference_url="http://inference.test",
         ).validate()
+        with self.assertRaisesRegex(ValueError, "game_index_offset"):
+            ModelSelfPlayConfig(
+                output=self.root / "negative-offset.jsonl",
+                checkpoint=self.root / "model.pt",
+                game_index_offset=-1,
+            ).validate()
+
+    def test_game_index_offset_is_applied_to_every_game_record(self) -> None:
+        output = self.root / "offset-self-play.jsonl"
+        config = ModelSelfPlayConfig(
+            output=output,
+            checkpoint=self.root / "model.pt",
+            games=1,
+            game_index_offset=9,
+            simulations_per_decision=4,
+            engine_revision="test-engine",
+        )
+
+        export_model_self_play(
+            config,
+            engine_module=_FakeEngine,
+            evaluator=_FakeEvaluator(),
+        )
+
+        records = [json.loads(line) for line in output.read_text().splitlines()]
+        self.assertEqual(records[0]["game_index_offset"], 9)
+        self.assertEqual(records[1]["game_index"], 9)
+        self.assertEqual(records[2]["game_index"], 9)
+        self.assertEqual(records[1]["game_seed"], records[2]["game_seed"])
 
     def test_export_is_dataset_compatible_and_keeps_model_search_evidence(self) -> None:
         output = self.root / "model-self-play.jsonl"

@@ -1,0 +1,75 @@
+name: fast-brass-training
+
+services:
+  training-gpu:
+    image: fast-brass-training-gpu:torch-2.11-cu128
+    build:
+      context: ..
+      dockerfile: docker/training-gpu.Dockerfile
+    container_name: fast-brass-gpu-training
+    working_dir: /work
+    command: ["sleep", "infinity"]
+    init: true
+    gpus: all
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      CARGO_TARGET_DIR: /work/target/linux
+      PYTHONPATH: /work
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ..:/work
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+
+  inference:
+    image: fast-brass-training-gpu:torch-2.11-cu128
+    build:
+      context: ..
+      dockerfile: docker/training-gpu.Dockerfile
+    container_name: fast-brass-inference
+    working_dir: /work
+    command:
+      - python3
+      - -m
+      - training.serve_inference
+      - --checkpoint
+      - output/champion-iter1.pt
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --device
+      - cuda
+    init: true
+    gpus: all
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PYTHONPATH: /work
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8765:8765"
+    volumes:
+      - ..:/work
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  cargo-registry:
+    name: brass-cargo-registry
+    external: true
+  cargo-git:
+    name: brass-cargo-git
+    external: true

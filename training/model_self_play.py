@@ -29,6 +29,7 @@ class ModelSelfPlayConfig:
     inference_url: str | None = None
     inference_timeout_seconds: float = 120.0
     games: int = 1
+    game_index_offset: int = 0
     num_players: int = 2
     base_seed: int = 20_260_815
     simulations_per_decision: int = 800
@@ -54,6 +55,14 @@ class ModelSelfPlayConfig:
             )
         if self.games <= 0:
             raise ValueError("games must be positive")
+        if not 0 <= self.game_index_offset <= MASK_64:
+            raise ValueError(
+                "game_index_offset must fit in an unsigned 64-bit integer"
+            )
+        if self.game_index_offset + self.games - 1 > MASK_64:
+            raise ValueError(
+                "game index range must fit in an unsigned 64-bit integer"
+            )
         if self.num_players not in (2, 3, 4):
             raise ValueError("num_players must be between 2 and 4")
         if not 1 <= self.simulations_per_decision <= 1_000_000:
@@ -92,6 +101,7 @@ def main() -> None:
         inference_url=args.inference_url,
         inference_timeout_seconds=args.inference_timeout_seconds,
         games=args.games,
+        game_index_offset=args.game_index_offset,
         num_players=args.players,
         base_seed=args.seed,
         simulations_per_decision=args.simulations,
@@ -135,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     model_source.add_argument("--inference-url")
     parser.add_argument("--inference-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--games", type=int, default=1)
+    parser.add_argument("--game-index-offset", type=int, default=0)
     parser.add_argument("--players", type=int, choices=(2, 3, 4), default=2)
     parser.add_argument("--simulations", type=int, default=800)
     parser.add_argument("--seed", type=int, default=20_260_815)
@@ -203,7 +214,8 @@ def export_model_self_play(
     positions_written = 0
     with partial.open("x", encoding="utf-8", newline="\n") as handle:
         _write_json_line(handle, header)
-        for game_index in range(config.games):
+        for local_game_index in range(config.games):
+            game_index = config.game_index_offset + local_game_index
             game_record, positions = generate_model_self_play_game(
                 config,
                 engine_module,
@@ -384,6 +396,7 @@ def _build_header(
         "engine_revision": config.engine_revision,
         "feature_schema": raw_schema,
         "games": config.games,
+        "game_index_offset": config.game_index_offset,
         "num_players": config.num_players,
         "base_seed": config.base_seed,
         "simulations_per_decision": config.simulations_per_decision,

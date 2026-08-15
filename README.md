@@ -68,6 +68,81 @@ maturin develop
 
 This exposes the `fast_brass` Python module when the `python-bindings` feature is enabled through `maturin`.
 
+### Run the CUDA training stack on Windows
+
+The checked-in Docker stack provides Rust 1.88, Python 3.11, Torch 2.11/cu128, NumPy, the local
+training workspace, and an optional CUDA inference service. Docker Desktop must have NVIDIA GPU
+support enabled.
+
+Create the reusable Cargo cache volumes once, then build and start the training container:
+
+```powershell
+docker volume create brass-cargo-registry
+docker volume create brass-cargo-git
+docker compose --file docker/training-gpu.compose.yaml up --detach --build training-gpu
+```
+
+Build the Linux PyO3 extension inside that container. Linux Cargo artifacts are isolated under
+`target/linux` so they do not replace native Windows builds.
+
+```powershell
+docker compose --file docker/training-gpu.compose.yaml exec training-gpu cargo build --release --features python-extension
+docker compose --file docker/training-gpu.compose.yaml exec training-gpu cp target/linux/release/libfast_brass.so fast_brass.so
+```
+
+Start the checkpoint inference service used by the browser backend:
+
+```powershell
+docker compose --file docker/training-gpu.compose.yaml up --detach inference
+```
+
+It publishes `http://localhost:8765`, includes a health check, and defaults to
+`output/champion-iter1.pt`. Change the checkpoint in
+`docker/training-gpu.compose.yaml` when promoting a new champion.
+
+### Play against the local AI on Windows
+
+With the local first-version checkpoint available at `output/champion-iter1.pt` (a generated
+artifact that is not committed), start the inference service first:
+
+```powershell
+docker compose --file docker/training-gpu.compose.yaml up --detach inference
+```
+
+In a second PowerShell terminal, start the Rust API with neural inference enabled:
+
+```powershell
+$env:FAST_BRASS_INFERENCE_URL = 'http://127.0.0.1:8765'
+$env:WEB_NEURAL_BATCH_SIZE = '64'
+cargo run --release
+```
+
+In a third terminal, start the browser client:
+
+```powershell
+Set-Location ui
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`, create a two-player game, and enter the `AI 分析` tab. The analysis
+panel can show the Top 3 candidate moves, answer follow-up questions about the selected move, apply
+one recommendation, or advance the AI side one move at a time.
+
+The first version does not yet assign human and AI seats automatically. Pick one seat as your own
+(for example player 1) and use this loop:
+
+1. Play your seat normally in the `对局` tab.
+2. When the other seat becomes current, open `AI 分析`, choose `快速`, `标准`, or `深入`, and click
+   `分析局面`.
+3. Select any Top 3 row to inspect it. Use `选择依据`, `胜率可信度`, `主要风险`, `对比一选`, or the
+   free-form question box to ask about that exact move.
+4. Click `采用此步` to play the selected move for the AI seat. Repeat the analysis/apply cycle if
+   that seat still has another action, then return to `对局` when your seat becomes current again.
+
+The play, pause, step, and stop icons under `AI 对局` are intended for AI-vs-AI observation. In a
+human-vs-AI game, `采用此步` is the safer control because it returns to the game view after exactly
+one selected action.
+
 ## AI Status
 
 - Deep neural search is currently implemented for two-player games. New browser games therefore
@@ -106,6 +181,21 @@ renames it after every game and terminal value target has been written successfu
 When PyTorch runs on a different host or outside the rules-engine container, replace `--checkpoint`
 with `--inference-url http://HOST:PORT`. Remote inference is schema-checked, model-ID-checked, and
 retried on bounded transient transport failures.
+
+For CUDA generation, use independent local processes so Rust search and Torch inference overlap
+without HTTP/JSON transport. Stop the browser inference service first so its CUDA allocator does
+not retain training memory, then restore it after generation:
+
+```powershell
+docker compose --file docker/training-gpu.compose.yaml stop inference
+docker compose --file docker/training-gpu.compose.yaml exec training-gpu python3 -m training.parallel_self_play --output-prefix output/iter3-train --checkpoint output/champion-iter1.pt --games 100 --workers 4 --players 2 --simulations 256 --search-determinizations 4 --inference-batch-size 64 --device cuda --seed 2026081601
+docker compose --file docker/training-gpu.compose.yaml up --detach inference
+```
+
+This writes one atomic JSONL shard per worker, such as `iter3-train-000.jsonl`. Global game indices
+are assigned before work is split, so changing `--workers` does not change which deterministic games
+the requested index range represents. Use a different `--seed` for validation data. Four workers
+are the measured default for an RTX 5080 with 16 GB VRAM; lower the count on smaller GPUs.
 
 ### Train with an independent validation partition
 

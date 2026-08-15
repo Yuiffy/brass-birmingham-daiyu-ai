@@ -365,3 +365,125 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Final reviewed regression passes 179 Rust all-target tests, 56 Rust/PyO3 tests, 30 Python
   training/evaluation tests, Python bytecode compilation, and the Svelte production build. Remaining
   output is limited to the existing Rust unused-item and Tailwind content-configuration warnings.
+
+## 2026-08-16 standalone checkout migration verification
+
+- Verified the standalone checkout at `D:\workspace\myrepo\brass-birmingham-daiyu-ai` is on
+  `main` at `01f168609201bfec1431bac6fafdb6966753f820` and matches `origin/main` with a clean worktree.
+- Verified the former nested checkout contained only an empty `.git` directory, then removed that
+  empty directory and its empty `fast-brass` parent without recursive deletion. The standalone
+  checkout and its `.git` directory remain intact.
+- Confirmed ports 3000, 5173, and 8765 were not listening before service recreation. The two old
+  stopped containers that reference the former path remain preserved pending a separate data audit.
+- Recreated `fast-brass-dev` from `fast-brass-dev:training-20260815` with the standalone checkout
+  bound at `/work` and the existing Cargo registry/git volumes attached.
+- Restarted host CUDA inference from the standalone checkout. `/health` reports champion step 242,
+  RTX 5080 CUDA inference, and model ID
+  `sha256:8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f`.
+- Recreated the release Rust API container with the new checkout, persistent SQLite path under
+  `output/`, and host inference URL; also restarted the Svelte dev server. Ports 3000, 5173, and
+  8765 all respond successfully, and the API retained the migrated saved-game records.
+- The standard web-game client created a fresh two-player game from the standalone checkout and
+  produced a nonblank board screenshot plus matching `render_game_to_text` state with no error
+  artifact. The in-app browser then exercised 800-visit neural PUCT, Top 1/2/3 selection, a
+  comparison shortcut, a free-form Chinese follow-up, applying Top 1, and AI single-step playback.
+- The first search covered 428 semantic actions, reached depth 4, and produced Top-3 visit shares
+  of 26.4%, 21.9%, and 18.1%. The observer step applied exactly one move, paused at one recorded AI
+  move, and refreshed a new Top 3 from a depth-6 search. Reviewed desktop screenshots showed no
+  overlap, and browser console warnings/errors were empty.
+- Standalone-path regression passed 179 Rust all-target tests, 56 Rust/PyO3 tests, 30 Python tests,
+  Python bytecode compilation, and the Svelte production build. Inference, API, UI, and both new
+  containers remained healthy after the test run.
+
+## 2026-08-16 shared dynamic batching experiment
+
+- Measured the existing locked CUDA service with four concurrent 64-position requests built from
+  real iter2 training records: mean throughput was 608.54 positions/s.
+- Implemented and tested a bounded shared dynamic batcher, including result splitting, capacity
+  limits, failure isolation, and health metrics. It correctly merged up to four HTTP requests into
+  one 256-position model call, but real throughput regressed to 521.09 positions/s with a 25ms idle
+  / 100ms hard window and 547.64 positions/s with a fixed 25ms window.
+- Smaller 16-position client batches also regressed when deliberately delayed for merging: 440.12
+  positions/s versus 505.28 positions/s with zero intentional wait. Large JSON parsing can overlap
+  with serialized GPU work; waiting to merge requests destroys that pipeline, and the larger model
+  batch is not faster enough to recover the delay.
+- Removed the dynamic batching implementation and restored the original inference service. The next
+  throughput path is local Linux PyO3 plus CUDA Torch in one GPU container, eliminating HTTP/JSON
+  transport rather than trying to batch after JSON parsing.
+
+## 2026-08-16 local CUDA ABI and parallel self-play
+
+- Built a Rust 1.88 / Python 3.11 / Torch 2.11 cu128 image and rebuilt the current PyO3 extension
+  against its Linux ABI. A fixed one-game, 64-visit comparison selected the same action and visit
+  vector at all 79 decisions through local CUDA and remote HTTP; policy priors and backed-up values
+  also matched exactly. Local ABI generation took 34.445 seconds versus 100.578 seconds over HTTP,
+  a 2.92x speedup before process-level parallelism.
+- Added NumPy 2.3.5 in a layer after the multi-gigabyte Torch install, plus a Compose stack with the
+  repository mount, persistent Cargo caches, RTX GPU reservation, a correct
+  `host.docker.internal:host-gateway` mapping, and a health-checked champion inference service on
+  port 8765. Linux Cargo output is isolated under `target/linux`.
+- Benchmarked identical fixed-seed local games at 64 visits. One process completed 79 positions in
+  29.656 seconds (2.66 positions/s); two completed 158 in 33.706 seconds (4.69 positions/s, 1.76x);
+  four completed 316 in 35.308 seconds (8.95 positions/s, 3.36x). Peak reported GPU memory was
+  5,232 / 8,137 / 9,555 MiB respectively, and four-process utilization peaked at 77%.
+- Every benchmark shard matched the prior local ABI shard byte-for-byte and no `.partial` file was
+  left behind. This rules out concurrency-induced changes in Rust search, model inference, action
+  sampling, or serialization for the fixed workload.
+- Added `game_index_offset` to deterministic export and a `training.parallel_self_play` command that
+  partitions one global index range across spawned processes, preflights every output, preserves
+  per-shard atomic writes, checks model identity, and reports aggregate throughput. A real two-worker
+  CUDA smoke produced 158 positions in two distinct game seeds; `SelfPlayDataset` loaded both shards
+  under one engine revision with no residue.
+- The next data cycle should use four local workers, separate train/validation seeds, 256 visits for
+  the first larger candidate, and the existing seat-rotated confidence-bound promotion gate. Four
+  workers are evidence-backed on the current 16 GB RTX 5080; higher concurrency remains unproven.
+
+## 2026-08-16 iter3 data cycle and first-version model freeze
+
+- Generated 40 training games (3,160 positions) and eight independent validation games (632
+  positions) through four local CUDA workers. Training and validation seeds do not overlap; every
+  position has exactly 256 visits, all shards share engine revision
+  `01f168609201bfec1431bac6fafdb6966753f820`, and no `.partial` file remains.
+- Fixed resumed training so checkpoint optimizer moments are restored while explicitly requested
+  learning rate and weight decay still take effect. Also changed `--max-steps` to count steps in the
+  current invocation rather than comparing against the checkpoint's lifetime global step. New
+  checkpoint metadata records the starting step, steps in the current run, and training settings.
+- The full iter3 update reached step 467 (`c3ac4198ee0a670f1c6ef1ec3d08751d352aedf9dcea58af42e6e0e8279309fc`)
+  but scored 35% shared wins, mean score delta `-0.30`, and paired 95% lower bound `-0.5673` over 40
+  games. A smaller policy-focused step-427 update
+  (`ee8d3cf63d5c165a50ebd28bfb4a983fc181384de61dd7d5fe656a681401283c`) scored 48.75%, `-0.025`,
+  and `-0.3768`. Neither passed promotion.
+- Reproducing the iter2 gate at the deployed inference batch size of 64 produced 65% shared wins,
+  mean score delta `+0.30`, and lower bound `-0.0512`. Repeating with the historical batch size of 32
+  produced 45%, `-0.10`, and `-0.4446`. Both failed the predeclared strict `lower bound > 0` rule;
+  the variance reinforces that a point estimate alone is not promotion evidence.
+- First version is frozen on champion step 242,
+  `8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f`. Compose remains pointed at
+  `output/champion-iter1.pt`; no iter2 or iter3 candidate is promoted.
+- Later work should improve data efficiency and evaluation power before another training cycle, then
+  add a clearer human-versus-AI seat assignment flow. No additional training is required for the
+  first-version release.
+
+## 2026-08-16 first-version final regression
+
+- Final verification passed all 40 Python training/evaluation tests on both Windows and the Linux
+  GPU container, all 179 Rust all-target tests, all 56 Rust library tests with Python bindings,
+  Python bytecode compilation, the Svelte production build, Compose validation, and
+  `git diff --check`. Existing Rust unused-item warnings remain unchanged.
+- Restored the Compose inference service without rebuilding it. `/health` reports CUDA, checkpoint
+  step 242, and model ID
+  `sha256:8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f`.
+  The Rust API and Svelte UI respond on ports 3000 and 5173, and the backend points to the inference
+  service on port 8765.
+- The standard web-game client created a fresh two-player game, produced a nonblank board screenshot
+  and matching `awaiting_start` state, and emitted no console-error artifact.
+- A seed-20260816 browser regression started player 1, ran an 800-visit neural PUCT analysis, selected
+  Top 2, asked both the comparison shortcut and a free-form Chinese question, switched back to Top 1,
+  and applied the exact recommendation. The first Top 3 visit shares were 25.0%, 23.0%, and 14.4%.
+- The opponent-side single-step control analyzed the new position, applied exactly one move, paused
+  at one recorded AI move, and retained a fresh Top 3 for the following state. The game log showed
+  both applied semantic action keys, the current player returned to player 1, desktop width remained
+  `clientWidth = scrollWidth = 1280`, and browser warnings/errors were empty.
+- First-version follow-up: add explicit human/AI seat assignment so human-vs-AI play no longer relies
+  on the player choosing which turns to operate manually. The documented analysis/apply loop is the
+  supported first-version workflow.
