@@ -3,7 +3,7 @@ use fast_brass::board::resources::{BreweryBeerSource, ResourceSource};
 use fast_brass::board::BoardState;
 use fast_brass::core::building::BuiltBuilding;
 use fast_brass::core::player::PlayerId;
-use fast_brass::core::static_data::{CANAL_ONLY, LINK_LOCATIONS, RAIL_ONLY, road_label};
+use fast_brass::core::static_data::{road_label, CANAL_ONLY, LINK_LOCATIONS, RAIL_ONLY};
 use fast_brass::core::types::*;
 use fast_brass::game::framework::{ActionChoice, ChoiceSet};
 use fast_brass::game::runner::GameRunner;
@@ -78,9 +78,15 @@ fn test_canal_era_includes_canal_capable_roads() {
     let board = create_board(2, 42);
     let valid = NetworkValidator::get_valid_road_options(&board, 0, Era::Canal);
     // Road 0 (Warrington–StokeOnTrent) is canal+rail, must appear
-    assert!(valid.contains(0), "Canal-capable road 0 should appear in canal era");
+    assert!(
+        valid.contains(0),
+        "Canal-capable road 0 should appear in canal era"
+    );
     // Road 15 (canal-only) must appear
-    assert!(valid.contains(15), "Canal-only road 15 should appear in canal era");
+    assert!(
+        valid.contains(15),
+        "Canal-only road 15 should appear in canal era"
+    );
 }
 
 #[test]
@@ -99,8 +105,14 @@ fn test_railroad_era_includes_rail_capable_roads() {
     let mut board = create_board(2, 42);
     board.era = Era::Railroad;
     let valid = NetworkValidator::get_valid_road_options(&board, 0, Era::Railroad);
-    assert!(valid.contains(2), "Rail-only road 2 should appear in railroad era");
-    assert!(valid.contains(0), "Canal+rail road 0 should appear in railroad era");
+    assert!(
+        valid.contains(2),
+        "Rail-only road 2 should appear in railroad era"
+    );
+    assert!(
+        valid.contains(0),
+        "Canal+rail road 0 should appear in railroad era"
+    );
 }
 
 #[test]
@@ -108,7 +120,10 @@ fn test_already_built_roads_excluded() {
     let mut board = create_board(2, 42);
     board.place_link(0, 0); // build road 0
     let valid = NetworkValidator::get_valid_road_options(&board, 0, Era::Canal);
-    assert!(!valid.contains(0), "Already-built road 0 should be excluded");
+    assert!(
+        !valid.contains(0),
+        "Already-built road 0 should be excluded"
+    );
 }
 
 // =========================================================================
@@ -210,8 +225,7 @@ fn test_double_railroad_impossible_without_beer() {
 fn test_execute_canal_on_canal_capable_road_succeeds() {
     let mut board = create_board(2, 42);
     let money_before = board.players[0].money;
-    let result =
-        NetworkActions::execute_build_canal_action(&mut board, 0, 0, 0);
+    let result = NetworkActions::execute_build_canal_action(&mut board, 0, 0, 0);
     assert!(result.is_ok(), "Building canal on road 0 should succeed");
     assert!(board.built_roads.contains(0));
     assert!(board.player_road_mask[0].contains(0));
@@ -221,8 +235,7 @@ fn test_execute_canal_on_canal_capable_road_succeeds() {
 #[test]
 fn test_execute_canal_on_rail_only_road_fails() {
     let mut board = create_board(2, 42);
-    let result =
-        NetworkActions::execute_build_canal_action(&mut board, 0, 2, 0);
+    let result = NetworkActions::execute_build_canal_action(&mut board, 0, 2, 0);
     assert_eq!(result, Err(NetworkError::InvalidCanalBuild));
     assert!(!board.built_roads.contains(2));
 }
@@ -231,8 +244,7 @@ fn test_execute_canal_on_rail_only_road_fails() {
 fn test_execute_canal_on_already_built_road_fails() {
     let mut board = create_board(2, 42);
     board.place_link(0, 10); // pre-build road 10
-    let result =
-        NetworkActions::execute_build_canal_action(&mut board, 0, 10, 0);
+    let result = NetworkActions::execute_build_canal_action(&mut board, 0, 10, 0);
     assert_eq!(result, Err(NetworkError::InvalidCanalBuild));
 }
 
@@ -240,8 +252,7 @@ fn test_execute_canal_on_already_built_road_fails() {
 fn test_execute_canal_in_railroad_era_fails() {
     let mut board = create_board(2, 42);
     board.era = Era::Railroad;
-    let result =
-        NetworkActions::execute_build_canal_action(&mut board, 0, 0, 0);
+    let result = NetworkActions::execute_build_canal_action(&mut board, 0, 0, 0);
     assert_eq!(result, Err(NetworkError::InvalidCanalBuild));
 }
 
@@ -256,9 +267,11 @@ fn test_execute_canal_discards_card() {
 #[test]
 fn test_execute_canal_on_canal_only_road_succeeds() {
     let mut board = create_board(2, 42);
-    let result =
-        NetworkActions::execute_build_canal_action(&mut board, 0, 15, 0);
-    assert!(result.is_ok(), "Building canal on canal-only road 15 should succeed");
+    let result = NetworkActions::execute_build_canal_action(&mut board, 0, 15, 0);
+    assert!(
+        result.is_ok(),
+        "Building canal on canal-only road 15 should succeed"
+    );
     assert!(board.built_roads.contains(15));
 }
 
@@ -277,7 +290,11 @@ fn test_execute_rail_on_rail_capable_road_succeeds() {
     let mut board = setup_rail_board();
     let money_before = board.players[0].money;
     let result = NetworkActions::execute_build_single_rail_action(
-        &mut board, 0, 0, ResourceSource::Market, 0,
+        &mut board,
+        0,
+        0,
+        ResourceSource::Market,
+        0,
     );
     assert!(result.is_ok(), "Rail build on road 0 should succeed");
     assert!(board.built_roads.contains(0));
@@ -289,7 +306,11 @@ fn test_execute_rail_on_rail_capable_road_succeeds() {
 fn test_execute_rail_on_canal_only_road_fails() {
     let mut board = setup_rail_board();
     let result = NetworkActions::execute_build_single_rail_action(
-        &mut board, 0, 15, ResourceSource::Market, 0,
+        &mut board,
+        0,
+        15,
+        ResourceSource::Market,
+        0,
     );
     assert_eq!(result, Err(NetworkError::InvalidRailPlacement));
     assert!(!board.built_roads.contains(15));
@@ -300,7 +321,11 @@ fn test_execute_rail_on_already_built_road_fails() {
     let mut board = setup_rail_board();
     board.place_link(0, 3);
     let result = NetworkActions::execute_build_single_rail_action(
-        &mut board, 0, 3, ResourceSource::Market, 0,
+        &mut board,
+        0,
+        3,
+        ResourceSource::Market,
+        0,
     );
     assert_eq!(result, Err(NetworkError::InvalidRailPlacement));
 }
@@ -309,19 +334,29 @@ fn test_execute_rail_on_already_built_road_fails() {
 fn test_execute_rail_in_canal_era_fails() {
     let mut board = create_board(2, 42);
     let result = NetworkActions::execute_build_single_rail_action(
-        &mut board, 0, 0, ResourceSource::Market, 0,
+        &mut board,
+        0,
+        0,
+        ResourceSource::Market,
+        0,
     );
     assert_eq!(result, Err(NetworkError::InvalidRailPlacement));
 }
-
 
 #[test]
 fn test_execute_rail_on_rail_only_road_succeeds() {
     let mut board = setup_rail_board();
     let result = NetworkActions::execute_build_single_rail_action(
-        &mut board, 0, 2, ResourceSource::Market, 0,
+        &mut board,
+        0,
+        2,
+        ResourceSource::Market,
+        0,
     );
-    assert!(result.is_ok(), "Rail build on rail-only road 2 should succeed");
+    assert!(
+        result.is_ok(),
+        "Rail build on rail-only road 2 should succeed"
+    );
     assert!(board.built_roads.contains(2));
 }
 
@@ -333,7 +368,7 @@ fn setup_double_rail_board() -> BoardState {
     let mut board = create_board(2, 42);
     board.era = Era::Railroad;
     board.players[0].gain_money(50); // ensure enough for £15 + 2× coal from market
-    // Place a brewery with beer for player 0 at BL 0 (Stafford)
+                                     // Place a brewery with beer for player 0 at BL 0 (Stafford)
     let brewery = BuiltBuilding::build(
         IndustryType::Beer,
         IndustryLevel::I,
@@ -354,14 +389,18 @@ fn test_execute_double_rail_succeeds() {
     let result = NetworkActions::execute_build_double_rail_action(
         &mut board,
         0,
-        0,   // road 0
-        1,   // road 1
+        0, // road 0
+        1, // road 1
         ResourceSource::Market,
         ResourceSource::Market,
         BreweryBeerSource::OwnBrewery(0),
         0,
     );
-    assert!(result.is_ok(), "Double rail build should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Double rail build should succeed: {:?}",
+        result
+    );
     assert!(board.built_roads.contains(0));
     assert!(board.built_roads.contains(1));
     assert!(board.players[0].money < money_before);
@@ -433,8 +472,14 @@ fn test_player_with_building_gets_adjacent_roads() {
 
     let opts = NetworkValidator::get_valid_canal_options(&board, 0);
     // Stafford is connected to roads 10 (Stone–Stafford) and 12 (Stafford–Cannock)
-    assert!(opts.contains(&10), "Should include road 10 (Stone–Stafford)");
-    assert!(opts.contains(&12), "Should include road 12 (Stafford–Cannock)");
+    assert!(
+        opts.contains(&10),
+        "Should include road 10 (Stone–Stafford)"
+    );
+    assert!(
+        opts.contains(&12),
+        "Should include road 12 (Stafford–Cannock)"
+    );
     // Should NOT include a distant road like 37 (Worcester–Gloucester)
     assert!(
         !opts.contains(&37),
@@ -453,16 +498,15 @@ fn test_all_canal_options_do_not_contain_rail_only_roads() {
 
     // All rail-only road indices from LINK_LOCATIONS (can_build_canal=false, can_build_rail=true)
     let rail_only_roads: [usize; 8] = [
-        2,   // Leek–Belper
-        5,   // Derby–Uttoxeter
-        9,   // Stone–Uttoxeter
-        13,  // Cannock–BurtonUponTrent
-        25,  // Tamworth–Walsall
-        27,  // Nuneaton–Coventry
-        29,  // Birmingham–Nuneaton
-        32,  // Birmingham–Redditch
+        2,  // Leek–Belper
+        5,  // Derby–Uttoxeter
+        9,  // Stone–Uttoxeter
+        13, // Cannock–BurtonUponTrent
+        25, // Tamworth–Walsall
+        27, // Nuneaton–Coventry
+        29, // Birmingham–Nuneaton
+        32, // Birmingham–Redditch
     ];
-
 
     for &road_idx in &opts {
         assert!(
@@ -481,8 +525,14 @@ fn test_all_rail_options_do_not_contain_canal_only_roads() {
 
     // Road 15 (Walsall–BurtonUponTrent) is the only canal-only road
     let canal_only_road: usize = 15;
-    assert!(LINK_LOCATIONS[canal_only_road].can_build_canal, "Road 15 should be canal-capable");
-    assert!(!LINK_LOCATIONS[canal_only_road].can_build_rail, "Road 15 should NOT be rail-capable");
+    assert!(
+        LINK_LOCATIONS[canal_only_road].can_build_canal,
+        "Road 15 should be canal-capable"
+    );
+    assert!(
+        !LINK_LOCATIONS[canal_only_road].can_build_rail,
+        "Road 15 should NOT be rail-capable"
+    );
 
     for opt in &opts {
         assert!(
@@ -547,7 +597,10 @@ fn test_canal_build_e2e_all_offered_roads_are_valid_and_confirmable() {
                 let cs2 = runner.apply_choice(ActionChoice::Card(cards[0]));
                 match cs2 {
                     Some(ChoiceSet::Road(opts)) => opts,
-                    other => panic!("Seed {seed}: expected Road choices after card, got {:?}", other),
+                    other => panic!(
+                        "Seed {seed}: expected Road choices after card, got {:?}",
+                        other
+                    ),
                 }
             }
             ChoiceSet::Road(opts) => opts,
@@ -588,7 +641,12 @@ fn test_canal_build_e2e_all_offered_roads_are_valid_and_confirmable() {
 
         // Verify road was actually built
         assert!(
-            runner.framework.board.state.built_roads.contains(road_to_build),
+            runner
+                .framework
+                .board
+                .state
+                .built_roads
+                .contains(road_to_build),
             "Seed {seed}: road {} should be marked as built after confirm",
             road_label(road_to_build),
         );
@@ -604,9 +662,7 @@ fn test_canal_build_every_offered_road_executes_successfully() {
 
     for &road_idx in &canal_opts {
         let mut fresh_board = create_board(2, 42);
-        let result = NetworkActions::execute_build_canal_action(
-            &mut fresh_board, 0, road_idx, 0,
-        );
+        let result = NetworkActions::execute_build_canal_action(&mut fresh_board, 0, road_idx, 0);
         assert!(
             result.is_ok(),
             "Execution rejected canal build on {} which was offered as valid: {:?}",

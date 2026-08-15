@@ -1,7 +1,7 @@
 // Extracted from cards.rs
 use crate::core::types::*;
-use rand::seq::SliceRandom;
 use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone)]
 pub struct Deck {
@@ -22,10 +22,10 @@ impl Deck {
         };
         cards.shuffle(&mut rng);
 
-        Deck { 
-            cards, 
-            discard_pile: Vec::new(), 
-            rng 
+        Deck {
+            cards,
+            discard_pile: Vec::new(),
+            rng,
         }
     }
 
@@ -63,8 +63,8 @@ impl Deck {
     }
 
     pub fn add_cards(&mut self, discarded_cards: Vec<Card>) {
-         self.cards.extend(discarded_cards);
-     }
+        self.cards.extend(discarded_cards);
+    }
 
     pub fn is_empty(&self) -> bool {
         self.cards.is_empty()

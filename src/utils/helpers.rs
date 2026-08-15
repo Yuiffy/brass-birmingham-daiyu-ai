@@ -1,9 +1,8 @@
-use std::ops::Range;
-use fixedbitset::FixedBitSet;
-use crate::core::types::*;
 use crate::core::locations::{LocationName, TownName};
 use crate::core::static_data::LOCATION_TO_ROADS;
-
+use crate::core::types::*;
+use fixedbitset::FixedBitSet;
+use std::ops::Range;
 
 pub fn is_town_bl(loc_idx: usize) -> bool {
     loc_idx < NUM_TOWN_BL
@@ -40,11 +39,13 @@ pub fn find_town_idx_for_loc(loc_idx: usize) -> usize {
         if loc_idx >= start && loc_idx < end {
             return mid;
         } else if loc_idx < start {
-            if mid == 0 { break; } // Prevent underflow
+            if mid == 0 {
+                break;
+            } // Prevent underflow
             high = mid - 1;
         } else {
             low = mid + 1;
-        }   
+        }
     }
     panic!("Invalid location index: {}", loc_idx);
 }
@@ -62,7 +63,6 @@ pub fn find_town_range(loc_idx: usize) -> Option<Range<usize>> {
     }
     None
 }
-
 
 /// Check if an industry type includes merchant industry (Cotton or Goods)
 pub fn includes_merchant_industry(industry: IndustryType) -> bool {
@@ -97,7 +97,7 @@ pub fn bl_to_road_idxs(bl_idx: usize) -> RoadSet {
     if bl_idx >= N_LOCATIONS {
         panic!("Invalid build location index: {}", bl_idx);
     }
-    
+
     LOCATION_TO_ROADS[LocationName::from_bl_idx(bl_idx).as_usize()].clone()
 }
 
@@ -107,7 +107,6 @@ pub fn location_to_road_idxs(location_idx: usize) -> RoadSet {
     }
     LOCATION_TO_ROADS[location_idx].clone()
 }
-
 
 /// Calculate distance between two build locations
 pub fn calculate_location_distance(loc1: usize, loc2: usize) -> usize {
@@ -119,7 +118,7 @@ pub fn calculate_location_distance(loc1: usize, loc2: usize) -> usize {
         // Find which towns these locations belong to
         let town1_opt = find_town_range(loc1);
         let town2_opt = find_town_range(loc2);
-        
+
         match (town1_opt, town2_opt) {
             (Some(range1), Some(range2)) => {
                 if range1.start == range2.start {
@@ -170,7 +169,7 @@ mod tests {
         assert!(is_valid_build_location(0));
         assert!(is_valid_build_location(NUM_BL - 1));
         assert!(!is_valid_build_location(NUM_BL));
-        
+
         assert!(is_valid_road_location(0));
         assert!(is_valid_road_location(N_ROAD_LOCATIONS - 1));
         assert!(!is_valid_road_location(N_ROAD_LOCATIONS));

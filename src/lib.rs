@@ -31,15 +31,15 @@ pub mod web;
 #[cfg(feature = "python-bindings")]
 pub mod python;
 
-pub mod consts;  // Will be gradually moved to core::types
+pub mod consts; // Will be gradually moved to core::types
 
 // Re-exports for backward compatibility
-pub use core::*;
-pub use board::*;
 pub use actions::*;
-pub use validation::*;
-pub use market::*;
+pub use board::*;
 pub use cards::*;
+pub use core::*;
 pub use game::*;
+pub use market::*;
+pub use validation::*;
 
 // Note: locations is already re-exported through core::*

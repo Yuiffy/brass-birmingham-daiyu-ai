@@ -1,8 +1,8 @@
 use crate::consts::TOTAL_TOWNS;
-use crate::utils::dsu::DisjointSetUnion;
 use crate::core::locations::LocationName;
-use crate::core::types::{LocationSet, BitSetWrapper, RoadSet, BuildLocationSet};
 use crate::core::static_data::{LINK_LOCATIONS, N_LINK_LOCATIONS};
+use crate::core::types::{BitSetWrapper, BuildLocationSet, LocationSet, RoadSet};
+use crate::utils::dsu::DisjointSetUnion;
 
 #[derive(Debug, Clone)]
 pub struct Connectivity {
@@ -11,7 +11,9 @@ pub struct Connectivity {
 
 impl Connectivity {
     pub fn new() -> Self {
-        Self { sets: DisjointSetUnion::new(TOTAL_TOWNS) }
+        Self {
+            sets: DisjointSetUnion::new(TOTAL_TOWNS),
+        }
     }
 
     pub fn add_road(&mut self, road_idx: usize) {
@@ -22,7 +24,10 @@ impl Connectivity {
         for loc in link.locations.ones() {
             for loc2 in link.locations.ones() {
                 if loc2 != loc {
-                    self.connect_two_towns(LocationName::from_usize(loc), LocationName::from_usize(loc2));
+                    self.connect_two_towns(
+                        LocationName::from_usize(loc),
+                        LocationName::from_usize(loc2),
+                    );
                 }
             }
         }
@@ -46,15 +51,22 @@ impl Connectivity {
     }
 
     pub fn are_build_locations_connected(&self, location1: usize, location2: usize) -> bool {
-        self.are_towns_connected(LocationName::from_bl_idx(location1), LocationName::from_bl_idx(location2))
+        self.are_towns_connected(
+            LocationName::from_bl_idx(location1),
+            LocationName::from_bl_idx(location2),
+        )
     }
 
     pub fn is_bl_connected_to_location(&self, bl_idx: usize, location: LocationName) -> bool {
-        self.sets.same_set_immutable(LocationName::from_bl_idx(bl_idx).as_usize(), location.as_usize())
+        self.sets.same_set_immutable(
+            LocationName::from_bl_idx(bl_idx).as_usize(),
+            location.as_usize(),
+        )
     }
 
     pub fn are_towns_connected(&self, town1: LocationName, town2: LocationName) -> bool {
-        self.sets.same_set_immutable(town1.as_usize(), town2.as_usize())
+        self.sets
+            .same_set_immutable(town1.as_usize(), town2.as_usize())
     }
 
     fn connect_two_towns(&mut self, town1: LocationName, town2: LocationName) {
@@ -70,7 +82,10 @@ impl Connectivity {
         const TRADE_POST_START: usize = 22;
         for tp_idx in 0..NUM_TRADE_POSTS {
             let tp_loc = LocationName::from_usize(TRADE_POST_START + tp_idx);
-            if self.sets.same_set_immutable(bl_town.as_usize(), tp_loc.as_usize()) {
+            if self
+                .sets
+                .same_set_immutable(bl_town.as_usize(), tp_loc.as_usize())
+            {
                 return true;
             }
         }
@@ -84,56 +99,53 @@ impl Connectivity {
     }
 }
 
-
-
-
 // /// Calculate connectivity if a set of new roads were added to an existing connectivity map
 // pub fn calculate_connectivity_if_roads_built(
-//     initial_conn_map: &[FixedBitSet; N_LOCATIONS], 
+//     initial_conn_map: &[FixedBitSet; N_LOCATIONS],
 //     new_road_indices: &[usize]
 // ) -> [FixedBitSet; N_LOCATIONS] {
 //     let mut new_connectivity = initial_conn_map.clone();
-    
+
 //     for &road_idx in new_road_indices {
-//         if road_idx >= ROAD_LOCATION_MASK.len() { continue; } 
-        
+//         if road_idx >= ROAD_LOCATION_MASK.len() { continue; }
+
 //         let road_conn_mask = &ROAD_LOCATION_MASK[road_idx];
 //         let mut component_to_merge = FixedBitSet::with_capacity(N_LOCATIONS);
-        
+
 //         for loc_idx_in_road in road_conn_mask.ones() {
 //             if loc_idx_in_road < N_LOCATIONS {
 //                 component_to_merge.union_with(&new_connectivity[loc_idx_in_road]);
 //             }
 //         }
 //         component_to_merge.union_with(road_conn_mask);
-        
+
 //         for loc_to_update in component_to_merge.ones() {
 //             if loc_to_update < N_LOCATIONS {
 //                 new_connectivity[loc_to_update].union_with(&component_to_merge);
 //             }
 //         }
 //     }
-    
+
 //     new_connectivity
 // }
 
 // /// Update global connectivity after building a road (mutates state in place)
 // pub fn update_global_connectivity_after_road_build_inplace(
-//     connectivity: &mut [FixedBitSet; N_LOCATIONS], 
+//     connectivity: &mut [FixedBitSet; N_LOCATIONS],
 //     road_idx: usize
 // ) {
-//     let road_conn_mask = &ROAD_LOCATION_MASK[road_idx]; 
+//     let road_conn_mask = &ROAD_LOCATION_MASK[road_idx];
 //     let mut component_to_merge = FixedBitSet::with_capacity(N_LOCATIONS);
-    
+
 //     for loc_idx_in_road in road_conn_mask.ones() {
-//         if loc_idx_in_road < N_LOCATIONS { 
+//         if loc_idx_in_road < N_LOCATIONS {
 //             component_to_merge.union_with(&connectivity[loc_idx_in_road]);
 //         }
 //     }
 //     component_to_merge.union_with(road_conn_mask);
-    
+
 //     for loc_to_update in component_to_merge.ones() {
-//         if loc_to_update < N_LOCATIONS { 
+//         if loc_to_update < N_LOCATIONS {
 //             connectivity[loc_to_update].union_with(&component_to_merge);
 //         }
 //     }
@@ -148,7 +160,7 @@ impl Connectivity {
 // ) {
 //     player_road_mask.insert(road_idx);
 //     let road_locations = &ROAD_LOCATION_MASK[road_idx];
-    
+
 //     for road_loc_node in road_locations.ones() {
 //         if road_loc_node < N_LOCATIONS {
 //             player_network_mask.union_with(&connectivity[road_loc_node]);
@@ -162,7 +174,7 @@ pub fn update_player_network_after_building(
     player_building_mask: &mut BuildLocationSet,
     player_network_mask: &mut Connectivity,
     connectivity: &Connectivity,
-    building_loc: usize
+    building_loc: usize,
 ) {
     player_building_mask.insert(building_loc);
     // The player network is updated by union with the connectivity
@@ -177,8 +189,8 @@ pub fn update_player_network_after_building(
 
 /// Update global connectivity after building a road (mutates state in place)
 pub fn update_global_connectivity_after_road_build_inplace(
-    connectivity: &mut Connectivity, 
-    road_idx: usize
+    connectivity: &mut Connectivity,
+    road_idx: usize,
 ) {
     connectivity.add_road(road_idx);
 }
@@ -188,7 +200,7 @@ pub fn update_player_network_after_road_build(
     player_road_mask: &mut RoadSet,
     player_network_mask: &mut Connectivity,
     connectivity: &Connectivity,
-    road_idx: usize
+    road_idx: usize,
 ) {
     player_road_mask.insert(road_idx);
     // Connect the player's network to all locations connected by this road
@@ -207,7 +219,7 @@ pub fn update_player_network_after_road_build(
 /// Calculate global connectivity after building a road (returns new connectivity state)
 pub fn calculate_global_connectivity_after_road_build(
     connectivity: &Connectivity,
-    road_idx: usize
+    road_idx: usize,
 ) -> Connectivity {
     let mut new_conn = connectivity.clone();
     new_conn.add_road(road_idx);
@@ -217,7 +229,7 @@ pub fn calculate_global_connectivity_after_road_build(
 /// Calculate connectivity if a set of roads were built
 pub fn calculate_connectivity_if_roads_built(
     connectivity: &Connectivity,
-    road_indices: &[usize]
+    road_indices: &[usize],
 ) -> Connectivity {
     let mut new_conn = connectivity.clone();
     for &road_idx in road_indices {

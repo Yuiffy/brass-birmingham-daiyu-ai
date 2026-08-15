@@ -6,11 +6,11 @@ use once_cell::sync::Lazy;
 // Enum representing the *kind* of merchant tile
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MerchantTileType {
-    All,      // Cotton, Goods, Pottery
+    All, // Cotton, Goods, Pottery
     Cotton,
     Goods,
     Pottery,
-    Blank,    // No industries, no beer
+    Blank, // No industries, no beer
 }
 
 // Struct representing a merchant tile *instance* placed on the board
@@ -98,13 +98,13 @@ pub enum TradePostBonus {
     Income2,
     Vp3,
     Vp4,
-    Money5
+    Money5,
 }
 
 pub static TRADE_POST_TO_BONUS: [TradePostBonus; NUM_TRADE_POSTS] = [
-    TradePostBonus::Vp4,            //Shrewbury (index 0 -> NUM_BL)
-    TradePostBonus::Income2,        //Oxford (index 1 -> NUM_BL+1)
-    TradePostBonus::FreeDevelopment,//Gloucester (index 2 -> NUM_BL+2)
-    TradePostBonus::Money5,         //Warrington (index 3 -> NUM_BL+3)
-    TradePostBonus::Vp3,            //Nottingham (index 4 -> NUM_BL+4)
+    TradePostBonus::Vp4,             //Shrewbury (index 0 -> NUM_BL)
+    TradePostBonus::Income2,         //Oxford (index 1 -> NUM_BL+1)
+    TradePostBonus::FreeDevelopment, //Gloucester (index 2 -> NUM_BL+2)
+    TradePostBonus::Money5,          //Warrington (index 3 -> NUM_BL+3)
+    TradePostBonus::Vp3,             //Nottingham (index 4 -> NUM_BL+4)
 ];

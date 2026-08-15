@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { GameState, ChoiceSet, Player, IndustryLevelData } from './types';
+import type { AnalysisReport, GameState, IndustryLevelData } from './types';
 
 export const gameState = writable<GameState | null>(null);
 export type TurnPhase = 'awaiting_start' | 'choosing_action' | 'in_session' | 'turn_done';
@@ -7,6 +7,18 @@ export const turnPhase = writable<TurnPhase>('awaiting_start');
 export const actionsAvailable = writable<string[] | null>(null);
 export const logs = writable<string[]>([]);
 export const allIndustryData = writable<Record<string, IndustryLevelData[]> | null>(null);
+export const analysisReport = writable<AnalysisReport | null>(null);
+export const analysisLoading = writable(false);
+export const analysisError = writable<string | null>(null);
+export const selectedAnalysisKey = writable<string | null>(null);
+
+export type AiPlaybackStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
+export interface AiPlaybackState {
+	status: AiPlaybackStatus;
+	moves: number;
+	error: string | null;
+}
+export const aiPlayback = writable<AiPlaybackState>({ status: 'idle', moves: 0, error: null });
 
 /** Money each player had at the start of the current player's turn */
 export const moneyAtTurnStart = writable<Record<number, number>>({});
@@ -33,6 +45,18 @@ export const currentPlayer = derived(gameState, $gs => {
 
 export const choiceSet = derived(gameState, $gs => $gs?.choice_set ?? null);
 
+export const selectedAnalysisCandidate = derived(
+	[analysisReport, selectedAnalysisKey],
+	([$report, $key]) => $report?.recommendations.find(candidate => candidate.action_key === $key)
+		?? $report?.recommendations[0]
+		?? null
+);
+
+export const analysisHighlights = derived(
+	selectedAnalysisCandidate,
+	$candidate => $candidate?.highlights ?? null
+);
+
 /** Pending development choices (industry + level) during Develop/Develop x2 action */
 export const pendingDevelopments = derived(
 	gameState,
@@ -41,4 +65,14 @@ export const pendingDevelopments = derived(
 
 export function playerName(gs: GameState, idx: number): string {
 	return gs.players.find(p => p.index === idx)?.name ?? `P${idx}`;
+}
+
+export function invalidateAnalysis() {
+	analysisReport.set(null);
+	analysisError.set(null);
+	selectedAnalysisKey.set(null);
+}
+
+export function resetAiPlayback() {
+	aiPlayback.set({ status: 'idle', moves: 0, error: null });
 }

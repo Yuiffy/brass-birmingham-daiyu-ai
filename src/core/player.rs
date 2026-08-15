@@ -1,11 +1,10 @@
-
-use super::types::*;
 use super::industry_mat::PlayerIndustryMat;
-use crate::cards::Hand;
-use crate::board::BoardState;
-use crate::core::locations::LocationName;
 use super::static_data::LINK_LOCATIONS;
+use super::types::*;
 use crate::board::connectivity::Connectivity;
+use crate::board::BoardState;
+use crate::cards::Hand;
+use crate::core::locations::LocationName;
 
 // Define PlayerId Enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -64,17 +63,14 @@ pub struct Player {
     pub hand: Hand,
     pub industry_mat: PlayerIndustryMat,
     pub spent_this_turn: u16,
-    pub network: Connectivity
+    pub network: Connectivity,
 }
-
-
-
 
 impl Player {
     pub fn new(id: PlayerId, starting_hand: Vec<Card>) -> Self {
         Self {
             id,
-            money: 17, // Starting money
+            money: 17,        // Starting money
             income_level: 10, // Start at 10 points, which is 0 income by the formula
             victory_points: 0,
             hand: Hand::new(starting_hand),
@@ -83,18 +79,18 @@ impl Player {
             network: Connectivity::new(),
         }
     }
-    
+
     pub fn can_afford(&self, cost: u16) -> bool {
         self.money >= cost
     }
-    
+
     pub fn pay(&mut self, amount: u16) {
         // Safety against desync/edge-case callers: never underflow player money.
         let paid = amount.min(self.money);
         self.money -= paid;
         self.spent_this_turn = self.spent_this_turn.saturating_add(paid);
     }
-    
+
     pub fn gain_money(&mut self, amount: u16) {
         self.money = self.money.saturating_add(amount);
     }
@@ -103,7 +99,7 @@ impl Player {
     pub fn gain_income(&mut self) {
         self.money += self.get_income_amount(self.income_level) as u16;
     }
-    
+
     pub fn increase_income_level(&mut self, amount: u8) {
         self.income_level = self.income_level.saturating_add(amount);
         if self.income_level > 96 {
@@ -117,11 +113,11 @@ impl Player {
         let result = if level <= 10 {
             level - 10
         } else if level <= 30 {
-            (level - 10 + 1) / 2 
+            (level - 10 + 1) / 2
         } else if level <= 60 {
-            (level + 2) / 3 
+            (level + 2) / 3
         } else if level <= 96 {
-            20 + (level - 60 + 3) / 4 
+            20 + (level - 60 + 3) / 4
         } else {
             30 // Max income
         };
@@ -142,7 +138,6 @@ impl Player {
             return false; // Indicates liquidation is needed
         }
     }
-
 
     fn decrease_level(&mut self) {
         let income = self.income_level;
@@ -190,19 +185,19 @@ impl Player {
     // • The location contains one or more of
     // your Industry tiles B ;
     // • The location is adjacent to one or more
-    // of your Link tiles 
+    // of your Link tiles
     pub fn get_locations_in_network(&self, board_state: &BoardState) -> LocationSet {
         let mut locations = LocationSet::new();
 
         // Add all Towns where the player has a building
         let bl_mask = &board_state.player_building_mask[self.id.as_usize()];
-        
+
         for bl_idx in bl_mask.ones() {
             locations.union_with(&LocationName::from_bl_idx(bl_idx).to_location_set());
         }
         // Add all Locations that are adjacent to the player's buildings
         let road_mask = &board_state.player_road_mask[self.id.as_usize()];
-        
+
         for road_idx in road_mask.ones() {
             locations.union_with(&LINK_LOCATIONS[road_idx].locations);
         }

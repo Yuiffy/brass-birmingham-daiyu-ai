@@ -11,5 +11,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+
+[project.optional-dependencies]
+training = ["torch>=2.2"]
+
 [tool.maturin]
-features = ["python-bindings"]
+features = ["python-extension"]

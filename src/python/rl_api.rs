@@ -1,24 +1,35 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
-use rand::seq::SliceRandom;
 
 use crate::actions::{BuildOption, SellOption, SingleRailroadOption};
 use crate::board::resources::{BeerSellSource, BreweryBeerSource, ResourceSource};
 use crate::consts::{
-    MAX_MARKET_COAL, MAX_MARKET_IRON, N_ROAD_LOCATIONS, N_BL, N_LOCATIONS, N_PLAYERS, NUM_TRADE_POSTS,
-    TWO_RAILROAD_PRICE,
+    MAX_MARKET_COAL, MAX_MARKET_IRON, NUM_TRADE_POSTS, N_BL, N_LOCATIONS, N_PLAYERS,
+    N_ROAD_LOCATIONS, TWO_RAILROAD_PRICE,
 };
 use crate::core::locations::LocationName;
 use crate::core::static_data::{BUILD_LOCATION_MASK, INDUSTRY_MAT, LINK_LOCATIONS};
-use crate::core::types::{ActionType, BitSetWrapper, Card, CardType, Era, IndustryType};
+use crate::core::types::{ActionType, BitSetWrapper, Era, IndustryType};
 use crate::game::framework::{ActionChoice, ChoiceSet, NetworkMode, ShortfallResolutionSession};
+use crate::game::hidden_information::determinize_hidden_information;
+use crate::game::legal_actions::{enumerate_legal_actions, LegalAction};
 use crate::game::runner::{GamePhase, GameRunner};
+use crate::game::search::{
+    official_winners, search_top_actions, search_top_actions_with_policy,
+    search_top_actions_with_policy_and_action_values, BatchedNeuralPuctConfig,
+    BatchedNeuralPuctSearch, NeuralLeafEvaluation, RootActionValueEvaluation, RootPolicyEvaluation,
+    RootSearchConfig, RootSearchReport,
+};
+use crate::game::training::{
+    card_type_index, encode_root_action_successor_batch, encode_training_action,
+    encode_training_state, training_feature_schema, ACTION_FEATURE_DIM, TRAINING_FEATURE_VERSION,
+};
 use crate::market::merchants::MerchantTileType;
 
-const ROOT_ACTION_COUNT: usize = 7;
+const ROOT_ACTION_COUNT: usize = 8;
 const CARD_TYPE_DIM: usize = 29;
 const MAX_HAND_MASK_DIM: usize = 64;
 const NETWORK_MODE_DIM: usize = 2;
@@ -36,6 +47,7 @@ const ROOT_DEVELOP_DOUBLE: usize = 3;
 const ROOT_SELL: usize = 4;
 const ROOT_LOAN: usize = 5;
 const ROOT_SCOUT: usize = 6;
+const ROOT_PASS: usize = 7;
 
 const STOP_INDEX_COAL: usize = COAL_SOURCE_DIM - 1;
 const STOP_INDEX_IRON: usize = IRON_SOURCE_DIM - 1;
@@ -161,28 +173,25 @@ impl CompositeActionPayload {
         next_from_list(&self.sell_target_values, &mut self.sell_target_idx)
     }
 
+    fn peek_sell_target(&self) -> Option<usize> {
+        self.sell_target_values.get(self.sell_target_idx).copied()
+    }
+
     fn select_unique_card_from_options(&mut self, options: &[usize]) -> PyResult<usize> {
-        if let Some(requested_idx) = self.next_card() {
-            if options.contains(&requested_idx) && !self.used_card_choices.contains(&requested_idx) {
-                self.used_card_choices.insert(requested_idx);
-                return Ok(requested_idx);
-            }
+        let requested_idx = self
+            .next_card()
+            .ok_or_else(|| PyValueError::new_err("missing required card choice"))?;
+        if !options.contains(&requested_idx) {
+            return Err(PyValueError::new_err(format!(
+                "card choice {requested_idx} is not legal; expected one of {options:?}"
+            )));
         }
-
-        if let Some(fallback) = options
-            .iter()
-            .copied()
-            .find(|idx| !self.used_card_choices.contains(idx))
-        {
-            self.used_card_choices.insert(fallback);
-            return Ok(fallback);
+        if !self.used_card_choices.insert(requested_idx) {
+            return Err(PyValueError::new_err(format!(
+                "card choice {requested_idx} was used more than once"
+            )));
         }
-
-        let Some(fallback) = options.first().copied() else {
-            return Err(PyValueError::new_err("ChoiceSet::Card had no options"));
-        };
-        self.used_card_choices.insert(fallback);
-        Ok(fallback)
+        Ok(requested_idx)
     }
 }
 
@@ -197,6 +206,128 @@ pub struct BrassSavedState {
 pub struct BrassRLGame {
     runner: GameRunner,
     current_shortfall: Option<ShortfallResolutionSession>,
+    legal_action_cache: Vec<LegalAction>,
+}
+
+#[pyclass(unsendable)]
+pub struct BrassNeuralSearch {
+    search: BatchedNeuralPuctSearch,
+    legal_actions: Vec<LegalAction>,
+    forced_advances: usize,
+}
+
+#[pymethods]
+impl BrassNeuralSearch {
+    fn is_complete(&self) -> bool {
+        self.search.is_complete()
+    }
+
+    fn completed_simulations(&self) -> u64 {
+        self.search.completed_simulations()
+    }
+
+    fn pending_evaluations(&self) -> usize {
+        self.search.pending_evaluations()
+    }
+
+    #[pyo3(signature = (max_batch_size=32))]
+    fn next_inference_batch(
+        &mut self,
+        py: Python<'_>,
+        max_batch_size: usize,
+    ) -> PyResult<PyObject> {
+        let requests = self
+            .search
+            .next_inference_batch(max_batch_size)
+            .map_err(PyValueError::new_err)?;
+        let positions = PyList::empty(py);
+        for request in requests {
+            let position = PyDict::new(py);
+            position.set_item("request_id", request.request_id)?;
+            position.set_item("depth", request.depth)?;
+            position.set_item("evaluation_player", request.evaluation_player)?;
+
+            let state = PyDict::new(py);
+            state.set_item("feature_version", request.feature_version)?;
+            state.set_item("observer_idx", request.evaluation_player)?;
+            state.set_item("features", request.state_features)?;
+            position.set_item("state", state)?;
+
+            let actions = PyList::empty(py);
+            for (index, (key, feature_indices)) in request
+                .action_keys
+                .into_iter()
+                .zip(request.action_feature_indices)
+                .enumerate()
+            {
+                let action = PyDict::new(py);
+                action.set_item("index", index)?;
+                action.set_item("key", key)?;
+                action.set_item("feature_indices", feature_indices)?;
+                actions.append(action)?;
+            }
+            let legal_actions = PyDict::new(py);
+            legal_actions.set_item("feature_version", request.feature_version)?;
+            legal_actions.set_item("actions", actions)?;
+            position.set_item("legal_actions", legal_actions)?;
+            positions.append(position)?;
+        }
+
+        let out = PyDict::new(py);
+        out.set_item("feature_version", TRAINING_FEATURE_VERSION)?;
+        out.set_item("positions", positions)?;
+        out.set_item("completed_simulations", self.search.completed_simulations())?;
+        out.set_item("is_complete", self.search.is_complete())?;
+        Ok(out.into())
+    }
+
+    #[pyo3(signature = (
+        request_ids,
+        action_keys,
+        policy_probabilities,
+        shared_win_rates,
+        victory_point_margins,
+        model_id
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn submit_inference_batch(
+        &mut self,
+        request_ids: Vec<u64>,
+        action_keys: Vec<Vec<String>>,
+        policy_probabilities: Vec<Vec<f64>>,
+        shared_win_rates: Vec<f64>,
+        victory_point_margins: Vec<f64>,
+        model_id: String,
+    ) -> PyResult<()> {
+        let batch_size = request_ids.len();
+        if action_keys.len() != batch_size
+            || policy_probabilities.len() != batch_size
+            || shared_win_rates.len() != batch_size
+            || victory_point_margins.len() != batch_size
+        {
+            return Err(PyValueError::new_err(
+                "neural inference submission arrays must have equal lengths",
+            ));
+        }
+        let evaluations = (0..batch_size)
+            .map(|index| NeuralLeafEvaluation {
+                request_id: request_ids[index],
+                model_id: model_id.clone(),
+                action_keys: action_keys[index].clone(),
+                policy_probabilities: policy_probabilities[index].clone(),
+                shared_win_rate: shared_win_rates[index],
+                victory_point_margin: victory_point_margins[index],
+            })
+            .collect();
+        self.search
+            .submit_inference_batch(evaluations)
+            .map_err(PyValueError::new_err)
+    }
+
+    fn finish(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let report = self.search.finish_report().map_err(PyValueError::new_err)?;
+        search_report_to_py(py, report, &self.legal_actions, self.forced_advances)
+    }
 }
 
 #[pymethods]
@@ -212,6 +343,7 @@ impl BrassRLGame {
         let mut game = Self {
             runner: GameRunner::new(num_players, seed),
             current_shortfall: None,
+            legal_action_cache: Vec::new(),
         };
         let _ = game.advance_to_next_decision()?;
         Ok(game)
@@ -227,6 +359,7 @@ impl BrassRLGame {
         }
         self.runner = GameRunner::new(next_players, seed);
         self.current_shortfall = None;
+        self.legal_action_cache.clear();
         let _ = self.advance_to_next_decision()?;
         Ok(())
     }
@@ -285,12 +418,520 @@ impl BrassRLGame {
         Ok(out.into())
     }
 
+    fn get_training_feature_schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        feature_schema_to_py(py)
+    }
+
+    fn get_training_state(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "training turn features are unavailable during shortfall resolution",
+            ));
+        }
+        let observer_idx = self.current_decision_player();
+        let features =
+            encode_training_state(&self.runner, observer_idx).map_err(PyValueError::new_err)?;
+        let out = PyDict::new(py);
+        out.set_item("feature_version", TRAINING_FEATURE_VERSION)?;
+        out.set_item("observer_idx", observer_idx)?;
+        out.set_item("decision_player", observer_idx)?;
+        out.set_item("forced_advances", forced_advances)?;
+        out.set_item("features", features)?;
+        Ok(out.into())
+    }
+
     fn available_root_actions(&mut self) -> PyResult<Vec<usize>> {
         let _ = self.advance_to_next_decision()?;
-        Ok(self.filtered_root_actions()
+        Ok(self
+            .filtered_root_actions()
             .into_iter()
             .filter_map(root_action_to_index)
             .collect())
+    }
+
+    fn get_legal_actions(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before enumerating turn actions",
+            ));
+        }
+        self.refresh_legal_action_cache()?;
+
+        let actions = PyList::empty(py);
+        for (index, action) in self.legal_action_cache.iter().enumerate() {
+            actions.append(legal_action_to_py(
+                py,
+                index,
+                action,
+                &self.runner,
+                self.current_decision_player(),
+            )?)?;
+        }
+
+        let out = PyDict::new(py);
+        out.set_item("feature_version", TRAINING_FEATURE_VERSION)?;
+        out.set_item("action_feature_dim", ACTION_FEATURE_DIM)?;
+        out.set_item("decision_player", self.current_decision_player())?;
+        out.set_item("forced_advances", forced_advances)?;
+        out.set_item("actions", actions)?;
+        Ok(out.into())
+    }
+
+    #[pyo3(signature = (determinizations_per_action=4, seed=None))]
+    fn get_legal_action_successor_batch(
+        &mut self,
+        py: Python<'_>,
+        determinizations_per_action: usize,
+        seed: Option<u64>,
+    ) -> PyResult<PyObject> {
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before encoding successors",
+            ));
+        }
+        if self.runner.is_game_finished() {
+            return Err(PyValueError::new_err(
+                "cannot encode successors for a finished game",
+            ));
+        }
+        self.refresh_legal_action_cache()?;
+        let batch_seed = seed.unwrap_or_else(|| {
+            self.runner.framework.board.state.seed
+                ^ (self.runner.turn_count as u64).rotate_left(23)
+                ^ (determinizations_per_action as u64).rotate_left(41)
+        });
+        let batch = encode_root_action_successor_batch(
+            &self.runner,
+            determinizations_per_action,
+            batch_seed,
+        )
+        .map_err(PyValueError::new_err)?;
+        let cached_keys = self
+            .legal_action_cache
+            .iter()
+            .map(LegalAction::key)
+            .collect::<Vec<_>>();
+        if batch.action_keys != cached_keys {
+            return Err(PyValueError::new_err(
+                "successor batch changed stable legal-action order",
+            ));
+        }
+
+        let states = PyList::empty(py);
+        for (index, state) in batch.states.iter().enumerate() {
+            let row = PyDict::new(py);
+            row.set_item("index", index)?;
+            row.set_item("feature_version", TRAINING_FEATURE_VERSION)?;
+            row.set_item("observer_idx", state.observer_idx)?;
+            row.set_item("features", state.features.clone())?;
+            states.append(row)?;
+        }
+        let samples = PyList::empty(py);
+        for sample in &batch.samples {
+            let row = PyDict::new(py);
+            row.set_item("action_index", sample.action_index)?;
+            row.set_item("action_key", &sample.action_key)?;
+            row.set_item("sample_index", sample.sample_index)?;
+            row.set_item("evaluation_player", sample.evaluation_player)?;
+            row.set_item("state_index", sample.state_index)?;
+            row.set_item(
+                "terminal_root_shared_win_rate",
+                sample.terminal_root_shared_win_rate,
+            )?;
+            row.set_item(
+                "terminal_root_victory_point_margin",
+                sample.terminal_root_victory_point_margin,
+            )?;
+            samples.append(row)?;
+        }
+        let out = PyDict::new(py);
+        out.set_item("feature_version", TRAINING_FEATURE_VERSION)?;
+        out.set_item("num_players", batch.num_players)?;
+        out.set_item("root_player", batch.root_player)?;
+        out.set_item("action_keys", batch.action_keys)?;
+        out.set_item(
+            "determinizations_per_action",
+            batch.determinizations_per_action,
+        )?;
+        out.set_item("seed", batch_seed)?;
+        out.set_item("forced_advances", forced_advances)?;
+        out.set_item("states", states)?;
+        out.set_item("samples", samples)?;
+        Ok(out.into())
+    }
+
+    #[pyo3(signature = (simulations=2000, seed=None))]
+    fn search_legal_actions(
+        &mut self,
+        py: Python<'_>,
+        simulations: u64,
+        seed: Option<u64>,
+    ) -> PyResult<PyObject> {
+        if simulations == 0 || simulations > 1_000_000 {
+            return Err(PyValueError::new_err(
+                "simulations must be between 1 and 1000000",
+            ));
+        }
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before searching turn actions",
+            ));
+        }
+        if self.runner.is_game_finished() {
+            return Err(PyValueError::new_err("cannot search a finished game"));
+        }
+        self.refresh_legal_action_cache()?;
+        let action_count = self.legal_action_cache.len();
+        let search_seed = seed.unwrap_or_else(|| {
+            self.runner.framework.board.state.seed
+                ^ (self.runner.turn_count as u64).rotate_left(19)
+                ^ simulations.rotate_left(37)
+        });
+        let config = RootSearchConfig {
+            simulations,
+            seed: search_seed,
+            recommendation_count: action_count.max(1),
+            sample_continuation_length: 0,
+            ..RootSearchConfig::default()
+        };
+        let report = search_top_actions(&self.runner, &config).map_err(PyValueError::new_err)?;
+        search_report_to_py(py, report, &self.legal_action_cache, forced_advances)
+    }
+
+    #[pyo3(signature = (
+        policy_probabilities,
+        model_id,
+        shared_win_rate,
+        victory_point_margin,
+        simulations=2000,
+        seed=None,
+        exploration_constant=1.5
+    ))]
+    fn search_legal_actions_with_policy(
+        &mut self,
+        py: Python<'_>,
+        policy_probabilities: Vec<f64>,
+        model_id: String,
+        shared_win_rate: f64,
+        victory_point_margin: f64,
+        simulations: u64,
+        seed: Option<u64>,
+        exploration_constant: f64,
+    ) -> PyResult<PyObject> {
+        if simulations == 0 || simulations > 1_000_000 {
+            return Err(PyValueError::new_err(
+                "simulations must be between 1 and 1000000",
+            ));
+        }
+        if !exploration_constant.is_finite() || exploration_constant < 0.0 {
+            return Err(PyValueError::new_err(
+                "exploration_constant must be finite and non-negative",
+            ));
+        }
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before searching turn actions",
+            ));
+        }
+        if self.runner.is_game_finished() {
+            return Err(PyValueError::new_err("cannot search a finished game"));
+        }
+        self.refresh_legal_action_cache()?;
+        let action_count = self.legal_action_cache.len();
+        let search_seed = seed.unwrap_or_else(|| {
+            self.runner.framework.board.state.seed
+                ^ (self.runner.turn_count as u64).rotate_left(19)
+                ^ simulations.rotate_left(37)
+        });
+        let config = RootSearchConfig {
+            simulations,
+            exploration_constant,
+            seed: search_seed,
+            recommendation_count: action_count.max(1),
+            sample_continuation_length: 0,
+            ..RootSearchConfig::default()
+        };
+        let policy = RootPolicyEvaluation {
+            model_id,
+            action_keys: self
+                .legal_action_cache
+                .iter()
+                .map(LegalAction::key)
+                .collect(),
+            policy_probabilities,
+            shared_win_rate,
+            victory_point_margin,
+        };
+        let report = search_top_actions_with_policy(&self.runner, &config, &policy)
+            .map_err(PyValueError::new_err)?;
+        search_report_to_py(py, report, &self.legal_action_cache, forced_advances)
+    }
+
+    #[pyo3(signature = (
+        policy_probabilities,
+        action_keys,
+        action_shared_win_rates,
+        action_victory_point_margins,
+        action_shared_win_standard_errors,
+        action_value_sample_counts,
+        model_id,
+        shared_win_rate,
+        victory_point_margin,
+        simulations=2000,
+        seed=None,
+        exploration_constant=1.5
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn search_legal_actions_with_policy_and_action_values(
+        &mut self,
+        py: Python<'_>,
+        policy_probabilities: Vec<f64>,
+        action_keys: Vec<String>,
+        action_shared_win_rates: Vec<f64>,
+        action_victory_point_margins: Vec<f64>,
+        action_shared_win_standard_errors: Vec<Option<f64>>,
+        action_value_sample_counts: Vec<u64>,
+        model_id: String,
+        shared_win_rate: f64,
+        victory_point_margin: f64,
+        simulations: u64,
+        seed: Option<u64>,
+        exploration_constant: f64,
+    ) -> PyResult<PyObject> {
+        if simulations == 0 || simulations > 1_000_000 {
+            return Err(PyValueError::new_err(
+                "simulations must be between 1 and 1000000",
+            ));
+        }
+        if !exploration_constant.is_finite() || exploration_constant < 0.0 {
+            return Err(PyValueError::new_err(
+                "exploration_constant must be finite and non-negative",
+            ));
+        }
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before searching turn actions",
+            ));
+        }
+        if self.runner.is_game_finished() {
+            return Err(PyValueError::new_err("cannot search a finished game"));
+        }
+        self.refresh_legal_action_cache()?;
+        let action_count = self.legal_action_cache.len();
+        let search_seed = seed.unwrap_or_else(|| {
+            self.runner.framework.board.state.seed
+                ^ (self.runner.turn_count as u64).rotate_left(19)
+                ^ simulations.rotate_left(37)
+        });
+        let config = RootSearchConfig {
+            simulations,
+            exploration_constant,
+            seed: search_seed,
+            recommendation_count: action_count.max(1),
+            sample_continuation_length: 0,
+            ..RootSearchConfig::default()
+        };
+        let policy = RootPolicyEvaluation {
+            model_id: model_id.clone(),
+            action_keys: action_keys.clone(),
+            policy_probabilities,
+            shared_win_rate,
+            victory_point_margin,
+        };
+        let action_values = RootActionValueEvaluation {
+            model_id,
+            action_keys,
+            shared_win_rates: action_shared_win_rates,
+            victory_point_margins: action_victory_point_margins,
+            shared_win_standard_errors: action_shared_win_standard_errors,
+            sample_counts: action_value_sample_counts,
+        };
+        let report = search_top_actions_with_policy_and_action_values(
+            &self.runner,
+            &config,
+            &policy,
+            &action_values,
+        )
+        .map_err(PyValueError::new_err)?;
+        search_report_to_py(py, report, &self.legal_action_cache, forced_advances)
+    }
+
+    #[pyo3(signature = (
+        policy_probabilities,
+        model_id,
+        shared_win_rate,
+        victory_point_margin,
+        simulations=2000,
+        seed=None,
+        exploration_constant=1.5,
+        determinizations=4
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn start_batched_neural_search(
+        &mut self,
+        policy_probabilities: Vec<f64>,
+        model_id: String,
+        shared_win_rate: f64,
+        victory_point_margin: f64,
+        simulations: u64,
+        seed: Option<u64>,
+        exploration_constant: f64,
+        determinizations: usize,
+    ) -> PyResult<BrassNeuralSearch> {
+        if simulations == 0 || simulations > 1_000_000 {
+            return Err(PyValueError::new_err(
+                "simulations must be between 1 and 1000000",
+            ));
+        }
+        if !exploration_constant.is_finite() || exploration_constant < 0.0 {
+            return Err(PyValueError::new_err(
+                "exploration_constant must be finite and non-negative",
+            ));
+        }
+        let forced_advances = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before searching turn actions",
+            ));
+        }
+        if self.runner.is_game_finished() {
+            return Err(PyValueError::new_err("cannot search a finished game"));
+        }
+        self.refresh_legal_action_cache()?;
+        let action_count = self.legal_action_cache.len();
+        let search_seed = seed.unwrap_or_else(|| {
+            self.runner.framework.board.state.seed
+                ^ (self.runner.turn_count as u64).rotate_left(19)
+                ^ simulations.rotate_left(37)
+        });
+        let policy = RootPolicyEvaluation {
+            model_id,
+            action_keys: self
+                .legal_action_cache
+                .iter()
+                .map(LegalAction::key)
+                .collect(),
+            policy_probabilities,
+            shared_win_rate,
+            victory_point_margin,
+        };
+        let search = BatchedNeuralPuctSearch::new(
+            &self.runner,
+            BatchedNeuralPuctConfig {
+                search: RootSearchConfig {
+                    simulations,
+                    exploration_constant,
+                    seed: search_seed,
+                    recommendation_count: action_count.max(1),
+                    sample_continuation_length: 0,
+                    ..RootSearchConfig::default()
+                },
+                determinizations,
+            },
+            policy,
+        )
+        .map_err(PyValueError::new_err)?;
+        Ok(BrassNeuralSearch {
+            search,
+            legal_actions: self.legal_action_cache.clone(),
+            forced_advances,
+        })
+    }
+
+    fn get_outcome(&self, py: Python<'_>) -> PyResult<PyObject> {
+        if !self.runner.is_game_finished() {
+            return Err(PyValueError::new_err(
+                "official outcome is only available after game end",
+            ));
+        }
+        outcome_to_py(py, &self.runner)
+    }
+
+    fn step_legal_action(&mut self, py: Python<'_>, action_index: usize) -> PyResult<PyObject> {
+        let mut forced_passes = self.advance_to_next_decision()?;
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "resolve the current income shortfall before applying a turn action",
+            ));
+        }
+
+        let decision_mode_before = self.current_decision_mode();
+        let acting_player = self.current_decision_player();
+        let phase_before = self.runner.game_phase;
+        let vps_before = current_vps(&self.runner);
+        let potential_vps_before = current_potential_vps(&self.runner);
+        let shortfall_before = (usize::MAX, 0);
+
+        if self.runner.is_game_finished() {
+            return self.build_step_delta(
+                py,
+                acting_player,
+                &decision_mode_before,
+                "game_end",
+                -1,
+                forced_passes,
+                0,
+                0,
+                phase_before,
+                vps_before,
+                potential_vps_before,
+                shortfall_before,
+            );
+        }
+
+        if self.legal_action_cache.is_empty() {
+            self.refresh_legal_action_cache()?;
+        }
+        let action = self
+            .legal_action_cache
+            .get(action_index)
+            .cloned()
+            .ok_or_else(|| {
+                PyValueError::new_err(format!(
+                    "legal action index {action_index} is out of range 0..{}",
+                    self.legal_action_cache.len()
+                ))
+            })?;
+        let action_key = legal_action_key(&action);
+        let action_type_name = root_action_name(action.intent.action_type).to_string();
+        let action_type_id = root_action_to_index(action.root)
+            .map(|idx| idx as i32)
+            .unwrap_or(-1);
+        let sold_buildings_count = action.intent.sell_choices.len();
+
+        action.apply(&mut self.runner).map_err(|error| {
+            PyValueError::new_err(format!("legal action became stale: {error}"))
+        })?;
+        self.legal_action_cache.clear();
+        forced_passes += self.advance_to_next_decision()?;
+
+        let out = self.build_step_delta(
+            py,
+            acting_player,
+            &decision_mode_before,
+            &action_type_name,
+            action_type_id,
+            forced_passes,
+            sold_buildings_count,
+            0,
+            phase_before,
+            vps_before,
+            potential_vps_before,
+            shortfall_before,
+        )?;
+        let out_dict = out
+            .bind(py)
+            .downcast::<PyDict>()
+            .map_err(|_| PyValueError::new_err("step delta was not a dictionary"))?;
+        out_dict.set_item("legal_action_index", action_index)?;
+        out_dict.set_item("legal_action_key", action_key)?;
+        Ok(out)
     }
 
     fn save_state(&self) -> BrassSavedState {
@@ -303,6 +944,7 @@ impl BrassRLGame {
     fn restore_state(&mut self, state: &BrassSavedState) -> PyResult<()> {
         self.runner = state.runner.clone();
         self.current_shortfall = state.current_shortfall.clone();
+        self.legal_action_cache.clear();
         let _ = self.advance_to_next_decision()?;
         Ok(())
     }
@@ -312,35 +954,11 @@ impl BrassRLGame {
         if self.runner.is_game_finished() {
             return Ok(());
         }
-
-        let state = &mut self.runner.framework.board.state;
-        let mut hidden_cards: Vec<Card> = state.deck.cards.clone();
-
-        for (player_idx, player) in state.players.iter().enumerate() {
-            if player_idx != observer_idx {
-                hidden_cards.extend(player.hand.cards.iter().cloned());
-            }
-        }
-
-        hidden_cards.shuffle(&mut state.rng);
-
-        let mut cursor = 0usize;
-        for player_idx in 0..state.players.len() {
-            if player_idx == observer_idx {
-                continue;
-            }
-            let hand_len = state.players[player_idx].hand.cards.len();
-            let end = cursor + hand_len;
-            if end > hidden_cards.len() {
-                return Err(PyValueError::new_err(
-                    "Failed to randomize hidden information: inconsistent hidden card pool",
-                ));
-            }
-            state.players[player_idx].hand.cards = hidden_cards[cursor..end].to_vec();
-            cursor = end;
-        }
-
-        state.deck.cards = hidden_cards[cursor..].to_vec();
+        let mut rng = self.runner.framework.board.state.rng.clone();
+        determinize_hidden_information(&mut self.runner, observer_idx, &mut rng)
+            .map_err(PyValueError::new_err)?;
+        self.runner.framework.board.state.rng = rng;
+        self.legal_action_cache.clear();
         Ok(())
     }
 
@@ -349,6 +967,7 @@ impl BrassRLGame {
         py: Python<'_>,
         action: &Bound<'_, PyDict>,
     ) -> PyResult<PyObject> {
+        self.legal_action_cache.clear();
         let mut forced_passes = self.advance_to_next_decision()?;
         let decision_mode_before = self.current_decision_mode();
         let acting_player = self.current_decision_player();
@@ -387,97 +1006,87 @@ impl BrassRLGame {
             let payload = CompositeActionPayload::from_py(action)?;
             let chosen_tiles = payload.shortfall_tile_order;
             liquidation_tile_count = chosen_tiles.len();
-            self.runner.resolve_shortfall_with_tiles(session, chosen_tiles);
+            self.runner
+                .resolve_shortfall_with_tiles(session, chosen_tiles);
         } else {
-            let base_payload = CompositeActionPayload::from_py(action)?;
+            let mut payload = CompositeActionPayload::from_py(action)?;
             let valid_roots = self.filtered_root_actions();
             if valid_roots.is_empty() {
                 return Err(PyValueError::new_err(
-                    "No legal non-PASS root action available for turn decision",
+                    "No legal root action available for turn decision",
                 ));
             }
 
-            let desired_root = base_payload
+            let desired_root_idx = payload
                 .root_action
-                .and_then(index_to_root_action)
-                .filter(|a| valid_roots.contains(a))
-                .unwrap_or(valid_roots[0]);
+                .ok_or_else(|| PyValueError::new_err("missing required root_action"))?;
+            let desired_root = index_to_root_action(desired_root_idx).ok_or_else(|| {
+                PyValueError::new_err(format!("unknown root_action index {desired_root_idx}"))
+            })?;
+            if !valid_roots.contains(&desired_root) {
+                return Err(PyValueError::new_err(format!(
+                    "root action {} is not legal; expected one of {:?}",
+                    root_action_name(desired_root),
+                    valid_roots
+                        .iter()
+                        .map(|root| root_action_name(*root))
+                        .collect::<Vec<_>>()
+                )));
+            }
 
-            let mut candidate_roots = vec![desired_root];
-            candidate_roots.extend(valid_roots.iter().copied().filter(|root| *root != desired_root));
-
-            let mut executed_root: Option<ActionType> = None;
-            let mut last_error_message: Option<String> = None;
-
-            for candidate_root in candidate_roots {
-                let mut payload = base_payload.clone();
-                let _ = self.runner.start_action(candidate_root);
-
-                let mut choice_loop_guard = 0usize;
-                let mut selection_failed = false;
-                loop {
-                    choice_loop_guard += 1;
-                    if choice_loop_guard > 512 {
-                        return Err(PyValueError::new_err(
-                            "Action session choice loop exceeded safety limit",
-                        ));
-                    }
-                    let Some(choice_set) = self.runner.framework.get_next_choice_set() else {
-                        break;
-                    };
-                    if matches!(choice_set, ChoiceSet::ConfirmOnly) {
-                        break;
-                    }
-                    let choice = match select_choice_from_payload(&choice_set, &mut payload) {
-                        Ok(choice) => choice,
-                        Err(err) => {
-                            last_error_message = Some(err.to_string());
-                            selection_failed = true;
-                            break;
-                        }
-                    };
-                    if let Err(err) = self.runner.framework.apply_action_choice(choice) {
-                        last_error_message =
-                            Some(format!("apply_action_choice failed: {}", err));
-                        selection_failed = true;
-                        break;
-                    }
-                }
-
-                if selection_failed {
+            let _ = self.runner.start_action(desired_root);
+            let mut choice_loop_guard = 0usize;
+            loop {
+                choice_loop_guard += 1;
+                if choice_loop_guard > 512 {
                     self.runner.framework.cancel_action_session();
-                    continue;
+                    return Err(PyValueError::new_err(
+                        "Action session choice loop exceeded safety limit",
+                    ));
                 }
-
-                if let Some(session) = self.runner.framework.current_session() {
-                    if session.action_type == ActionType::Sell {
-                        sold_buildings_count = session.intent.sell_choices.len();
-                    }
+                let Some(choice_set) = self.runner.framework.get_next_choice_set() else {
+                    self.runner.framework.cancel_action_session();
+                    return Err(PyValueError::new_err(
+                        "Action session ended before confirmation",
+                    ));
+                };
+                if matches!(choice_set, ChoiceSet::ConfirmOnly) {
+                    break;
                 }
-
-                match self.runner.confirm_action() {
-                    Ok(()) => {
-                        executed_root = Some(candidate_root);
-                        break;
-                    }
-                    Err(err) => {
-                        last_error_message = Some(format!("confirm_action failed: {}", err));
+                if matches!(choice_set, ChoiceSet::SellTarget(_))
+                    && self.runner.framework.can_confirm()
+                    && payload.peek_sell_target() == Some(STOP_INDEX_SELL_TARGET)
+                {
+                    let _ = payload.next_sell_target();
+                    break;
+                }
+                let choice =
+                    select_choice_from_payload(&choice_set, &mut payload).map_err(|err| {
                         self.runner.framework.cancel_action_session();
-                    }
+                        err
+                    })?;
+                self.runner
+                    .framework
+                    .apply_action_choice(choice)
+                    .map_err(|err| {
+                        self.runner.framework.cancel_action_session();
+                        PyValueError::new_err(format!("apply_action_choice failed: {err}"))
+                    })?;
+            }
+
+            if let Some(session) = self.runner.framework.current_session() {
+                if session.action_type == ActionType::Sell {
+                    sold_buildings_count = session.intent.sell_choices.len();
                 }
             }
 
-            let Some(executed_root) = executed_root else {
-                let reason =
-                    last_error_message.unwrap_or_else(|| "unknown action-session failure".to_string());
-                return Err(PyValueError::new_err(format!(
-                    "Failed to execute any legal root action: {}",
-                    reason
-                )));
-            };
+            self.runner.confirm_action().map_err(|err| {
+                self.runner.framework.cancel_action_session();
+                PyValueError::new_err(format!("confirm_action failed: {err}"))
+            })?;
 
-            action_type_name = root_action_name(executed_root).to_string();
-            action_type_id = root_action_to_index(executed_root)
+            action_type_name = root_action_name(desired_root).to_string();
+            action_type_id = root_action_to_index(desired_root)
                 .map(|idx| idx as i32)
                 .unwrap_or(-1);
 
@@ -506,6 +1115,13 @@ impl BrassRLGame {
 }
 
 impl BrassRLGame {
+    fn refresh_legal_action_cache(&mut self) -> PyResult<()> {
+        self.legal_action_cache = enumerate_legal_actions(&self.runner).map_err(|error| {
+            PyValueError::new_err(format!("legal action enumeration failed: {error}"))
+        })?;
+        Ok(())
+    }
+
     fn validate_player_index(&self, player_idx: usize) -> PyResult<()> {
         if player_idx >= self.runner.framework.board.state.players.len() {
             return Err(PyValueError::new_err(format!(
@@ -528,7 +1144,7 @@ impl BrassRLGame {
             .framework
             .get_valid_root_actions()
             .into_iter()
-            .filter(|a| *a != ActionType::Pass && *a != ActionType::BuildDoubleRailroad)
+            .filter(|a| *a != ActionType::BuildDoubleRailroad)
             .collect()
     }
 
@@ -556,43 +1172,10 @@ impl BrassRLGame {
                 break;
             }
 
-            let valid_actions = self.runner.framework.get_valid_root_actions();
-            if valid_actions.contains(&ActionType::Pass) {
-                let _ = self.runner.start_action(ActionType::Pass);
-                let mut auto_payload = CompositeActionPayload::default();
-                let mut choice_loop_guard = 0usize;
-                loop {
-                    choice_loop_guard += 1;
-                    if choice_loop_guard > 128 {
-                        return Err(PyValueError::new_err(
-                            "auto-PASS choice loop exceeded safety limit",
-                        ));
-                    }
-                    let Some(choice_set) = self.runner.framework.get_next_choice_set() else {
-                        break;
-                    };
-                    if matches!(choice_set, ChoiceSet::ConfirmOnly) {
-                        break;
-                    }
-                    let choice = select_choice_from_payload(&choice_set, &mut auto_payload)?;
-                    self.runner
-                        .framework
-                        .apply_action_choice(choice)
-                        .map_err(|e| {
-                            PyValueError::new_err(format!(
-                                "auto-PASS apply_action_choice failed: {}",
-                                e
-                            ))
-                        })?;
-                }
-                self.runner.confirm_action().map_err(|e| {
-                    PyValueError::new_err(format!("auto-PASS confirm failed: {}", e))
-                })?;
-                forced_passes += 1;
-            } else {
-                // Safety fallback: if no legal action and no pass, burn the action slot.
-                self.runner.end_action_slot();
-            }
+            // No card means no legal action, including Pass. Advance the empty slot;
+            // a legal Pass is always exposed to the policy as a real decision.
+            self.runner.end_action_slot();
+            forced_passes += 1;
 
             if self.runner.actions_remaining_in_turn == 0 {
                 self.runner.end_turn();
@@ -651,8 +1234,16 @@ impl BrassRLGame {
             state.wild_industry_cards_available as f32 / 4.0,
             state.remaining_market_coal as f32 / MAX_MARKET_COAL as f32,
             state.remaining_market_iron as f32 / MAX_MARKET_IRON as f32,
-            if self.current_shortfall.is_some() { 1.0 } else { 0.0 },
-            if self.runner.has_pending_shortfall() { 1.0 } else { 0.0 },
+            if self.current_shortfall.is_some() {
+                1.0
+            } else {
+                0.0
+            },
+            if self.runner.has_pending_shortfall() {
+                1.0
+            } else {
+                0.0
+            },
             observer_idx as f32 / (num_players.max(1) as f32),
             decision_player as f32 / (num_players.max(1) as f32),
         ];
@@ -675,7 +1266,7 @@ impl BrassRLGame {
 
         let mut discard_counts = vec![0.0f32; CARD_TYPE_DIM];
         for card in &state.discard_pile {
-            let idx = card_type_to_index(card);
+            let idx = card_type_index(card);
             discard_counts[idx] += 1.0;
         }
         out.set_item("discard_counts", discard_counts)?;
@@ -746,7 +1337,12 @@ impl BrassRLGame {
                 }
             }
             let mut loc_values = [-1.0f32; 3];
-            for (k, loc_idx) in LINK_LOCATIONS[road_idx].locations.ones().enumerate().take(3) {
+            for (k, loc_idx) in LINK_LOCATIONS[road_idx]
+                .locations
+                .ones()
+                .enumerate()
+                .take(3)
+            {
                 loc_values[k] = loc_idx as f32 / (N_LOCATIONS as f32);
             }
             row[1 + N_PLAYERS + 2] = loc_values[0];
@@ -823,7 +1419,7 @@ impl BrassRLGame {
 
         let mut self_hand_counts = vec![0.0f32; CARD_TYPE_DIM];
         for card in &state.players[observer_idx].hand.cards {
-            let idx = card_type_to_index(card);
+            let idx = card_type_index(card);
             self_hand_counts[idx] += 1.0;
         }
         out.set_item("self_hand_counts", self_hand_counts)?;
@@ -868,11 +1464,8 @@ impl BrassRLGame {
         let mut sell_target_mask = vec![0.0f32; SELL_TARGET_DIM];
         let mut shortfall_tile_mask = vec![0.0f32; SHORTFALL_TILE_DIM];
 
-        coal_source_mask[STOP_INDEX_COAL] = 1.0;
-        iron_source_mask[STOP_INDEX_IRON] = 1.0;
-        beer_source_mask[STOP_INDEX_BEER] = 1.0;
-        action_beer_source_mask[STOP_INDEX_ACTION_BEER] = 1.0;
-        sell_target_mask[STOP_INDEX_SELL_TARGET] = 1.0;
+        // Resource and sell STOP tokens are phase-dependent, so they are not
+        // legal in this root-level union mask. Atomic actions carry exact legality.
         shortfall_tile_mask[STOP_INDEX_SHORTFALL] = 1.0;
 
         if let Some(shortfall) = &self.current_shortfall {
@@ -892,7 +1485,11 @@ impl BrassRLGame {
 
             let state = &self.runner.framework.board.state;
             let player_idx = self.runner.framework.current_player;
-            let hand_len = state.players[player_idx].hand.cards.len().min(MAX_HAND_MASK_DIM);
+            let hand_len = state.players[player_idx]
+                .hand
+                .cards
+                .len()
+                .min(MAX_HAND_MASK_DIM);
             for idx in 0..hand_len {
                 card_mask[idx] = 1.0;
             }
@@ -1046,19 +1643,21 @@ impl BrassRLGame {
             entered_shortfall = true;
         }
 
-        let winner = if done {
-            self.runner
-                .framework
-                .board
-                .state
-                .players
-                .iter()
-                .enumerate()
-                .max_by_key(|(_, p)| p.victory_points)
-                .map(|(idx, _)| idx as i64)
+        let official_winner_indices = if done {
+            official_winners(&self.runner).map_err(PyValueError::new_err)?
         } else {
-            None
+            Vec::new()
         };
+        let winner = official_winner_indices.first().map(|idx| *idx as i64);
+        let shared_win_values = (0..self.runner.framework.board.state.players.len())
+            .map(|player_idx| {
+                if official_winner_indices.contains(&player_idx) {
+                    1.0 / official_winner_indices.len() as f64
+                } else {
+                    0.0
+                }
+            })
+            .collect::<Vec<_>>();
 
         let mut next_root_mask = vec![0.0f32; ROOT_ACTION_COUNT];
         for action in self.filtered_root_actions() {
@@ -1083,6 +1682,8 @@ impl BrassRLGame {
         out.set_item("potential_vps", potential_vps_after)?;
         out.set_item("done", done)?;
         out.set_item("winner", winner)?;
+        out.set_item("official_winners", official_winner_indices)?;
+        out.set_item("shared_win_values", shared_win_values)?;
         out.set_item("next_decision_player", self.current_decision_player())?;
         out.set_item("next_decision_mode", self.current_decision_mode())?;
         out.set_item("next_root_action_mask", next_root_mask)?;
@@ -1090,6 +1691,233 @@ impl BrassRLGame {
         out.set_item("turn_count", self.runner.turn_count)?;
         Ok(out.into())
     }
+}
+
+fn search_report_to_py(
+    py: Python<'_>,
+    report: RootSearchReport,
+    legal_actions: &[LegalAction],
+    forced_advances: usize,
+) -> PyResult<PyObject> {
+    let estimates = report
+        .recommendations
+        .iter()
+        .map(|estimate| (estimate.action_key.as_str(), estimate))
+        .collect::<HashMap<_, _>>();
+
+    let actions = PyList::empty(py);
+    for (index, action) in legal_actions.iter().enumerate() {
+        let row = PyDict::new(py);
+        let action_key = action.key();
+        let model_shared_win_rate = report
+            .root_action_model_shared_win_rates
+            .as_ref()
+            .and_then(|values| values.get(index).copied());
+        let model_victory_point_margin = report
+            .root_action_model_victory_point_margins
+            .as_ref()
+            .and_then(|values| values.get(index).copied());
+        let model_standard_error = report
+            .root_action_model_shared_win_standard_errors
+            .as_ref()
+            .and_then(|values| values.get(index).copied())
+            .flatten();
+        let model_sample_count = report
+            .root_action_model_sample_counts
+            .as_ref()
+            .and_then(|values| values.get(index).copied());
+        row.set_item("index", index)?;
+        row.set_item("key", &action_key)?;
+        row.set_item(
+            "policy_probability",
+            report
+                .root_policy_probabilities
+                .as_ref()
+                .and_then(|probabilities| probabilities.get(index).copied()),
+        )?;
+        if let Some(estimate) = estimates.get(action_key.as_str()) {
+            row.set_item("rank", estimate.rank)?;
+            row.set_item("visits", estimate.visits)?;
+            row.set_item("visit_share", estimate.visit_share)?;
+            row.set_item("value_source", &estimate.value_source)?;
+            row.set_item("value_sample_count", estimate.value_sample_count)?;
+            row.set_item(
+                "estimated_shared_win_rate",
+                estimate.estimated_shared_win_rate,
+            )?;
+            row.set_item(
+                "estimated_outright_win_rate",
+                estimate.estimated_outright_win_rate,
+            )?;
+            row.set_item(
+                "estimated_tied_first_rate",
+                estimate.estimated_tied_first_rate,
+            )?;
+            row.set_item(
+                "average_final_victory_points",
+                estimate.average_final_victory_points,
+            )?;
+            row.set_item(
+                "average_victory_point_margin",
+                estimate.average_victory_point_margin,
+            )?;
+            row.set_item(
+                "shared_win_rate_standard_error",
+                estimate.shared_win_rate_standard_error,
+            )?;
+        } else {
+            row.set_item("rank", py.None())?;
+            row.set_item("visits", 0)?;
+            row.set_item("visit_share", 0.0)?;
+            row.set_item("value_source", &report.value_source)?;
+            row.set_item("value_sample_count", model_sample_count)?;
+            row.set_item("estimated_shared_win_rate", model_shared_win_rate)?;
+            row.set_item("estimated_outright_win_rate", py.None())?;
+            row.set_item("estimated_tied_first_rate", py.None())?;
+            row.set_item("average_final_victory_points", py.None())?;
+            row.set_item("average_victory_point_margin", model_victory_point_margin)?;
+            row.set_item("shared_win_rate_standard_error", model_standard_error)?;
+        }
+        actions.append(row)?;
+    }
+
+    let out = PyDict::new(py);
+    out.set_item("method", report.method)?;
+    out.set_item("value_source", report.value_source)?;
+    out.set_item("model_id", report.model_id)?;
+    out.set_item(
+        "root_model_shared_win_rate",
+        report.root_model_shared_win_rate,
+    )?;
+    out.set_item(
+        "root_model_victory_point_margin",
+        report.root_model_victory_point_margin,
+    )?;
+    out.set_item("root_player", report.root_player)?;
+    out.set_item("forced_advances", forced_advances)?;
+    out.set_item("requested_simulations", report.requested_simulations)?;
+    out.set_item("completed_simulations", report.completed_simulations)?;
+    out.set_item("root_action_count", report.root_action_count)?;
+    out.set_item("evaluated_action_count", report.evaluated_action_count)?;
+    out.set_item("visited_action_count", report.visited_action_count)?;
+    out.set_item(
+        "all_root_actions_evaluated",
+        report.all_root_actions_evaluated,
+    )?;
+    out.set_item("max_search_depth", report.max_search_depth)?;
+    out.set_item("neural_leaf_evaluations", report.neural_leaf_evaluations)?;
+    out.set_item("inference_batches", report.inference_batches)?;
+    out.set_item("actions", actions)?;
+    Ok(out.into())
+}
+
+fn feature_schema_to_py(py: Python<'_>) -> PyResult<PyObject> {
+    let schema = training_feature_schema();
+    let state_blocks = PyList::empty(py);
+    for block in schema.state_blocks {
+        let row = PyDict::new(py);
+        row.set_item("name", block.name)?;
+        row.set_item("offset", block.offset)?;
+        row.set_item("size", block.size)?;
+        state_blocks.append(row)?;
+    }
+    let action_blocks = PyList::empty(py);
+    for block in schema.action_blocks {
+        let row = PyDict::new(py);
+        row.set_item("name", block.name)?;
+        row.set_item("offset", block.offset)?;
+        row.set_item("size", block.size)?;
+        action_blocks.append(row)?;
+    }
+
+    let out = PyDict::new(py);
+    out.set_item("version", schema.version)?;
+    out.set_item("state_dim", schema.state_dim)?;
+    out.set_item("action_dim", schema.action_dim)?;
+    out.set_item("card_type_dim", schema.card_type_dim)?;
+    out.set_item("max_players", schema.max_players)?;
+    out.set_item("state_blocks", state_blocks)?;
+    out.set_item("action_blocks", action_blocks)?;
+    Ok(out.into())
+}
+
+fn outcome_to_py(py: Python<'_>, runner: &GameRunner) -> PyResult<PyObject> {
+    let state = &runner.framework.board.state;
+    let winners = official_winners(runner).map_err(PyValueError::new_err)?;
+    let winner_credit = 1.0 / winners.len() as f64;
+    let shared_win_values = (0..state.players.len())
+        .map(|player_idx| {
+            if winners.contains(&player_idx) {
+                winner_credit
+            } else {
+                0.0
+            }
+        })
+        .collect::<Vec<_>>();
+    let ranking_keys = state
+        .players
+        .iter()
+        .map(|player| (player.victory_points, player.income_level, player.money))
+        .collect::<Vec<_>>();
+    let placements = ranking_keys
+        .iter()
+        .map(|key| 1 + ranking_keys.iter().filter(|other| *other > key).count())
+        .collect::<Vec<_>>();
+    let mut finish_order = (0..state.players.len()).collect::<Vec<_>>();
+    finish_order.sort_by(|left, right| {
+        ranking_keys[*right]
+            .cmp(&ranking_keys[*left])
+            .then_with(|| left.cmp(right))
+    });
+    let victory_point_margins = state
+        .players
+        .iter()
+        .enumerate()
+        .map(|(player_idx, player)| {
+            let best_opponent = state
+                .players
+                .iter()
+                .enumerate()
+                .filter_map(|(other_idx, other)| {
+                    (other_idx != player_idx).then_some(other.victory_points)
+                })
+                .max()
+                .unwrap_or(0);
+            player.victory_points as i32 - best_opponent as i32
+        })
+        .collect::<Vec<_>>();
+
+    let out = PyDict::new(py);
+    out.set_item("official_winners", winners)?;
+    out.set_item("shared_win_values", shared_win_values)?;
+    out.set_item("placements", placements)?;
+    out.set_item("finish_order", finish_order)?;
+    out.set_item(
+        "victory_points",
+        state
+            .players
+            .iter()
+            .map(|player| player.victory_points)
+            .collect::<Vec<_>>(),
+    )?;
+    out.set_item("victory_point_margins", victory_point_margins)?;
+    out.set_item(
+        "income_levels",
+        state
+            .players
+            .iter()
+            .map(|player| player.income_level)
+            .collect::<Vec<_>>(),
+    )?;
+    out.set_item(
+        "money",
+        state
+            .players
+            .iter()
+            .map(|player| player.money)
+            .collect::<Vec<_>>(),
+    )?;
+    Ok(out.into())
 }
 
 fn next_from_list(values: &[usize], idx: &mut usize) -> Option<usize> {
@@ -1143,6 +1971,111 @@ fn extract_usize_list(dict: &Bound<'_, PyDict>, key: &str) -> PyResult<Vec<usize
     )))
 }
 
+fn legal_action_to_py(
+    py: Python<'_>,
+    index: usize,
+    action: &LegalAction,
+    runner: &GameRunner,
+    observer_idx: usize,
+) -> PyResult<PyObject> {
+    let out = PyDict::new(py);
+    out.set_item("index", index)?;
+    out.set_item("key", legal_action_key(action))?;
+    out.set_item("root_action", root_action_to_index(action.root))?;
+    out.set_item("root_action_name", root_action_name(action.root))?;
+    out.set_item("action_type", root_action_name(action.intent.action_type))?;
+
+    let choices = PyList::empty(py);
+    for choice in &action.choices {
+        let encoded = PyDict::new(py);
+        let (kind, value) = encode_action_choice(choice);
+        encoded.set_item("kind", kind)?;
+        encoded.set_item("value", value)?;
+        choices.append(encoded)?;
+    }
+    out.set_item("choices", choices)?;
+    out.set_item(
+        "feature_indices",
+        encode_training_action(runner, observer_idx, action).map_err(PyValueError::new_err)?,
+    )?;
+    let hand = &runner.framework.board.state.players[observer_idx]
+        .hand
+        .cards;
+    let discard_card_types = action
+        .choices
+        .iter()
+        .filter_map(|choice| match choice {
+            ActionChoice::Card(card_idx) => hand.get(*card_idx).map(card_type_index),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    out.set_item("discard_card_types", discard_card_types)?;
+
+    out.set_item(
+        "selected_industry",
+        action
+            .intent
+            .selected_industry
+            .map(|value| value.as_usize()),
+    )?;
+    out.set_item(
+        "selected_second_industry",
+        action
+            .intent
+            .selected_second_industry
+            .map(|value| value.as_usize()),
+    )?;
+    out.set_item("selected_card", action.intent.selected_card_idx)?;
+    out.set_item(
+        "scout_additional_cards",
+        &action.intent.scout_additional_discard_indices,
+    )?;
+    out.set_item("build_location", action.intent.selected_build_location)?;
+    out.set_item("road", action.intent.selected_road_idx)?;
+    out.set_item("second_road", action.intent.selected_second_road_idx)?;
+    out.set_item(
+        "sell_targets",
+        action
+            .intent
+            .sell_choices
+            .iter()
+            .map(|choice| choice.location)
+            .collect::<Vec<_>>(),
+    )?;
+    Ok(out.into())
+}
+
+fn legal_action_key(action: &LegalAction) -> String {
+    action.key()
+}
+
+fn encode_action_choice(choice: &ActionChoice) -> (&'static str, Option<usize>) {
+    match choice {
+        ActionChoice::Industry(value) => ("industry", Some(value.as_usize())),
+        ActionChoice::Card(value) => ("card", Some(*value)),
+        ActionChoice::BuildLocation(value) => ("build_location", Some(*value)),
+        ActionChoice::Road(value) => ("road", Some(*value)),
+        ActionChoice::SellTarget(value) => ("sell_target", Some(*value)),
+        ActionChoice::CoalSource(value) => ("coal_source", Some(encode_resource_source(*value))),
+        ActionChoice::IronSource(value) => ("iron_source", Some(encode_resource_source(*value))),
+        ActionChoice::BeerSource(value) => ("beer_source", Some(encode_beer_sell_source(*value))),
+        ActionChoice::ActionBeerSource(value) => (
+            "action_beer_source",
+            Some(encode_action_beer_source(*value)),
+        ),
+        ActionChoice::FreeDevelopment(value) => ("free_development", Some(value.as_usize())),
+        ActionChoice::NetworkMode(value) => (
+            "network_mode",
+            Some(match value {
+                NetworkMode::Single => 0,
+                NetworkMode::Double => 1,
+            }),
+        ),
+        ActionChoice::Confirm => ("confirm", None),
+        ActionChoice::Cancel => ("cancel", None),
+    }
+}
+
 fn root_action_to_index(action: ActionType) -> Option<usize> {
     match action {
         ActionType::BuildBuilding => Some(ROOT_BUILD_BUILDING),
@@ -1152,6 +2085,7 @@ fn root_action_to_index(action: ActionType) -> Option<usize> {
         ActionType::Sell => Some(ROOT_SELL),
         ActionType::Loan => Some(ROOT_LOAN),
         ActionType::Scout => Some(ROOT_SCOUT),
+        ActionType::Pass => Some(ROOT_PASS),
         _ => None,
     }
 }
@@ -1165,6 +2099,7 @@ fn index_to_root_action(index: usize) -> Option<ActionType> {
         ROOT_SELL => Some(ActionType::Sell),
         ROOT_LOAN => Some(ActionType::Loan),
         ROOT_SCOUT => Some(ActionType::Scout),
+        ROOT_PASS => Some(ActionType::Pass),
         _ => None,
     }
 }
@@ -1213,8 +2148,13 @@ fn current_potential_vps(runner: &GameRunner) -> Vec<u16> {
             for loc_idx in LINK_LOCATIONS[road_idx].locations.ones() {
                 let bl_set = LocationName::from_usize(loc_idx).to_bl_set();
                 for bl_idx in bl_set.ones() {
-                    if let Some(building) = state.bl_to_building.get(&bl_idx) {
-                        let data = &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
+                    if let Some(building) = state
+                        .bl_to_building
+                        .get(&bl_idx)
+                        .filter(|building| building.flipped)
+                    {
+                        let data =
+                            &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
                         road_vps = road_vps.saturating_add(data.road_vp as u16);
                     }
                 }
@@ -1235,27 +2175,6 @@ fn current_potential_vps(runner: &GameRunner) -> Vec<u16> {
     }
 
     potential_vps
-}
-
-fn card_type_to_index(card: &Card) -> usize {
-    match &card.card_type {
-        CardType::Location(town) => town.as_usize(),
-        CardType::Industry(industry_set) => {
-            let inds = industry_set.to_industry_types();
-            if inds.len() == 2
-                && inds.contains(&IndustryType::Cotton)
-                && inds.contains(&IndustryType::Goods)
-            {
-                26
-            } else if inds.len() == 1 {
-                20 + inds[0].as_usize()
-            } else {
-                26
-            }
-        }
-        CardType::WildLocation => 27,
-        CardType::WildIndustry => 28,
-    }
 }
 
 fn merchant_tile_type_to_index(tile: &MerchantTileType) -> i64 {
@@ -1397,139 +2316,120 @@ fn select_choice_from_payload(
     payload: &mut CompositeActionPayload,
 ) -> PyResult<ActionChoice> {
     match choice_set {
-        ChoiceSet::Industry(options) => {
-            let desired = payload
-                .next_industry()
-                .and_then(|idx| options.iter().copied().find(|ind| ind.as_usize() == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::Industry had no options"))?;
-            Ok(ActionChoice::Industry(desired))
-        }
-        ChoiceSet::SecondIndustry(options) => {
-            let desired = payload
-                .next_second_industry()
-                .and_then(|idx| options.iter().copied().find(|ind| ind.as_usize() == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::SecondIndustry had no options"))?;
-            Ok(ActionChoice::FreeDevelopment(desired))
-        }
+        ChoiceSet::Industry(options) => Ok(ActionChoice::Industry(select_encoded_choice(
+            payload.next_industry(),
+            options,
+            |value| value.as_usize(),
+            "industry",
+        )?)),
+        ChoiceSet::SecondIndustry(options) => Ok(ActionChoice::Industry(select_encoded_choice(
+            payload.next_second_industry(),
+            options,
+            |value| value.as_usize(),
+            "second_industry",
+        )?)),
         ChoiceSet::Card(options) => {
             let desired = payload.select_unique_card_from_options(options)?;
             Ok(ActionChoice::Card(desired))
         }
         ChoiceSet::BuildLocation(options) => {
-            let desired = payload
-                .next_build_location()
-                .and_then(|idx| options.iter().copied().find(|loc_idx| *loc_idx == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::BuildLocation had no options"))?;
-            Ok(ActionChoice::BuildLocation(desired))
+            Ok(ActionChoice::BuildLocation(select_encoded_choice(
+                payload.next_build_location(),
+                options,
+                |value| value,
+                "build_location",
+            )?))
         }
-        ChoiceSet::Road(options) => {
-            let desired = payload
-                .next_road()
-                .and_then(|idx| options.iter().copied().find(|road_idx| *road_idx == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::Road had no options"))?;
-            Ok(ActionChoice::Road(desired))
-        }
-        ChoiceSet::SecondRoad(options) => {
-            let desired = payload
-                .next_second_road()
-                .and_then(|idx| options.iter().copied().find(|road_idx| *road_idx == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::SecondRoad had no options"))?;
-            Ok(ActionChoice::Road(desired))
-        }
-        ChoiceSet::CoalSource(options) => {
-            let desired = payload
-                .next_coal_source()
-                .and_then(|encoded| {
-                    options
-                        .iter()
-                        .copied()
-                        .find(|src| encode_resource_source(*src) == encoded)
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::CoalSource had no options"))?;
-            Ok(ActionChoice::CoalSource(desired))
-        }
-        ChoiceSet::IronSource(options) => {
-            let desired = payload
-                .next_iron_source()
-                .and_then(|encoded| {
-                    options
-                        .iter()
-                        .copied()
-                        .find(|src| encode_resource_source(*src) == encoded)
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::IronSource had no options"))?;
-            Ok(ActionChoice::IronSource(desired))
-        }
-        ChoiceSet::BeerSource(options) => {
-            let desired = payload
-                .next_beer_source()
-                .and_then(|encoded| {
-                    options
-                        .iter()
-                        .copied()
-                        .find(|src| encode_beer_sell_source(*src) == encoded)
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::BeerSource had no options"))?;
-            Ok(ActionChoice::BeerSource(desired))
-        }
+        ChoiceSet::Road(options) => Ok(ActionChoice::Road(select_encoded_choice(
+            payload.next_road(),
+            options,
+            |value| value,
+            "road",
+        )?)),
+        ChoiceSet::SecondRoad(options) => Ok(ActionChoice::Road(select_encoded_choice(
+            payload.next_second_road(),
+            options,
+            |value| value,
+            "second_road",
+        )?)),
+        ChoiceSet::CoalSource(options) => Ok(ActionChoice::CoalSource(select_encoded_choice(
+            payload.next_coal_source(),
+            options,
+            encode_resource_source,
+            "coal_source",
+        )?)),
+        ChoiceSet::IronSource(options) => Ok(ActionChoice::IronSource(select_encoded_choice(
+            payload.next_iron_source(),
+            options,
+            encode_resource_source,
+            "iron_source",
+        )?)),
+        ChoiceSet::BeerSource(options) => Ok(ActionChoice::BeerSource(select_encoded_choice(
+            payload.next_beer_source(),
+            options,
+            encode_beer_sell_source,
+            "beer_source",
+        )?)),
         ChoiceSet::ActionBeerSource(options) => {
-            let desired = payload
-                .next_action_beer_source()
-                .and_then(|encoded| {
-                    options
-                        .iter()
-                        .copied()
-                        .find(|src| encode_action_beer_source(*src) == encoded)
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::ActionBeerSource had no options"))?;
-            Ok(ActionChoice::ActionBeerSource(desired))
+            Ok(ActionChoice::ActionBeerSource(select_encoded_choice(
+                payload.next_action_beer_source(),
+                options,
+                encode_action_beer_source,
+                "action_beer_source",
+            )?))
         }
-        ChoiceSet::SellTarget(options) => {
-            let desired = payload
-                .next_sell_target()
-                .and_then(|idx| options.iter().copied().find(|loc_idx| *loc_idx == idx))
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::SellTarget had no options"))?;
-            Ok(ActionChoice::SellTarget(desired))
-        }
+        ChoiceSet::SellTarget(options) => Ok(ActionChoice::SellTarget(select_encoded_choice(
+            payload.next_sell_target(),
+            options,
+            |value| value,
+            "sell_target",
+        )?)),
         ChoiceSet::FreeDevelopment(options) => {
-            let desired = payload
+            let requested = payload
                 .next_second_industry()
-                .and_then(|idx| options.iter().copied().find(|ind| ind.as_usize() == idx))
-                .or_else(|| {
-                    payload
-                        .next_industry()
-                        .and_then(|idx| options.iter().copied().find(|ind| ind.as_usize() == idx))
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::FreeDevelopment had no options"))?;
-            Ok(ActionChoice::FreeDevelopment(desired))
+                .or_else(|| payload.next_industry());
+            Ok(ActionChoice::FreeDevelopment(select_encoded_choice(
+                requested,
+                options,
+                |value| value.as_usize(),
+                "free_development",
+            )?))
         }
-        ChoiceSet::NetworkMode(options) => {
-            let desired = payload
-                .next_network_mode()
-                .and_then(|idx| {
-                    options.iter().copied().find(|mode| match (idx, mode) {
-                        (0, NetworkMode::Single) => true,
-                        (1, NetworkMode::Double) => true,
-                        _ => false,
-                    })
-                })
-                .or_else(|| options.first().copied())
-                .ok_or_else(|| PyValueError::new_err("ChoiceSet::NetworkMode had no options"))?;
-            Ok(ActionChoice::NetworkMode(desired))
-        }
+        ChoiceSet::NetworkMode(options) => Ok(ActionChoice::NetworkMode(select_encoded_choice(
+            payload.next_network_mode(),
+            options,
+            |mode| match mode {
+                NetworkMode::Single => 0,
+                NetworkMode::Double => 1,
+            },
+            "network_mode",
+        )?)),
         ChoiceSet::ConfirmOnly => Ok(ActionChoice::Confirm),
     }
+}
+
+fn select_encoded_choice<T, F>(
+    requested: Option<usize>,
+    options: &[T],
+    encode: F,
+    label: &str,
+) -> PyResult<T>
+where
+    T: Copy,
+    F: Fn(T) -> usize,
+{
+    let requested = requested
+        .ok_or_else(|| PyValueError::new_err(format!("missing required {label} choice")))?;
+    options
+        .iter()
+        .copied()
+        .find(|option| encode(*option) == requested)
+        .ok_or_else(|| {
+            let legal = options.iter().copied().map(&encode).collect::<Vec<_>>();
+            PyValueError::new_err(format!(
+                "{label} choice {requested} is not legal; expected one of {legal:?}"
+            ))
+        })
 }
 
 fn encode_resource_source(source: ResourceSource) -> usize {
@@ -1556,6 +2456,7 @@ fn encode_action_beer_source(source: BreweryBeerSource) -> usize {
 #[pymodule]
 pub fn fast_brass(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<BrassRLGame>()?;
+    m.add_class::<BrassNeuralSearch>()?;
     m.add_class::<BrassSavedState>()?;
     Ok(())
 }
@@ -1597,6 +2498,599 @@ mod tests {
     }
 
     #[test]
+    fn test_training_features_and_search_distribution_smoke() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(70)).expect("bridge init should work");
+
+            let schema_obj = game
+                .get_training_feature_schema(py)
+                .expect("feature schema should serialize");
+            let schema = schema_obj.bind(py).downcast::<PyDict>().unwrap();
+            let state_dim: usize = schema
+                .get_item("state_dim")
+                .unwrap()
+                .unwrap()
+                .extract()
+                .unwrap();
+            assert_eq!(state_dim, crate::game::training::STATE_FEATURE_DIM);
+
+            let state_obj = game
+                .get_training_state(py)
+                .expect("training state should encode");
+            let state = state_obj.bind(py).downcast::<PyDict>().unwrap();
+            let features = state
+                .get_item("features")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert_eq!(features.len(), crate::game::training::STATE_FEATURE_DIM);
+
+            let legal_obj = game
+                .get_legal_actions(py)
+                .expect("legal actions should encode");
+            let legal = legal_obj.bind(py).downcast::<PyDict>().unwrap();
+            let legal_actions = legal
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            let legal_count = legal_actions.len();
+            let first_action = legal_actions
+                .get_item(0)
+                .unwrap()
+                .downcast_into::<PyDict>()
+                .unwrap();
+            let sparse_features = first_action
+                .get_item("feature_indices")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert!(!sparse_features.is_empty());
+
+            let search_obj = game
+                .search_legal_actions(py, 32, Some(1234))
+                .expect("training search should complete");
+            let search = search_obj.bind(py).downcast::<PyDict>().unwrap();
+            let searched_actions = search
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert_eq!(searched_actions.len(), legal_count);
+            let visit_sum = searched_actions
+                .iter()
+                .map(|row| {
+                    row.downcast_into::<PyDict>()
+                        .unwrap()
+                        .get_item("visits")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<u64>()
+                        .unwrap()
+                })
+                .sum::<u64>();
+            assert_eq!(visit_sum, 32);
+        });
+    }
+
+    #[test]
+    fn test_policy_guided_search_binding_preserves_priors_and_rejects_wrong_count() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(72)).expect("bridge init should work");
+            let legal_obj = game
+                .get_legal_actions(py)
+                .expect("legal actions should encode");
+            let legal = legal_obj.bind(py).downcast::<PyDict>().unwrap();
+            let legal_actions = legal
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            let legal_count = legal_actions.len();
+            assert!(legal_count > 1);
+
+            let wrong_count_error = game
+                .search_legal_actions_with_policy(
+                    py,
+                    vec![1.0],
+                    "test-model".to_string(),
+                    0.625,
+                    3.5,
+                    1,
+                    Some(1234),
+                    1.5,
+                )
+                .expect_err("a policy with the wrong action count must be rejected");
+            assert!(wrong_count_error.to_string().contains("probabilities"));
+
+            let selected_index = legal_count - 1;
+            let mut probabilities = vec![0.0; legal_count];
+            probabilities[selected_index] = 1.0;
+            let search_obj = game
+                .search_legal_actions_with_policy(
+                    py,
+                    probabilities.clone(),
+                    "test-model".to_string(),
+                    0.625,
+                    3.5,
+                    1,
+                    Some(1234),
+                    1.5,
+                )
+                .expect("policy-guided search should complete");
+            let search = search_obj.bind(py).downcast::<PyDict>().unwrap();
+            assert_eq!(
+                search
+                    .get_item("method")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                "determinized_root_puct_policy_random_rollout"
+            );
+            assert_eq!(
+                search
+                    .get_item("model_id")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                "test-model"
+            );
+            assert_eq!(
+                search
+                    .get_item("root_model_shared_win_rate")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<f64>()
+                    .unwrap(),
+                0.625
+            );
+
+            let searched_actions = search
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert_eq!(searched_actions.len(), legal_count);
+            for (index, row) in searched_actions.iter().enumerate() {
+                let row = row.downcast_into::<PyDict>().unwrap();
+                assert_eq!(
+                    row.get_item("policy_probability")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<f64>()
+                        .unwrap(),
+                    probabilities[index]
+                );
+                assert_eq!(
+                    row.get_item("visits")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<u64>()
+                        .unwrap(),
+                    u64::from(index == selected_index)
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_successor_batch_and_action_value_search_binding() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(73)).expect("bridge init should work");
+            let batch_obj = game
+                .get_legal_action_successor_batch(py, 2, Some(4_321))
+                .expect("successor batch should encode");
+            let batch = batch_obj.bind(py).downcast::<PyDict>().unwrap();
+            let action_keys = batch
+                .get_item("action_keys")
+                .unwrap()
+                .unwrap()
+                .extract::<Vec<String>>()
+                .unwrap();
+            let states = batch
+                .get_item("states")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert_eq!(states.len(), action_keys.len() * 2);
+            let selected_index = action_keys.len() - 1;
+            let mut action_values = vec![0.25; action_keys.len()];
+            action_values[selected_index] = 0.9;
+
+            let search_obj = game
+                .search_legal_actions_with_policy_and_action_values(
+                    py,
+                    vec![1.0; action_keys.len()],
+                    action_keys.clone(),
+                    action_values.clone(),
+                    vec![0.0; action_keys.len()],
+                    vec![Some(0.0); action_keys.len()],
+                    vec![2; action_keys.len()],
+                    "test-value-model".to_string(),
+                    0.5,
+                    0.0,
+                    8,
+                    Some(4_322),
+                    0.0,
+                )
+                .expect("action-value search should complete");
+            let search = search_obj.bind(py).downcast::<PyDict>().unwrap();
+            assert_eq!(
+                search
+                    .get_item("method")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                "determinized_root_puct_policy_batched_successor_value"
+            );
+            assert_eq!(
+                search
+                    .get_item("evaluated_action_count")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<usize>()
+                    .unwrap(),
+                action_keys.len()
+            );
+            assert_eq!(
+                search
+                    .get_item("visited_action_count")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<usize>()
+                    .unwrap(),
+                1
+            );
+            let searched_actions = search
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            for (index, row) in searched_actions.iter().enumerate() {
+                let row = row.downcast_into::<PyDict>().unwrap();
+                assert_eq!(
+                    row.get_item("estimated_shared_win_rate")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<f64>()
+                        .unwrap(),
+                    action_values[index]
+                );
+                assert_eq!(
+                    row.get_item("visits")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<u64>()
+                        .unwrap(),
+                    if index == selected_index { 8 } else { 0 }
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_batched_neural_search_binding_round_trips_leaf_batches() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(74)).expect("bridge init should work");
+            let root_player = game.current_decision_player();
+            let legal_obj = game
+                .get_legal_actions(py)
+                .expect("legal actions should encode");
+            let legal = legal_obj.bind(py).downcast::<PyDict>().unwrap();
+            let legal_count = legal
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap()
+                .len();
+            let mut search = game
+                .start_batched_neural_search(
+                    vec![1.0; legal_count],
+                    "test-deep-model".to_string(),
+                    0.5,
+                    0.0,
+                    2,
+                    Some(4_401),
+                    0.0,
+                    1,
+                )
+                .expect("deep search should start");
+
+            for expected_depth in 1..=2 {
+                let batch_obj = search
+                    .next_inference_batch(py, 1)
+                    .expect("leaf batch should encode");
+                let batch = batch_obj.bind(py).downcast::<PyDict>().unwrap();
+                let positions = batch
+                    .get_item("positions")
+                    .unwrap()
+                    .unwrap()
+                    .downcast_into::<PyList>()
+                    .unwrap();
+                assert_eq!(positions.len(), 1);
+                let position = positions
+                    .get_item(0)
+                    .unwrap()
+                    .downcast_into::<PyDict>()
+                    .unwrap();
+                assert_eq!(
+                    position
+                        .get_item("depth")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<usize>()
+                        .unwrap(),
+                    expected_depth
+                );
+                let request_id = position
+                    .get_item("request_id")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<u64>()
+                    .unwrap();
+                let evaluation_player = position
+                    .get_item("evaluation_player")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<usize>()
+                    .unwrap();
+                let leaf_actions = position
+                    .get_item("legal_actions")
+                    .unwrap()
+                    .unwrap()
+                    .downcast_into::<PyDict>()
+                    .unwrap()
+                    .get_item("actions")
+                    .unwrap()
+                    .unwrap()
+                    .downcast_into::<PyList>()
+                    .unwrap();
+                let action_keys = leaf_actions
+                    .iter()
+                    .map(|row| {
+                        row.downcast_into::<PyDict>()
+                            .unwrap()
+                            .get_item("key")
+                            .unwrap()
+                            .unwrap()
+                            .extract::<String>()
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+                let mut probabilities = vec![0.0; action_keys.len()];
+                probabilities[0] = 1.0;
+                let raw_value = if evaluation_player == root_player {
+                    0.8
+                } else {
+                    0.2
+                };
+                search
+                    .submit_inference_batch(
+                        vec![request_id],
+                        vec![action_keys],
+                        vec![probabilities],
+                        vec![raw_value],
+                        vec![0.0],
+                        "test-deep-model".to_string(),
+                    )
+                    .expect("leaf evaluation should submit");
+            }
+
+            assert!(search.is_complete());
+            let report_obj = search.finish(py).expect("deep report should encode");
+            let report = report_obj.bind(py).downcast::<PyDict>().unwrap();
+            assert_eq!(
+                report
+                    .get_item("method")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                "determinized_batched_neural_puct"
+            );
+            assert_eq!(
+                report
+                    .get_item("max_search_depth")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<usize>()
+                    .unwrap(),
+                2
+            );
+        });
+    }
+
+    #[test]
+    fn test_official_tied_outcome_uses_fractional_win_values() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(71)).expect("bridge init should work");
+            let mut actions_played = 0usize;
+            while !game.is_done() {
+                let legal_obj = game
+                    .get_legal_actions(py)
+                    .expect("legal actions should enumerate");
+                let legal = legal_obj.bind(py).downcast::<PyDict>().unwrap();
+                let actions = legal
+                    .get_item("actions")
+                    .unwrap()
+                    .unwrap()
+                    .downcast_into::<PyList>()
+                    .unwrap();
+                let pass_index = actions
+                    .iter()
+                    .find_map(|row| {
+                        let row = row.downcast_into::<PyDict>().ok()?;
+                        let name = row
+                            .get_item("root_action_name")
+                            .ok()??
+                            .extract::<String>()
+                            .ok()?;
+                        (name == "pass").then(|| {
+                            row.get_item("index")
+                                .unwrap()
+                                .unwrap()
+                                .extract::<usize>()
+                                .unwrap()
+                        })
+                    })
+                    .expect("Pass must remain available while cards remain");
+                game.step_legal_action(py, pass_index)
+                    .expect("Pass should execute");
+                actions_played += 1;
+                assert!(actions_played < 256, "pass-only game did not terminate");
+            }
+
+            let outcome_obj = game.get_outcome(py).expect("outcome should serialize");
+            let outcome = outcome_obj.bind(py).downcast::<PyDict>().unwrap();
+            let winners = outcome
+                .get_item("official_winners")
+                .unwrap()
+                .unwrap()
+                .extract::<Vec<usize>>()
+                .unwrap();
+            let shared = outcome
+                .get_item("shared_win_values")
+                .unwrap()
+                .unwrap()
+                .extract::<Vec<f64>>()
+                .unwrap();
+            assert_eq!(winners, vec![0, 1]);
+            assert_eq!(shared, vec![0.5, 0.5]);
+        });
+    }
+
+    #[test]
+    fn test_atomic_legal_actions_are_stable_and_execute_exactly() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(8)).expect("bridge init should work");
+            let first = game
+                .get_legal_actions(py)
+                .expect("atomic actions should enumerate");
+            let first_dict = first.bind(py).downcast::<PyDict>().unwrap();
+            let first_actions = first_dict
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            assert!(!first_actions.is_empty());
+
+            let first_keys = first_actions
+                .iter()
+                .map(|item| {
+                    item.downcast_into::<PyDict>()
+                        .unwrap()
+                        .get_item("key")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<String>()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+            let second = game
+                .get_legal_actions(py)
+                .expect("repeated enumeration should succeed");
+            let second_dict = second.bind(py).downcast::<PyDict>().unwrap();
+            let second_actions = second_dict
+                .get_item("actions")
+                .unwrap()
+                .unwrap()
+                .downcast_into::<PyList>()
+                .unwrap();
+            let second_keys = second_actions
+                .iter()
+                .map(|item| {
+                    item.downcast_into::<PyDict>()
+                        .unwrap()
+                        .get_item("key")
+                        .unwrap()
+                        .unwrap()
+                        .extract::<String>()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(first_keys, second_keys);
+
+            let (pass_index, pass_key) = second_actions
+                .iter()
+                .find_map(|item| {
+                    let action = item.downcast_into::<PyDict>().ok()?;
+                    let root = action
+                        .get_item("root_action")
+                        .ok()??
+                        .extract::<usize>()
+                        .ok()?;
+                    if root != ROOT_PASS {
+                        return None;
+                    }
+                    Some((
+                        action.get_item("index").ok()??.extract::<usize>().ok()?,
+                        action.get_item("key").ok()??.extract::<String>().ok()?,
+                    ))
+                })
+                .expect("Pass should be present among atomic actions");
+
+            let delta = game
+                .step_legal_action(py, pass_index)
+                .expect("selected atomic Pass should execute");
+            let delta = delta.bind(py).downcast::<PyDict>().unwrap();
+            assert_eq!(
+                delta
+                    .get_item("legal_action_key")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                pass_key
+            );
+            assert_eq!(
+                delta
+                    .get_item("action_type")
+                    .unwrap()
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap(),
+                "pass"
+            );
+        });
+    }
+
+    #[test]
+    fn test_atomic_action_index_out_of_range_does_not_mutate_state() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(9)).expect("bridge init should work");
+            let player = game.runner.framework.current_player;
+            let before_hand = game.runner.framework.board.state.players[player]
+                .hand
+                .cards
+                .clone();
+            let before_actions = game.runner.actions_remaining_in_turn;
+
+            game.step_legal_action(py, usize::MAX)
+                .expect_err("out-of-range action index must fail");
+
+            assert_eq!(game.runner.framework.current_player, player);
+            assert_eq!(game.runner.actions_remaining_in_turn, before_actions);
+            assert_eq!(
+                game.runner.framework.board.state.players[player].hand.cards,
+                before_hand
+            );
+        });
+    }
+
+    #[test]
     fn test_save_restore_round_trip() {
         Python::with_gil(|py| {
             let mut game = BrassRLGame::new(2, Some(11)).expect("bridge init should work");
@@ -1604,9 +3098,13 @@ mod tests {
             let before_player = game.current_decision_player();
             let before_mode = game.current_decision_mode();
 
-            let roots = game.available_root_actions().expect("roots should be available");
+            let roots = game
+                .available_root_actions()
+                .expect("roots should be available");
             let action = PyDict::new(py);
-            action.set_item("root_action", roots[0]).unwrap();
+            assert!(roots.contains(&ROOT_PASS));
+            action.set_item("root_action", ROOT_PASS).unwrap();
+            action.set_item("card", vec![0usize]).unwrap();
             let _ = game
                 .step_composite_action(py, &action)
                 .expect("single step should work");
@@ -1618,32 +3116,89 @@ mod tests {
     }
 
     #[test]
-    fn test_forced_pass_auto_progress() {
-        let mut game = BrassRLGame::new(2, Some(13)).expect("bridge init should work");
-        let player_idx = game.runner.framework.current_player;
+    fn test_pass_is_exposed_as_a_strategic_action() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(13)).expect("bridge init should work");
+            let player_idx = game.runner.framework.current_player;
 
-        // Make all non-pass actions unavailable while keeping one card for PASS.
-        game.runner.framework.board.state.players[player_idx].money = 0;
-        game.runner.framework.board.state.players[player_idx].income_level = 0; // income -10 => loan unavailable
-        game.runner.framework.board.state.players[player_idx]
-            .hand
-            .cards
-            .truncate(1);
-        game.runner.framework.board.state.players[player_idx]
-            .industry_mat = crate::core::industry_mat::PlayerIndustryMat::new();
-        game.runner.framework.board.state.wild_location_cards_available = 0;
-        game.runner.framework.board.state.wild_industry_cards_available = 0;
-        game.runner.framework.board.state.bl_to_building.clear();
-        game.runner.framework.board.state.player_building_mask[player_idx].clear();
-        game.runner.framework.board.state.build_locations_occupied.clear();
-        game.runner.framework.board.state.built_roads.clear();
-        game.runner.framework.board.state.player_road_mask[player_idx].clear();
-        game.runner.actions_remaining_in_turn = 1;
+            game.runner.framework.board.state.players[player_idx].money = 0;
+            game.runner.framework.board.state.players[player_idx].income_level = 0;
+            game.runner.framework.board.state.players[player_idx]
+                .hand
+                .cards
+                .truncate(1);
+            game.runner.framework.board.state.players[player_idx].industry_mat =
+                crate::core::industry_mat::PlayerIndustryMat::new();
+            game.runner
+                .framework
+                .board
+                .state
+                .wild_location_cards_available = 0;
+            game.runner
+                .framework
+                .board
+                .state
+                .wild_industry_cards_available = 0;
+            game.runner.framework.board.state.bl_to_building.clear();
+            game.runner.framework.board.state.player_building_mask[player_idx].clear();
+            game.runner
+                .framework
+                .board
+                .state
+                .build_locations_occupied
+                .clear();
+            game.runner.framework.board.state.built_roads.clear();
+            game.runner.framework.board.state.player_road_mask[player_idx].clear();
+            game.runner.actions_remaining_in_turn = 1;
 
-        let forced = game
-            .advance_to_next_decision()
-            .expect("auto-progress should not fail");
-        assert!(forced >= 1, "expected at least one forced pass");
+            let forced = game
+                .advance_to_next_decision()
+                .expect("decision advance should not fail");
+            assert_eq!(forced, 0, "a legal Pass must not be auto-executed");
+            assert_eq!(game.runner.framework.current_player, player_idx);
+            assert_eq!(
+                game.available_root_actions()
+                    .expect("roots should be available"),
+                vec![ROOT_PASS]
+            );
+
+            let action = PyDict::new(py);
+            action.set_item("root_action", ROOT_PASS).unwrap();
+            action.set_item("card", vec![0usize]).unwrap();
+            game.step_composite_action(py, &action)
+                .expect("explicit pass should succeed");
+        });
+    }
+
+    #[test]
+    fn test_invalid_composite_action_is_rejected_without_fallback() {
+        Python::with_gil(|py| {
+            let mut game = BrassRLGame::new(2, Some(14)).expect("bridge init should work");
+            let before_player = game.runner.framework.current_player;
+            let before_hand = game.runner.framework.board.state.players[before_player]
+                .hand
+                .cards
+                .clone();
+            let before_actions = game.runner.actions_remaining_in_turn;
+
+            let action = PyDict::new(py);
+            action.set_item("root_action", ROOT_PASS).unwrap();
+            action.set_item("card", vec![usize::MAX]).unwrap();
+            let error = game
+                .step_composite_action(py, &action)
+                .expect_err("invalid card must not fall back to another card or action");
+
+            assert!(error.to_string().contains("card choice"));
+            assert_eq!(game.runner.framework.current_player, before_player);
+            assert_eq!(game.runner.actions_remaining_in_turn, before_actions);
+            assert_eq!(
+                game.runner.framework.board.state.players[before_player]
+                    .hand
+                    .cards,
+                before_hand
+            );
+            assert!(game.runner.framework.action_context.is_none());
+        });
     }
 
     #[test]
@@ -1724,12 +3279,12 @@ mod tests {
         for (idx, player) in game.runner.framework.board.state.players.iter().enumerate() {
             if idx != observer {
                 for card in &player.hand.cards {
-                    hidden_counts_before[card_type_to_index(card)] += 1;
+                    hidden_counts_before[card_type_index(card)] += 1;
                 }
             }
         }
         for card in &game.runner.framework.board.state.deck.cards {
-            hidden_counts_before[card_type_to_index(card)] += 1;
+            hidden_counts_before[card_type_index(card)] += 1;
         }
 
         game.randomize_hidden_information(observer)
@@ -1737,7 +3292,9 @@ mod tests {
 
         assert_eq!(
             observer_hand_before,
-            game.runner.framework.board.state.players[observer].hand.cards
+            game.runner.framework.board.state.players[observer]
+                .hand
+                .cards
         );
         let opp_sizes_after: Vec<usize> = game
             .runner
@@ -1756,12 +3313,12 @@ mod tests {
         for (idx, player) in game.runner.framework.board.state.players.iter().enumerate() {
             if idx != observer {
                 for card in &player.hand.cards {
-                    hidden_counts_after[card_type_to_index(card)] += 1;
+                    hidden_counts_after[card_type_index(card)] += 1;
                 }
             }
         }
         for card in &game.runner.framework.board.state.deck.cards {
-            hidden_counts_after[card_type_to_index(card)] += 1;
+            hidden_counts_after[card_type_index(card)] += 1;
         }
         assert_eq!(hidden_counts_before, hidden_counts_after);
     }

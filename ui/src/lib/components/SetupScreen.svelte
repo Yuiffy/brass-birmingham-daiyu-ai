@@ -6,7 +6,7 @@
 
 	const dispatch = createEventDispatcher();
 	let activeTab: 'new' | 'join' = 'new';
-	let numPlayers = 4;
+	let numPlayers = 2;
 	let seedInput = '';
 	let seedError = '';
 	let savedGames: SavedGameSummary[] = [];
@@ -122,14 +122,15 @@
 <style>
 	.setup {
 		max-width: 380px;
-		margin: 100px auto;
+		margin: max(48px, 10svh) auto;
 		text-align: center;
-		background: #16213e;
+		background: #f5f6f4;
 		padding: 40px;
-		border-radius: 12px;
-		border: 1px solid #2a3a5c;
+		border-radius: 8px;
+		border: 1px solid #b9bfbb;
+		box-shadow: 0 18px 50px rgba(30, 35, 31, .14);
 	}
-	h1 { font-size: 28px; color: #c7a750; margin-bottom: 24px; }
+	h1 { font-size: 28px; color: #202321; margin-bottom: 24px; letter-spacing: 0; }
 	.row { margin-bottom: 16px; }
 	.tabs {
 		display: grid;
@@ -139,67 +140,67 @@
 	}
 	.tabs button {
 		padding: 8px 10px;
-		border-radius: 8px;
-		border: 1px solid #334155;
-		background: #0f172a;
-		color: #cbd5e1;
+		border-radius: 6px;
+		border: 1px solid #c8cdc9;
+		background: #fff;
+		color: #59605b;
 		cursor: pointer;
 		font-weight: 600;
 	}
 	.tabs button.active {
-		background: #1e40af;
-		border-color: #2563eb;
+		background: #202321;
+		border-color: #202321;
 		color: #fff;
 	}
-	label { display: block; margin-bottom: 6px; color: #94a3b8; font-size: 14px; }
+	label { display: block; margin-bottom: 6px; color: #686e6a; font-size: 14px; }
 	select {
-		padding: 8px 20px; border-radius: 6px; border: 1px solid #475569;
-		background: #1e293b; color: #e2e8f0; font-size: 14px;
+		padding: 8px 20px; border-radius: 6px; border: 1px solid #b9bfbb;
+		background: #fff; color: #202321; font-size: 14px;
 	}
 	input {
-		padding: 8px 12px; border-radius: 6px; border: 1px solid #475569;
-		background: #1e293b; color: #e2e8f0; font-size: 14px; width: 100%;
+		padding: 8px 12px; border-radius: 6px; border: 1px solid #b9bfbb;
+		background: #fff; color: #202321; font-size: 14px; width: 100%;
 		box-sizing: border-box;
 	}
-	.seed-error { color: #ef4444; font-size: 12px; margin-top: 6px; }
+	.seed-error { color: #b54031; font-size: 12px; margin-top: 6px; }
 	.btn {
 		padding: 10px 32px; border: none; border-radius: 8px; cursor: pointer;
-		font-size: 15px; font-weight: 700; color: #fff; background: #2563eb;
+		font-size: 15px; font-weight: 700; color: #fff; background: #087f5b;
 		transition: background 0.15s;
 	}
-	.btn:hover { background: #1d4ed8; }
+	.btn:hover { background: #066b4c; }
 	.join-list {
 		display: grid;
 		gap: 10px;
 		text-align: left;
 	}
 	.join-note {
-		color: #cbd5e1;
+		color: #5d635f;
 		font-size: 14px;
 		padding: 10px 12px;
-		background: #0f172a;
-		border-radius: 8px;
-		border: 1px solid #334155;
+		background: #fff;
+		border-radius: 6px;
+		border: 1px solid #c8cdc9;
 	}
-	.join-note.error { color: #fca5a5; }
+	.join-note.error { color: #b54031; }
 	.game-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: 12px;
 		padding: 10px 12px;
-		border-radius: 8px;
-		border: 1px solid #334155;
-		background: #0f172a;
+		border-radius: 6px;
+		border: 1px solid #c8cdc9;
+		background: #fff;
 	}
 	.game-meta { min-width: 0; }
 	.game-title {
-		color: #e2e8f0;
+		color: #202321;
 		font-size: 14px;
 		font-weight: 700;
 	}
 	.game-details {
-		color: #94a3b8;
+		color: #6c726e;
 		font-size: 12px;
 		margin-top: 2px;
 	}

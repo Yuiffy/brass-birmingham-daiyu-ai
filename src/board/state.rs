@@ -1,14 +1,22 @@
 use super::connectivity::Connectivity;
 use crate::{
-    cards::Deck, core::{building::BuiltBuilding, player::{Player, PlayerId}, static_data::INDUSTRY_MAT, types::*}, locations::LocationName, market::merchants::MerchantTile
+    cards::Deck,
+    core::{
+        building::BuiltBuilding,
+        player::{Player, PlayerId},
+        static_data::INDUSTRY_MAT,
+        types::*,
+    },
+    locations::LocationName,
+    market::merchants::MerchantTile,
 };
 use fixedbitset::FixedBitSet;
 use rand::prelude::*;
 use std::collections::HashMap;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)] 
-pub enum BuildingType { 
-    Industry(IndustryType), 
-    Market 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildingType {
+    Industry(IndustryType),
+    Market,
 }
 use crate::core::static_data::LINK_LOCATIONS;
 /// Core board state - contains only the essential game state without complex logic
@@ -39,7 +47,7 @@ pub struct BoardState {
     pub coal_locations: BuildLocationSet,
     pub iron_locations: BuildLocationSet,
     pub beer_locations: BuildLocationSet,
-    pub visible_vps: [u16; N_PLAYERS],  
+    pub visible_vps: [u16; N_PLAYERS],
     pub turn_order: Vec<usize>,
 }
 
@@ -50,37 +58,43 @@ impl BoardState {
         let actual_seed = seed.unwrap_or_else(rand::random::<u64>);
         let mut rng = StdRng::seed_from_u64(actual_seed);
         let _connectivity = Connectivity::new();
-        
+
         let wild_location_cards_available = 4;
         let wild_industry_cards_available = 4;
 
         let num_trade_posts_active = PLAYER_COUNT_TO_NUM_TRADE_POSTS[num_players - 2];
         let num_merchant_tiles_in_pool = NUM_PLAYERS_TO_MERCHANT_TILES_POOL[num_players - 2];
-        
-        let mut shuffled_tiles: Vec<MerchantTile> = MERCHANT_TILES[0..num_merchant_tiles_in_pool].to_vec();
+
+        let mut shuffled_tiles: Vec<MerchantTile> =
+            MERCHANT_TILES[0..num_merchant_tiles_in_pool].to_vec();
         shuffled_tiles.shuffle(&mut rng);
 
-        let mut trade_post_slots: Vec<Option<MerchantTile>> = Vec::with_capacity(NUM_TRADE_POSTS * 2);
+        let mut trade_post_slots: Vec<Option<MerchantTile>> =
+            Vec::with_capacity(NUM_TRADE_POSTS * 2);
         let mut current_slot_idx_counter = 0;
 
         // Populate slots only for active trade posts
         for tp_global_idx in 0..num_trade_posts_active {
             let trade_post_enum = TRADE_POST_ORDERED[tp_global_idx];
-            let num_slots_for_this_post = if trade_post_enum == TradePost::Shrewbury { 1 } else { 2 };
+            let num_slots_for_this_post = if trade_post_enum == TradePost::Shrewbury {
+                1
+            } else {
+                2
+            };
             for _ in 0..num_slots_for_this_post {
                 if current_slot_idx_counter < trade_post_slots.capacity() {
                     if !shuffled_tiles.is_empty() {
-                     trade_post_slots.push(shuffled_tiles.pop());
-                } else {
+                        trade_post_slots.push(shuffled_tiles.pop());
+                    } else {
                         trade_post_slots.push(None);
                     }
-                    current_slot_idx_counter +=1;
+                    current_slot_idx_counter += 1;
                 } else {
                     break;
                 }
             }
         }
-        
+
         while trade_post_slots.len() < trade_post_slots.capacity() {
             trade_post_slots.push(None);
         }
@@ -96,9 +110,15 @@ impl BoardState {
 
         let mut deck = Deck::new(num_players, rng.clone());
         let players: Vec<Player> = (0..num_players)
-            .map(|i| Player::new(PlayerId::from_usize(i), deck.draw_n(STARTING_HAND_SIZE as usize)))
+            .map(|i| {
+                Player::new(
+                    PlayerId::from_usize(i),
+                    deck.draw_n(STARTING_HAND_SIZE as usize),
+                )
+            })
             .collect();
-        
+        let discard_pile = deck.draw().into_iter().collect();
+
         let mut initial_turn_order: Vec<usize> = (0..num_players).collect();
         initial_turn_order.shuffle(&mut rng);
 
@@ -107,7 +127,7 @@ impl BoardState {
             era: Era::Canal,
             wild_location_cards_available,
             wild_industry_cards_available,
-            built_roads: RoadSet::new(),   
+            built_roads: RoadSet::new(),
             build_locations_occupied: BuildLocationSet::new(),
             building_types: vec![None; NUM_BL],
             player_road_mask: vec![RoadSet::new(); num_players],
@@ -115,12 +135,12 @@ impl BoardState {
             player_building_mask: vec![BuildLocationSet::new(); num_players],
             connectivity: Connectivity::new(),
             trade_post_slots,
-            num_trade_posts: num_trade_posts_active, 
-            remaining_market_coal: MAX_MARKET_COAL - 1, 
-            remaining_market_iron: MAX_MARKET_IRON - 2, 
+            num_trade_posts: num_trade_posts_active,
+            remaining_market_coal: MAX_MARKET_COAL - 1,
+            remaining_market_iron: MAX_MARKET_IRON - 2,
             trade_post_beer,
             deck,
-            discard_pile: Vec::new(),
+            discard_pile,
             players,
             current_player_idx: initial_turn_order[0],
             rng,
@@ -146,8 +166,8 @@ impl BoardState {
         }
         &self.player_road_mask[player_id.as_usize()]
     }
-    
-    pub fn get_building_data_at_loc(&self, loc: usize) -> &BuildingTypeData { 
+
+    pub fn get_building_data_at_loc(&self, loc: usize) -> &BuildingTypeData {
         if let Some(building) = self.bl_to_building.get(&loc) {
             return &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
         } else {
@@ -166,20 +186,22 @@ impl BoardState {
     }
 
     pub fn get_tile_at_loc(&self, loc: usize) -> Option<BuildingTypeData> {
-        self.bl_to_building.get(&loc).map(|b| 
-            INDUSTRY_MAT[b.industry as usize][b.level.as_usize()]
-        )
+        self.bl_to_building
+            .get(&loc)
+            .map(|b| INDUSTRY_MAT[b.industry as usize][b.level.as_usize()])
     }
 
     pub fn is_location_connected_to_trade_post(&self, location: LocationName) -> bool {
         for trade_post in TRADE_POST_ORDERED {
-            if self.connectivity.are_towns_connected(location, trade_post.to_location_name()) {
+            if self
+                .connectivity
+                .are_towns_connected(location, trade_post.to_location_name())
+            {
                 return true;
             }
         }
         false
     }
-
 
     pub fn is_bl_connected_to_trade_post(&self, build_loc_idx: usize) -> bool {
         self.is_location_connected_to_trade_post(LocationName::from_bl_idx(build_loc_idx))
@@ -192,7 +214,7 @@ impl BoardState {
     /// Get all locations connected to a given location by built roads
     pub fn get_location_neighbors(&self, location: LocationName) -> LocationSet {
         let mut neighbors = LocationSet::new();
-        // Get all roads connected to this location 
+        // Get all roads connected to this location
         for road in location.get_roads().intersection(&self.built_roads) {
             neighbors.union_with(&LINK_LOCATIONS[road as usize].locations);
         }
@@ -201,21 +223,24 @@ impl BoardState {
 
     /// Check if player has any network presence (buildings or roads)
     pub fn player_has_network(&self, player_idx: usize) -> bool {
-        !self.player_building_mask[player_idx].is_clear() || 
-        !self.player_road_mask[player_idx].is_clear()
+        !self.player_building_mask[player_idx].is_clear()
+            || !self.player_road_mask[player_idx].is_clear()
     }
 
     /// Check if a build location is in the player's network
     /// A location is in player's network if:
     /// 1. Player has a building there, or
-    /// 2. It's connected via player's connectivity (set of links) 
+    /// 2. It's connected via player's connectivity (set of links)
     pub fn is_in_player_network(&self, player_idx: usize, bl_idx: usize) -> bool {
-        self.players[player_idx].get_locations_in_network(self).contains(LocationName::from_bl_idx(bl_idx).as_usize())
+        self.players[player_idx]
+            .get_locations_in_network(self)
+            .contains(LocationName::from_bl_idx(bl_idx).as_usize())
     }
 
     /// Check if player already has a building in this town (for canal era rule)
     pub fn player_has_building_in_town(&self, player_idx: usize, town_idx: usize) -> bool {
-        self.player_building_mask[player_idx].contains_any_in_range(TOWNS_RANGES[town_idx].0..TOWNS_RANGES[town_idx].1)
+        self.player_building_mask[player_idx]
+            .contains_any_in_range(TOWNS_RANGES[town_idx].0..TOWNS_RANGES[town_idx].1)
     }
 
     // =========================================================================
@@ -223,8 +248,14 @@ impl BoardState {
     // =========================================================================
 
     pub fn is_connected_to_coal(&self, build_loc_idx: usize) -> bool {
-        let connected_locations = self.connectivity.get_connected_locations(LocationName::from_bl_idx(build_loc_idx));
-        !connected_locations.is_clear() || connected_locations.to_bl_set().intersection_count(&self.coal_locations) > 0
+        let connected_locations = self
+            .connectivity
+            .get_connected_locations(LocationName::from_bl_idx(build_loc_idx));
+        !connected_locations.is_clear()
+            || connected_locations
+                .to_bl_set()
+                .intersection_count(&self.coal_locations)
+                > 0
     }
 
     pub fn get_resource_amount_at_bl(&self, bl_idx: usize) -> u8 {
@@ -258,12 +289,15 @@ impl BoardState {
     pub fn get_connected_coal_sources(&self, build_loc_idx: usize) -> Vec<(usize, u8)> {
         let build_location = LocationName::from_bl_idx(build_loc_idx);
         let mut sources = Vec::new();
-        
+
         for coal_loc in self.coal_locations.ones() {
             if let Some(building) = self.bl_to_building.get(&coal_loc) {
                 if !building.flipped && building.resource_amt > 0 {
                     let coal_location = LocationName::from_bl_idx(coal_loc);
-                    if self.connectivity.are_towns_connected(build_location, coal_location) {
+                    if self
+                        .connectivity
+                        .are_towns_connected(build_location, coal_location)
+                    {
                         sources.push((coal_loc, building.resource_amt));
                     }
                 }
@@ -276,7 +310,7 @@ impl BoardState {
     /// Returns Vec of (location_idx, resource_amount)
     pub fn get_all_iron_sources(&self) -> Vec<(usize, u8)> {
         let mut sources = Vec::new();
-        
+
         for iron_loc in self.iron_locations.ones() {
             if let Some(building) = self.bl_to_building.get(&iron_loc) {
                 if !building.flipped && building.resource_amt > 0 {
@@ -302,14 +336,15 @@ impl BoardState {
 
     /// Get the town index for a build location
     pub fn get_town_for_bl(&self, bl_idx: usize) -> Option<usize> {
-        TOWNS_RANGES.iter().position(|range| bl_idx >= range.0 && bl_idx < range.1)
+        TOWNS_RANGES
+            .iter()
+            .position(|range| bl_idx >= range.0 && bl_idx < range.1)
     }
 
     /// Alias for is_bl_connected_to_trade_post for consistency
     pub fn is_connected_to_trade_post(&self, build_loc_idx: usize) -> bool {
         self.is_bl_connected_to_trade_post(build_loc_idx)
     }
-
 
     // =========================================================================
     // Actions
@@ -351,24 +386,27 @@ impl BoardState {
         // Update global connectivity and player network
         self.connectivity.add_road(road_idx);
         self.player_network_mask[player_idx].add_road(road_idx);
-        
+
         self.player_road_mask[player_idx].insert(road_idx);
     }
-
 
     /// Handle a building flip - update income and resource tracking
     pub fn handle_building_flip(&mut self, loc: usize) {
         if let Some(building) = self.bl_to_building.get_mut(&loc) {
             if building.is_flipped() {
-                let building_data = &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
-                self.players[building.owner.as_usize()].increase_income_level(building_data.income as u8);
+                let building_data =
+                    &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
+                self.players[building.owner.as_usize()]
+                    .increase_income_level(building_data.income as u8);
             }
         } else {
-            panic!("handle_building_flip called on a non-existent building at loc {}", loc);
+            panic!(
+                "handle_building_flip called on a non-existent building at loc {}",
+                loc
+            );
         }
-    }       
+    }
 
-    
     // =============================================================================
     // Building Removal Functions
     // =============================================================================
@@ -389,5 +427,4 @@ impl BoardState {
             }
         }
     }
-
 }

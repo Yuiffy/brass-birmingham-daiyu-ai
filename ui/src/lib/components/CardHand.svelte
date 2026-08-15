@@ -136,4 +136,45 @@
 		text-overflow: ellipsis;
 		max-width: 80px;
 	}
+	@media (max-width: 760px) {
+		.hand-container {
+			overflow-x: auto;
+			overscroll-behavior-x: contain;
+			scrollbar-width: none;
+		}
+		.hand-container::-webkit-scrollbar { display: none; }
+		.hand-fan {
+			justify-content: flex-start;
+			width: max-content;
+			min-width: 100%;
+			box-sizing: border-box;
+			gap: 8px;
+			padding-inline: 8px;
+			scroll-snap-type: x proximity;
+		}
+		.card-slot {
+			flex: 0 0 68px;
+			width: 68px;
+			margin-inline: 0;
+			transform: translateY(0);
+			scroll-snap-align: start;
+		}
+		.card-slot:hover {
+			transform: translateY(-12px);
+		}
+		.card-slot.selectable:hover {
+			transform: translateY(-18px) scale(1.03);
+		}
+		.card-img,
+		.card-town {
+			width: 68px;
+			height: 95px;
+		}
+		.card-label {
+			max-width: 68px;
+		}
+		.town-name {
+			font-size: 10px;
+		}
+	}
 </style>

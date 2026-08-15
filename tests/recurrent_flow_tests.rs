@@ -1,6 +1,6 @@
 use fast_brass::actions::{SellChoice, SellOption, SingleRailroadOption};
-use fast_brass::board::Board;
 use fast_brass::board::resources::BeerSellSource;
+use fast_brass::board::Board;
 use fast_brass::core::building::BuiltBuilding;
 use fast_brass::core::player::PlayerId;
 use fast_brass::core::types::{ActionType, Era, IndustryLevel, IndustryType, NextActionChoiceKind};
@@ -21,8 +21,10 @@ fn test_network_mode_choice_is_exposed_in_railroad() {
     coal_sources.insert(0);
     if let Some(ctx) = framework.action_context.as_mut() {
         ctx.choices_needed = VecDeque::from([NextActionChoiceKind::ChooseRoad]);
-        ctx.initial_single_rail_options = Some(vec![SingleRailroadOption::new(1, coal_sources.clone())]);
-        ctx.initial_double_rail_first_link_options = Some(vec![SingleRailroadOption::new(2, coal_sources)]);
+        ctx.initial_single_rail_options =
+            Some(vec![SingleRailroadOption::new(1, coal_sources.clone())]);
+        ctx.initial_double_rail_first_link_options =
+            Some(vec![SingleRailroadOption::new(2, coal_sources)]);
         ctx.selected_network_mode = None;
         ctx.action_type = ActionType::BuildRailroad;
     }
@@ -63,7 +65,9 @@ fn test_stale_session_revalidation_rejects_confirm() {
     let current_player = board.state.turn_order[0];
     let mut framework = GameFramework::new(board, current_player);
     framework.start_action_session(ActionType::Loan);
-    framework.apply_action_choice(ActionChoice::Card(0)).unwrap();
+    framework
+        .apply_action_choice(ActionChoice::Card(0))
+        .unwrap();
 
     // Loan becomes illegal at -10 income exactly.
     framework.board.state.players[current_player].income_level = 0;
@@ -90,10 +94,30 @@ fn test_runner_exposes_shortfall_interrupt_and_applies_selected_tiles() {
         loc2 as u8,
         PlayerId::from_usize(player_idx),
     );
-    runner.framework.board.state.bl_to_building.insert(loc1, building1);
-    runner.framework.board.state.bl_to_building.insert(loc2, building2);
-    runner.framework.board.state.build_locations_occupied.insert(loc1);
-    runner.framework.board.state.build_locations_occupied.insert(loc2);
+    runner
+        .framework
+        .board
+        .state
+        .bl_to_building
+        .insert(loc1, building1);
+    runner
+        .framework
+        .board
+        .state
+        .bl_to_building
+        .insert(loc2, building2);
+    runner
+        .framework
+        .board
+        .state
+        .build_locations_occupied
+        .insert(loc1);
+    runner
+        .framework
+        .board
+        .state
+        .build_locations_occupied
+        .insert(loc2);
     runner.framework.board.state.player_building_mask[player_idx].insert(loc1);
     runner.framework.board.state.player_building_mask[player_idx].insert(loc2);
 
@@ -106,5 +130,10 @@ fn test_runner_exposes_shortfall_interrupt_and_applies_selected_tiles() {
 
     let session = sessions.into_iter().next().unwrap();
     runner.resolve_shortfall_with_tiles(session, vec![loc2]);
-    assert!(!runner.framework.board.state.bl_to_building.contains_key(&loc2));
+    assert!(!runner
+        .framework
+        .board
+        .state
+        .bl_to_building
+        .contains_key(&loc2));
 }

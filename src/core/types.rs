@@ -3,20 +3,19 @@
 pub static COAL_PRICE_TABLE: [u8; 14] = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7];
 pub static IRON_PRICE_TABLE: [u8; 10] = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
 
-use fixedbitset::FixedBitSet;
 pub use crate::core::static_data::*;
+use fixedbitset::FixedBitSet;
 // This will need to be moved to a separate constants file or lazy static
 // For now, we'll reference the original location
 // Note: INDUSTRY_MAT, RAIL_ONLY, CANAL_ONLY are NOT re-exported here to avoid conflict with static_data
 pub use crate::consts::{
-    INDUSTRY_TO_BYTES,
-    STARTING_CARDS_2P, STARTING_CARDS_3P, STARTING_CARDS_4P,
-    STARTING_CARDS_2P_LEN, STARTING_CARDS_3P_LEN, STARTING_CARDS_4P_LEN,
-    BEER_BREWERY_1, BEER_BREWERY_2, TOTAL_TOWNS
+    BEER_BREWERY_1, BEER_BREWERY_2, INDUSTRY_TO_BYTES, STARTING_CARDS_2P, STARTING_CARDS_2P_LEN,
+    STARTING_CARDS_3P, STARTING_CARDS_3P_LEN, STARTING_CARDS_4P, STARTING_CARDS_4P_LEN,
+    TOTAL_TOWNS,
 };
 
 // Re-export commonly used types
-pub use crate::cards::{Hand, Deck};
+pub use crate::cards::{Deck, Hand};
 use crate::core::locations::LocationName;
 use crate::locations::TownName;
 
@@ -98,8 +97,6 @@ impl IndustryLevel {
     }
 }
 
-
-
 // Game constants
 pub const N_PLAYERS: usize = 4;
 pub const CANAL_PRICE: u16 = 3;
@@ -134,21 +131,21 @@ use std::ops::{Deref, DerefMut, Range};
 pub trait BitSetWrapper: Sized {
     /// The capacity of this bitset type
     const CAPACITY: usize;
-    
+
     /// Create a new empty bitset
     fn new() -> Self;
-    
+
     /// Get a reference to the underlying FixedBitSet
     fn as_bitset(&self) -> &FixedBitSet;
-    
+
     /// Get a mutable reference to the underlying FixedBitSet
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet;
-    
+
     /// Create from a FixedBitSet (useful for conversions)
     fn from_bitset(set: FixedBitSet) -> Self;
-    
+
     // Provided methods with default implementations
-    
+
     /// Insert a single element
     #[inline]
     fn insert(&mut self, bit: usize) {
@@ -157,7 +154,7 @@ pub trait BitSetWrapper: Sized {
         }
         self.as_bitset_mut().insert(bit);
     }
-    
+
     /// Remove a single element
     #[inline]
     fn remove(&mut self, bit: usize) {
@@ -166,37 +163,37 @@ pub trait BitSetWrapper: Sized {
         }
         self.as_bitset_mut().remove(bit);
     }
-    
+
     /// Check if contains an element
     #[inline]
     fn contains(&self, bit: usize) -> bool {
         self.as_bitset().contains(bit)
     }
-    
+
     /// Clear all bits
     #[inline]
     fn clear(&mut self) {
         self.as_bitset_mut().clear();
     }
-    
+
     /// Count the number of set bits
     #[inline]
     fn count_ones(&self) -> usize {
         self.as_bitset().count_ones(..)
     }
-    
+
     /// Count the number of unset bits
     #[inline]
     fn count_zeroes(&self) -> usize {
         self.as_bitset().count_zeroes(..)
     }
-    
+
     /// Check if empty (no bits set)
     #[inline]
     fn is_clear(&self) -> bool {
         self.as_bitset().is_clear()
     }
-    
+
     /// Check if all bits are set
     #[inline]
     fn is_full(&self) -> bool {
@@ -220,13 +217,13 @@ pub trait BitSetWrapper: Sized {
     fn ones(&self) -> fixedbitset::Ones<'_> {
         self.as_bitset().ones()
     }
-    
+
     /// Iterate over all unset bit indices
     #[inline]
     fn zeroes(&self) -> fixedbitset::Zeroes<'_> {
         self.as_bitset().zeroes()
     }
-    
+
     /// Lazy iterator over the intersection of two sets
     #[inline]
     fn intersection<'a>(&'a self, other: &'a Self) -> fixedbitset::Intersection<'a> {
@@ -238,43 +235,44 @@ pub trait BitSetWrapper: Sized {
     fn union_with(&mut self, other: &Self) {
         self.as_bitset_mut().union_with(other.as_bitset());
     }
-    
+
     /// Intersect with another set (in-place)
     #[inline]
     fn intersect_with(&mut self, other: &Self) {
         self.as_bitset_mut().intersect_with(other.as_bitset());
     }
-    
+
     /// Difference with another set (in-place)
     #[inline]
     fn difference_with(&mut self, other: &Self) {
         self.as_bitset_mut().difference_with(other.as_bitset());
     }
-    
+
     /// Symmetric difference with another set (in-place)
     #[inline]
     fn symmetric_difference_with(&mut self, other: &Self) {
-        self.as_bitset_mut().symmetric_difference_with(other.as_bitset());
+        self.as_bitset_mut()
+            .symmetric_difference_with(other.as_bitset());
     }
-    
+
     /// Check if disjoint from another set
     #[inline]
     fn is_disjoint(&self, other: &Self) -> bool {
         self.as_bitset().is_disjoint(other.as_bitset())
     }
-    
+
     /// Check if subset of another set
     #[inline]
     fn is_subset(&self, other: &Self) -> bool {
         self.as_bitset().is_subset(other.as_bitset())
     }
-    
+
     /// Check if superset of another set
     #[inline]
     fn is_superset(&self, other: &Self) -> bool {
         self.as_bitset().is_superset(other.as_bitset())
     }
-    
+
     /// Create a union with another set (returns new set)
     #[inline]
     fn union(&self, other: &Self) -> Self {
@@ -283,7 +281,7 @@ pub trait BitSetWrapper: Sized {
         result.as_bitset_mut().union_with(other.as_bitset());
         result
     }
-    
+
     /// Create a difference with another set (returns new set)
     #[inline]
     fn difference(&self, other: &Self) -> Self {
@@ -301,7 +299,9 @@ pub struct IndustrySet {
 
 impl IndustrySet {
     pub fn new() -> Self {
-        Self { set: FixedBitSet::with_capacity(N_INDUSTRIES) }
+        Self {
+            set: FixedBitSet::with_capacity(N_INDUSTRIES),
+        }
     }
 
     pub fn new_from_industry_types(industry_types: &[IndustryType]) -> Self {
@@ -329,19 +329,21 @@ impl IndustrySet {
 
 impl BitSetWrapper for IndustrySet {
     const CAPACITY: usize = N_INDUSTRIES;
-    
+
     fn new() -> Self {
-        Self { set: FixedBitSet::with_capacity(Self::CAPACITY) }
+        Self {
+            set: FixedBitSet::with_capacity(Self::CAPACITY),
+        }
     }
-    
+
     fn as_bitset(&self) -> &FixedBitSet {
         &self.set
     }
-    
+
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet {
         &mut self.set
     }
-    
+
     fn from_bitset(set: FixedBitSet) -> Self {
         Self { set }
     }
@@ -349,11 +351,11 @@ impl BitSetWrapper for IndustrySet {
 
 impl Deref for IndustrySet {
     type Target = FixedBitSet;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.set
     }
-}   
+}
 
 impl DerefMut for IndustrySet {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -374,7 +376,8 @@ pub struct LocationSet {
 
 impl std::fmt::Display for LocationSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let names: Vec<String> = self.ones()
+        let names: Vec<String> = self
+            .ones()
             .map(|idx| format!("{}", LocationName::from_usize(idx)))
             .collect();
         write!(f, "{{{}}}", names.join(", "))
@@ -405,7 +408,6 @@ pub struct BuildLocationSet {
 }
 
 impl BuildLocationSet {
-
     pub fn new_from_range(range: (usize, usize)) -> Self {
         let mut build_location_set = Self::new();
         build_location_set.insert_range(range.0..range.1);
@@ -440,19 +442,21 @@ pub struct RoadSet {
 // Implement the trait for each type
 impl BitSetWrapper for LocationSet {
     const CAPACITY: usize = N_LOCATIONS;
-    
+
     fn new() -> Self {
-        Self { set: FixedBitSet::with_capacity(Self::CAPACITY) }
+        Self {
+            set: FixedBitSet::with_capacity(Self::CAPACITY),
+        }
     }
-    
+
     fn as_bitset(&self) -> &FixedBitSet {
         &self.set
     }
-    
+
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet {
         &mut self.set
     }
-    
+
     fn from_bitset(set: FixedBitSet) -> Self {
         Self { set }
     }
@@ -460,19 +464,21 @@ impl BitSetWrapper for LocationSet {
 
 impl BitSetWrapper for BuildLocationSet {
     const CAPACITY: usize = N_BL;
-    
+
     fn new() -> Self {
-        Self { set: FixedBitSet::with_capacity(Self::CAPACITY) }
+        Self {
+            set: FixedBitSet::with_capacity(Self::CAPACITY),
+        }
     }
-    
+
     fn as_bitset(&self) -> &FixedBitSet {
         &self.set
     }
-    
+
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet {
         &mut self.set
     }
-    
+
     fn from_bitset(set: FixedBitSet) -> Self {
         Self { set }
     }
@@ -480,19 +486,21 @@ impl BitSetWrapper for BuildLocationSet {
 
 impl BitSetWrapper for RoadSet {
     const CAPACITY: usize = N_ROAD_LOCATIONS;
-    
+
     fn new() -> Self {
-        Self { set: FixedBitSet::with_capacity(Self::CAPACITY) }
+        Self {
+            set: FixedBitSet::with_capacity(Self::CAPACITY),
+        }
     }
-    
+
     fn as_bitset(&self) -> &FixedBitSet {
         &self.set
     }
-    
+
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet {
         &mut self.set
     }
-    
+
     fn from_bitset(set: FixedBitSet) -> Self {
         Self { set }
     }
@@ -501,7 +509,7 @@ impl BitSetWrapper for RoadSet {
 // Implement Deref to allow direct access to FixedBitSet methods
 impl Deref for LocationSet {
     type Target = FixedBitSet;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.set
     }
@@ -515,7 +523,7 @@ impl DerefMut for LocationSet {
 
 impl Deref for BuildLocationSet {
     type Target = FixedBitSet;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.set
     }
@@ -529,7 +537,7 @@ impl DerefMut for BuildLocationSet {
 
 impl Deref for RoadSet {
     type Target = FixedBitSet;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.set
     }
@@ -560,8 +568,6 @@ impl Default for RoadSet {
     }
 }
 
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CardType {
     Location(TownName),
@@ -583,7 +589,6 @@ impl Card {
     }
 }
 
-
 /* Usage Examples for BitSetWrapper types:
 
 The BitSetWrapper trait provides three ways to access functionality:
@@ -593,19 +598,19 @@ The BitSetWrapper trait provides three ways to access functionality:
    let mut locations = LocationSet::new();
    locations.insert(5);
    locations.insert(10);
-   
+
    let mut other_locations = LocationSet::new();
    other_locations.insert(10);
    other_locations.insert(15);
-   
+
    // Type-safe union (only works with same type)
    locations.union_with(&other_locations);
-   
+
    // Iterate over set bits
    for bit in locations.ones() {
        println!("Location {} is set", bit);
    }
-   
+
    // Check operations
    assert!(locations.contains(5));
    assert_eq!(locations.count_ones(), 3);
@@ -614,13 +619,13 @@ The BitSetWrapper trait provides three ways to access functionality:
 2. **Deref to FixedBitSet** - Access all FixedBitSet methods directly:
    ```rust
    let mut roads = RoadSet::new();
-   
+
    // These work because RoadSet derefs to FixedBitSet
    roads.insert_range(0..5);
    roads.toggle(3);
    let min = roads.minimum();
    let max = roads.maximum();
-   
+
    // Can even use indexing syntax
    if roads[2] {
        println!("Road 2 is present");
@@ -631,7 +636,7 @@ The BitSetWrapper trait provides three ways to access functionality:
    ```rust
    let buildings = BuildLocationSet::new();
    let bitset_ref: &FixedBitSet = buildings.as_bitset();
-   
+
    // Useful for interfacing with code that expects FixedBitSet
    some_function_expecting_fixedbitset(buildings.as_bitset());
    ```
@@ -657,11 +662,11 @@ pub struct MyNewSet {
 
 impl BitSetWrapper for MyNewSet {
     const CAPACITY: usize = MY_CAPACITY;
-    
+
     fn new() -> Self {
         Self { set: FixedBitSet::with_capacity(Self::CAPACITY) }
     }
-    
+
     fn as_bitset(&self) -> &FixedBitSet { &self.set }
     fn as_bitset_mut(&mut self) -> &mut FixedBitSet { &mut self.set }
     fn from_bitset(set: FixedBitSet) -> Self { Self { set } }
@@ -684,10 +689,6 @@ impl Default for MyNewSet {
 That's it! Your new type automatically gets all the common methods.
 */
 
-
-
-
-
 // Industry Type
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -703,11 +704,11 @@ pub enum IndustryType {
 impl IndustryType {
     pub fn from_usize(idx: usize) -> Self {
         match idx {
-            0 => IndustryType::Coal, 
-            1 => IndustryType::Iron, 
+            0 => IndustryType::Coal,
+            1 => IndustryType::Iron,
             2 => IndustryType::Beer,
-            3 => IndustryType::Goods, 
-            4 => IndustryType::Pottery, 
+            3 => IndustryType::Goods,
+            4 => IndustryType::Pottery,
             5 => IndustryType::Cotton,
             _ => panic!("Invalid industry index: {}", idx),
         }
@@ -806,7 +807,6 @@ impl TradePost {
             TradePost::Nottingham => LocationName::Nottingham,
         }
     }
-
 }
 
 // Static data that will be populated by lazy statics
@@ -836,7 +836,9 @@ pub struct BuildingTypeData {
 
 impl BuildingTypeData {
     pub fn can_build_in_era(&self, era: Era) -> bool {
-        if self.removed_after_phase1 && era == Era::Railroad { return false; }
+        if self.removed_after_phase1 && era == Era::Railroad {
+            return false;
+        }
         true
     }
 }

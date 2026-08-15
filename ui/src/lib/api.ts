@@ -2,9 +2,10 @@ import { get } from 'svelte/store';
 import {
 	gameState, turnPhase, actionsAvailable, logMessage,
 	moneyAtTurnStart, snapshotMoney, currentAction, playerName,
-	allIndustryData, actionBudgetAtTurnStart
+	allIndustryData, actionBudgetAtTurnStart, analysisReport, analysisLoading,
+	analysisError, selectedAnalysisKey, invalidateAnalysis, resetAiPlayback
 } from './store';
-import type { GameState } from './types';
+import type { AnalysisExplanation, AnalysisReport, GameState } from './types';
 
 const ACTION_LABELS: Record<string, string> = {
 	BuildBuilding: 'Build', BuildRailroad: 'Network', BuildDoubleRailroad: 'Double Rail',
@@ -95,6 +96,8 @@ export async function listSavedGames(): Promise<SavedGameSummary[]> {
 }
 
 export async function loadGame(gameId: number) {
+	resetAiPlayback();
+	invalidateAnalysis();
 	const data = await api('load_game', { game_id: gameId });
 	if (data?.state) {
 		applyLoadedState(data.state as GameState);
@@ -104,6 +107,8 @@ export async function loadGame(gameId: number) {
 }
 
 export async function newGame(numPlayers: number, seed: number | null = null) {
+	resetAiPlayback();
+	invalidateAnalysis();
 	const data = await api('new_game', { num_players: numPlayers, seed });
 	if (data?.state) {
 		applyLoadedState(data.state as GameState);
@@ -118,6 +123,7 @@ export async function newGame(numPlayers: number, seed: number | null = null) {
 }
 
 export async function startTurn() {
+	invalidateAnalysis();
 	const name = cpName();
 	snapshotMoney();
 	const phaseBeforeStart = get(turnPhase);
@@ -141,6 +147,7 @@ export async function startTurn() {
 }
 
 export async function selectAction(actionType: string) {
+	invalidateAnalysis();
 	const name = cpName();
 	const label = ACTION_LABELS[actionType] || actionType;
 	const data = await api('start_action', { action_type: actionType });
@@ -154,6 +161,7 @@ export async function selectAction(actionType: string) {
 }
 
 export async function applyChoice(kind: string, value: unknown) {
+	invalidateAnalysis();
 	const name = cpName();
 	const gs = get(gameState);
 	const kindLabel = CHOICE_LABELS[kind] || kind;
@@ -178,6 +186,7 @@ export async function applyChoice(kind: string, value: unknown) {
 }
 
 export async function confirmAction() {
+	invalidateAnalysis();
 	const name = cpName();
 	const action = get(currentAction);
 	const actionLabel = action ? (ACTION_LABELS[action] || action) : 'action';
@@ -202,6 +211,7 @@ export async function confirmAction() {
 }
 
 export async function cancelAction() {
+	invalidateAnalysis();
 	const name = cpName();
 	const action = get(currentAction);
 	const actionLabel = action ? (ACTION_LABELS[action] || action) : 'action';
@@ -215,6 +225,7 @@ export async function cancelAction() {
 }
 
 export async function undoLastAction() {
+	invalidateAnalysis();
 	const name = cpName();
 	const data = await api('undo_last_action');
 	if (data) {
@@ -227,6 +238,7 @@ export async function undoLastAction() {
 }
 
 export async function endTurn() {
+	invalidateAnalysis();
 	const name = cpName();
 	const moneyBefore = get(moneyAtTurnStart);
 	const gs = get(gameState);
@@ -247,5 +259,73 @@ export async function endTurn() {
 		lastTurnPlayer = null;
 		logMessage(`${name} ended turn${spentStr}`);
 	}
+	return data;
+}
+
+export async function analyzePosition(simulations: number): Promise<AnalysisReport | null> {
+	analysisLoading.set(true);
+	analysisError.set(null);
+	try {
+		const data = await api('analyze', { simulations, top_n: 3 });
+		if (!data?.analysis) {
+			analysisError.set('分析失败，请确认当前处于可行动状态');
+			return null;
+		}
+		const report = data.analysis as AnalysisReport;
+		analysisReport.set(report);
+		selectedAnalysisKey.set(report.recommendations[0]?.action_key ?? null);
+		logMessage(`AI analyzed ${report.completed_simulations} continuations in ${report.elapsed_ms}ms`);
+		return report;
+	} finally {
+		analysisLoading.set(false);
+	}
+}
+
+export async function explainAnalyzedAction(
+	report: AnalysisReport,
+	actionKey: string,
+	question: string
+): Promise<AnalysisExplanation | null> {
+	const data = await api('explain', {
+		revision: report.revision,
+		action_key: actionKey,
+		question
+	});
+	return (data?.explanation as AnalysisExplanation | undefined) ?? null;
+}
+
+export async function applyAnalyzedAction(report: AnalysisReport, actionKey: string) {
+	const data = await api('apply_analyzed_action', {
+		revision: report.revision,
+		action_key: actionKey
+	});
+	if (!data?.state) return null;
+
+	const state = data.state as GameState;
+	currentAction.set(null);
+	if (state.game_over) {
+		turnPhase.set('turn_done');
+		actionsAvailable.set(null);
+	} else if (state.choice_set) {
+		turnPhase.set('in_session');
+		actionsAvailable.set(null);
+	} else if (state.actions_remaining > 0) {
+		turnPhase.set('choosing_action');
+		actionsAvailable.set(state.available_actions ?? []);
+	} else {
+		turnPhase.set('turn_done');
+		actionsAvailable.set(null);
+	}
+	logMessage(`Applied AI recommendation: ${actionKey}`);
+	invalidateAnalysis();
+	return data;
+}
+
+export async function resolveShortfalls() {
+	const data = await api('resolve_shortfalls', {});
+	if (!data?.state) return null;
+	applyLoadedState(data.state as GameState);
+	const resolved = Array.isArray(data.resolved) ? data.resolved.length : 0;
+	if (resolved > 0) logMessage(`AI resolved ${resolved} income shortfall${resolved === 1 ? '' : 's'}`);
 	return data;
 }

@@ -1,6 +1,6 @@
-use crate::{core::types::*, locations::LocationName};
 use crate::board::BoardState;
-use std::collections::{VecDeque, HashSet};
+use crate::{core::types::*, locations::LocationName};
+use std::collections::{HashSet, VecDeque};
 
 /// Resource source enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -11,10 +11,10 @@ pub enum ResourceSource {
 
 impl From<usize> for ResourceSource {
     fn from(index: usize) -> Self {
-        if index < NUM_BL { 
-            ResourceSource::Building(index) 
-        } else { 
-            ResourceSource::Market 
+        if index < NUM_BL {
+            ResourceSource::Building(index)
+        } else {
+            ResourceSource::Market
         }
     }
 }
@@ -22,8 +22,8 @@ impl From<usize> for ResourceSource {
 /// Beer source for selling actions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BeerSellSource {
-    Building(usize),    // Build location index of a brewery
-    TradePost(usize),   // Merchant *slot* index
+    Building(usize),  // Build location index of a brewery
+    TradePost(usize), // Merchant *slot* index
 }
 
 /// Brewery beer source for double railroad actions
@@ -39,11 +39,13 @@ pub struct ResourceManager;
 impl ResourceManager {
     /// Get coal price for a given number of cubes
     pub fn get_coal_price(remaining_market_coal: u8, cubes: u8) -> u16 {
-        if cubes == 0 { return 0; }
-        
+        if cubes == 0 {
+            return 0;
+        }
+
         let mut total_cost = 0;
         let mut market_idx = remaining_market_coal;
-        
+
         for _ in 0..cubes {
             if market_idx > 0 {
                 total_cost += COAL_PRICE_TABLE[(MAX_MARKET_COAL - market_idx) as usize] as u16;
@@ -62,11 +64,13 @@ impl ResourceManager {
 
     /// Get iron price for a given number of cubes
     pub fn get_iron_price(remaining_market_iron: u8, cubes: u8) -> u16 {
-        if cubes == 0 { return 0; }
-        
+        if cubes == 0 {
+            return 0;
+        }
+
         let mut total_cost = 0;
         let mut market_idx = remaining_market_iron;
-        
+
         for _ in 0..cubes {
             if market_idx > 0 {
                 total_cost += IRON_PRICE_TABLE[(MAX_MARKET_IRON - market_idx) as usize] as u16;
@@ -83,7 +87,8 @@ impl ResourceManager {
         let mut cost = 0;
         for _ in 0..cubes {
             if *remaining_market_coal > 0 {
-                cost += COAL_PRICE_TABLE[(MAX_MARKET_COAL - *remaining_market_coal) as usize] as u16;
+                cost +=
+                    COAL_PRICE_TABLE[(MAX_MARKET_COAL - *remaining_market_coal) as usize] as u16;
                 *remaining_market_coal -= 1;
             } else {
                 cost += 8; // Empty market price
@@ -97,7 +102,8 @@ impl ResourceManager {
         let mut cost = 0;
         for _ in 0..cubes {
             if *remaining_market_iron > 0 {
-                cost += IRON_PRICE_TABLE[(MAX_MARKET_IRON - *remaining_market_iron) as usize] as u16;
+                cost +=
+                    IRON_PRICE_TABLE[(MAX_MARKET_IRON - *remaining_market_iron) as usize] as u16;
                 *remaining_market_iron -= 1;
             } else {
                 cost += 6; // Empty market price
@@ -107,7 +113,11 @@ impl ResourceManager {
     }
 
     /// Check if market has space for a resource type
-    pub fn has_market_space(industry: IndustryType, remaining_coal: u8, remaining_iron: u8) -> bool {
+    pub fn has_market_space(
+        industry: IndustryType,
+        remaining_coal: u8,
+        remaining_iron: u8,
+    ) -> bool {
         match industry {
             IndustryType::Coal => remaining_coal < MAX_MARKET_COAL,
             IndustryType::Iron => remaining_iron < MAX_MARKET_IRON,
@@ -116,7 +126,11 @@ impl ResourceManager {
     }
 
     /// Get free market space for a resource type
-    pub fn get_free_market_space(industry: IndustryType, remaining_coal: u8, remaining_iron: u8) -> u8 {
+    pub fn get_free_market_space(
+        industry: IndustryType,
+        remaining_coal: u8,
+        remaining_iron: u8,
+    ) -> u8 {
         match industry {
             IndustryType::Coal => MAX_MARKET_COAL - remaining_coal,
             IndustryType::Iron => MAX_MARKET_IRON - remaining_iron,
@@ -129,14 +143,22 @@ impl ResourceManager {
         industry: IndustryType,
         amount: u8,
         remaining_market_coal: &mut u8,
-        remaining_market_iron: &mut u8
+        remaining_market_iron: &mut u8,
     ) -> u16 {
         let (price_table, remaining_market, max_market) = match industry {
-            IndustryType::Coal => (COAL_PRICE_TABLE.to_vec(), remaining_market_coal, MAX_MARKET_COAL),
-            IndustryType::Iron => (IRON_PRICE_TABLE.to_vec(), remaining_market_iron, MAX_MARKET_IRON),
+            IndustryType::Coal => (
+                COAL_PRICE_TABLE.to_vec(),
+                remaining_market_coal,
+                MAX_MARKET_COAL,
+            ),
+            IndustryType::Iron => (
+                IRON_PRICE_TABLE.to_vec(),
+                remaining_market_iron,
+                MAX_MARKET_IRON,
+            ),
             _ => return 0,
         };
-           
+
         let mut total_money_gained = 0u16;
 
         for _ in 0..amount {
@@ -150,15 +172,15 @@ impl ResourceManager {
         }
         total_money_gained
     }
-    /// Find resources and their distances using BFS, explore towns 
+    /// Find resources and their distances using BFS, explore towns
     /// and add corresponding buildlocations to the list in order of distance
     /// Returns Vec of (loc_idx, resource_amount, distance)
     pub fn find_connected_coal_sources(
         board_state: &BoardState,
-        build_loc_idx: usize
+        build_loc_idx: usize,
     ) -> Vec<(usize, u8, usize)> {
         let mut resources_found: Vec<(usize, u8, usize)> = Vec::new();
-        
+
         if !board_state.is_connected_to_coal(build_loc_idx) {
             return resources_found;
         }
@@ -176,7 +198,11 @@ impl ResourceManager {
             let town_bl_set = current_loc.to_bl_set();
 
             for coal_bl_idx in board_state.coal_locations.intersection(&town_bl_set) {
-                resources_found.push((coal_bl_idx, board_state.get_resource_amount_at_bl(coal_bl_idx), dist));
+                resources_found.push((
+                    coal_bl_idx,
+                    board_state.get_resource_amount_at_bl(coal_bl_idx),
+                    dist,
+                ));
             }
             visited.insert(current_loc);
             // Add Connected towns to exploration queue
@@ -225,8 +251,10 @@ impl ResourceManager {
                     }
                 }
                 ResourceSource::Market => {
-                    total_paid_market +=
-                        Self::consume_market_coal(&mut board_state.remaining_market_coal, remaining_needed);
+                    total_paid_market += Self::consume_market_coal(
+                        &mut board_state.remaining_market_coal,
+                        remaining_needed,
+                    );
                     remaining_needed = 0;
                     break;
                 }
@@ -271,8 +299,10 @@ impl ResourceManager {
                     }
                 }
                 ResourceSource::Market => {
-                    total_paid_market +=
-                        Self::consume_market_iron(&mut board_state.remaining_market_iron, remaining_needed);
+                    total_paid_market += Self::consume_market_iron(
+                        &mut board_state.remaining_market_iron,
+                        remaining_needed,
+                    );
                     remaining_needed = 0;
                     break;
                 }
@@ -293,7 +323,10 @@ impl ResourceManager {
     /// Returns true if successfully consumed
     pub fn consume_beer_from_brewery(board_state: &mut BoardState, loc: usize) -> bool {
         if let Some(brewery) = board_state.bl_to_building.get_mut(&loc) {
-            if brewery.industry == IndustryType::Beer && brewery.resource_amt > 0 && !brewery.flipped {
+            if brewery.industry == IndustryType::Beer
+                && brewery.resource_amt > 0
+                && !brewery.flipped
+            {
                 if brewery.consume_resource_and_check_flip(1) {
                     board_state.handle_building_flip(loc);
                 }
@@ -319,19 +352,19 @@ impl ResourceManager {
                 Some(b) => b,
                 None => return 0,
             };
-            
+
             // Only coal and iron can be sold to market
             if building.industry != IndustryType::Coal && building.industry != IndustryType::Iron {
                 return 0;
             }
-            
+
             // Coal requires connection to trade post
             if building.industry == IndustryType::Coal
                 && !board_state.is_connected_to_trade_post(building_loc)
             {
                 return 0;
             }
-            
+
             (building.industry, building.resource_amt)
         };
 

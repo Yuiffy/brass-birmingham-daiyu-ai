@@ -1,14 +1,23 @@
-# fast_brass
+# Brass Birmingham Daiyu AI
 
-`fast_brass` is an unofficial Rust implementation of **Brass: Birmingham** board game focused on deterministic game logic, rule validation, browser-based playtestin and optional Python bindings for AI / RL workflows.
+`Brass Birmingham Daiyu AI` is an unofficial browser game and AI analysis project for
+**Brass: Birmingham**. It is a public AGPL-3.0 fork of
+[`artyom-morozov/fast_brass`](https://github.com/artyom-morozov/fast_brass), extending the Rust
+rules engine with model-guided search, self-play training, and an interactive Svelte interface.
 
-The repo contains the core board-game engine, axum HTTP server, a lightweight web UI for interactive play, and a test suite for various game-states.
+The project currently focuses on transparent two-player analysis: each position can show several
+candidate moves, the search share and model signals behind each move, and contextual answers to
+Chinese follow-up questions such as why the first choice is preferred over the second.
 
 ## What This Repo Contains
 
 - A Rust game engine for the main Brass: Birmingham action system
 - Validation logic for legal builds, links, sales, development, loans, scouts, and passes
-- A local web server and browser client for manual play and debugging
+- A local web server and browser client for manual play, AI observation, and debugging
+- Batched, multi-layer neural PUCT search over hidden-information determinizations
+- Top-N move analysis with visits, policy priors, backed-up values, uncertainty, and search depth
+- Contextual Chinese explanations that compare concrete candidate moves
+- Deterministic self-play, PyTorch policy/value training, and candidate promotion tooling
 - SQLite-backed persistence for saved games
 - Optional Python bindings via `PyO3` / `maturin`
 - Integration and regression tests for gameplay edge cases
@@ -58,6 +67,37 @@ maturin develop
 ```
 
 This exposes the `fast_brass` Python module when the `python-bindings` feature is enabled through `maturin`.
+
+## AI Status
+
+- Deep neural search is currently implemented for two-player games. New browser games therefore
+  default to two players.
+- Search visit share, policy prior, and backed-up model value are different signals. The UI keeps
+  them separate instead of presenting them as one probability.
+- The current checkpoint has beaten the project's initial smoke baseline, but it has not yet been
+  calibrated on a held-out set or benchmarked against strong human play. Displayed model values
+  must not be interpreted as reliable real-world win probabilities.
+- Model checkpoints and generated self-play data are local artifacts under `output/` and are not
+  included in this repository. Set `FAST_BRASS_INFERENCE_URL` to a compatible inference service to
+  enable neural analysis; an unset URL retains the non-neural search path.
+
+### Generate model-guided self-play
+
+After installing the Python extension and a training checkpoint, generate a deterministic JSONL
+shard with checkpoint priors and Rust root PUCT search:
+
+```bash
+python -m training.model_self_play \
+  --output output/model-self-play.jsonl \
+  --checkpoint output/champion.pt \
+  --games 10 \
+  --players 2 \
+  --simulations 800 \
+  --device auto
+```
+
+The exporter refuses to overwrite an existing shard. It writes to a `.partial` file and only
+renames it after every game and terminal value target has been written successfully.
 
 ## Repo Layout
 
@@ -116,4 +156,15 @@ For the complete official rules, see the [Brass: Birmingham rulebook](https://cd
 
 - This is an **unofficial** implementation intended for engine development, testing, AI experimentation, and browser play.
 - The focus of this repo is correctness and debuggability of the game state.
-- The public API and module structure may continue to evolve as the engine is split into a dedicated standalone repository.
+- The public API, training schema, and module structure may continue to evolve.
+
+## License, Attribution, and Assets
+
+- Source code is distributed under the [GNU AGPL-3.0 license](LICENSE), preserving the upstream
+  repository history and attribution.
+- This fan project is not affiliated with or endorsed by Roxley Games or the creators and
+  publishers of Brass: Birmingham.
+- Board, card, tile, and related artwork in the fork was inherited from the upstream repository.
+  No separate asset-license record was found there, so its redistribution and reuse rights remain
+  unverified. Replace or independently clear those assets before any use that requires confirmed
+  artwork rights.

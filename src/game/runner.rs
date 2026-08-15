@@ -1,11 +1,13 @@
-use crate::board::Board;
 use crate::board::connectivity::Connectivity;
+use crate::board::Board;
 use crate::consts::STARTING_HAND_SIZE;
 use crate::core::locations::LocationName;
 use crate::core::player::Player;
 use crate::core::static_data::{INDUSTRY_MAT, LINK_LOCATIONS};
 use crate::core::types::*;
-use crate::game::framework::{ActionChoice, ActionIntent, ChoiceSet, GameFramework, ShortfallResolutionSession};
+use crate::game::framework::{
+    ActionChoice, ActionIntent, ChoiceSet, GameFramework, ShortfallResolutionSession,
+};
 
 #[derive(Debug, Clone)]
 struct TurnCheckpoint {
@@ -79,8 +81,11 @@ impl GameRunner {
     pub fn start_turn(&mut self) -> Vec<ActionType> {
         let player_idx = self.framework.current_player;
         if self.actions_remaining_in_turn == 0 {
-            self.actions_remaining_in_turn =
-                if self.personal_turns_taken[player_idx] == 0 { 1 } else { 2 };
+            self.actions_remaining_in_turn = if self.personal_turns_taken[player_idx] == 0 {
+                1
+            } else {
+                2
+            };
             self.turn_checkpoints.clear();
             self.turn_action_history.clear();
         }
@@ -89,7 +94,9 @@ impl GameRunner {
 
     pub fn start_action(&mut self, action_type: ActionType) -> ChoiceSet {
         let _ = self.framework.start_action_session(action_type);
-        self.framework.get_next_choice_set().unwrap_or(ChoiceSet::ConfirmOnly)
+        self.framework
+            .get_next_choice_set()
+            .unwrap_or(ChoiceSet::ConfirmOnly)
     }
 
     pub fn apply_choice(&mut self, choice: ActionChoice) -> Option<ChoiceSet> {
@@ -108,10 +115,24 @@ impl GameRunner {
             actions_remaining_in_turn: self.actions_remaining_in_turn,
             discard_history_len: self.discard_history.len(),
         });
-        self.framework.confirm_action_session()?;
+        if let Err(error) = self.framework.confirm_action_session() {
+            let checkpoint = self
+                .turn_checkpoints
+                .pop()
+                .expect("checkpoint was pushed immediately before confirmation");
+            self.framework.board.state = checkpoint.board_state;
+            self.actions_remaining_in_turn = checkpoint.actions_remaining_in_turn;
+            self.discard_history
+                .truncate(checkpoint.discard_history_len);
+            return Err(error);
+        }
         let discard_len_after = self.framework.board.state.discard_pile.len();
         if discard_len_after > discard_len_before {
-            for card in self.framework.board.state.discard_pile[discard_len_before..discard_len_after].iter().cloned() {
+            for card in self.framework.board.state.discard_pile
+                [discard_len_before..discard_len_after]
+                .iter()
+                .cloned()
+            {
                 let entry = DiscardHistoryEntry {
                     order: self.discard_history.len(),
                     player_idx: self.framework.current_player,
@@ -134,7 +155,8 @@ impl GameRunner {
         self.framework.cancel_action_session();
         self.framework.board.state = checkpoint.board_state;
         self.actions_remaining_in_turn = checkpoint.actions_remaining_in_turn;
-        self.discard_history.truncate(checkpoint.discard_history_len);
+        self.discard_history
+            .truncate(checkpoint.discard_history_len);
         self.turn_action_history.pop();
         Ok(())
     }
@@ -150,6 +172,17 @@ impl GameRunner {
     pub fn end_action_slot(&mut self) {
         if self.actions_remaining_in_turn > 0 {
             self.actions_remaining_in_turn -= 1;
+        }
+        self.draw_cards_for_player(self.framework.current_player);
+
+        let state = &self.framework.board.state;
+        if state.deck.is_empty()
+            && state.players[self.framework.current_player]
+                .hand
+                .cards
+                .is_empty()
+        {
+            self.actions_remaining_in_turn = 0;
         }
     }
 
@@ -201,13 +234,24 @@ impl GameRunner {
             .iter()
             .position(|p| *p == player_idx)
             .unwrap_or(0);
-        let next_turn_pos = (current_turn_pos + 1) % self.framework.board.state.turn_order.len();
-        let wrapped = next_turn_pos == 0;
+        let turn_order_len = self.framework.board.state.turn_order.len();
+        let mut next_turn_pos = current_turn_pos + 1;
+        if self.framework.board.state.deck.is_empty() {
+            while next_turn_pos < turn_order_len {
+                let candidate = self.framework.board.state.turn_order[next_turn_pos];
+                if !self.framework.board.state.players[candidate]
+                    .hand
+                    .cards
+                    .is_empty()
+                {
+                    break;
+                }
+                next_turn_pos += 1;
+            }
+        }
 
-        if wrapped {
+        if next_turn_pos >= turn_order_len {
             self.end_round();
-            // Turn order may have changed; start from the new first player
-            self.framework.current_player = self.framework.board.state.turn_order[0];
         } else {
             self.framework.current_player = self.framework.board.state.turn_order[next_turn_pos];
         }
@@ -216,44 +260,108 @@ impl GameRunner {
     pub fn end_round(&mut self) {
         self.round_in_phase += 1;
 
-        let num_players = self.framework.board.state.players.len();
-        for player_idx in 0..num_players {
-            self.resolve_income_shortfall_for_player(player_idx);
+        let era_ending = self.framework.board.state.deck.is_empty()
+            && self
+                .framework
+                .board
+                .state
+                .players
+                .iter()
+                .all(|player| player.hand.cards.is_empty());
+        let final_round = era_ending && self.game_phase == GamePhase::Railroad;
+
+        if !final_round {
+            let num_players = self.framework.board.state.players.len();
+            for player_idx in 0..num_players {
+                self.resolve_income_shortfall_for_player(player_idx);
+            }
         }
 
-        self.draw_cards_for_all_players();
         self.framework.board.turn_order_next();
+        for player in &mut self.framework.board.state.players {
+            player.spent_this_turn = 0;
+        }
         self.try_phase_transition();
+
+        if !self.is_game_finished() {
+            if let Some(first_player) =
+                self.framework
+                    .board
+                    .state
+                    .turn_order
+                    .iter()
+                    .copied()
+                    .find(|player_idx| {
+                        !self.framework.board.state.deck.is_empty()
+                            || !self.framework.board.state.players[*player_idx]
+                                .hand
+                                .cards
+                                .is_empty()
+                    })
+            {
+                self.framework.current_player = first_player;
+            }
+        }
     }
 
-    fn draw_cards_for_all_players(&mut self) {
+    fn draw_cards_for_player(&mut self, player_idx: usize) {
         let hand_limit = STARTING_HAND_SIZE as usize;
-        let num_players = self.framework.board.state.players.len();
-        for player_idx in 0..num_players {
-            let current_hand_size = self.framework.board.state.players[player_idx].hand.cards.len();
-            if current_hand_size < hand_limit {
-                let cards_needed = hand_limit - current_hand_size;
-                if !self.framework.board.state.deck.is_empty() {
-                    let drawn = self.framework.board.state.deck.draw_n(cards_needed);
-                    for card in drawn {
-                        self.framework.board.state.players[player_idx].hand.add_card(card);
-                    }
-                }
+        let current_hand_size = self.framework.board.state.players[player_idx]
+            .hand
+            .cards
+            .len();
+        if current_hand_size < hand_limit {
+            let cards_needed = hand_limit - current_hand_size;
+            let drawn = self.framework.board.state.deck.draw_n(cards_needed);
+            for card in drawn {
+                self.framework.board.state.players[player_idx]
+                    .hand
+                    .add_card(card);
             }
         }
     }
 
     fn try_phase_transition(&mut self) {
-        if self.game_phase == GamePhase::Canal && self.round_in_phase >= Self::rounds_per_era(self.framework.board.players().len()) {
+        let era_ending = self.framework.board.state.deck.is_empty()
+            && self
+                .framework
+                .board
+                .state
+                .players
+                .iter()
+                .all(|player| player.hand.cards.is_empty());
+        if !era_ending {
+            return;
+        }
+
+        if self.game_phase == GamePhase::Canal {
             self.game_phase = GamePhase::Railroad;
             self.framework.board.state.era = Era::Railroad;
             self.round_in_phase = 0;
             self.end_era();
-        } else if self.game_phase == GamePhase::Railroad
-            && self.round_in_phase >= Self::rounds_per_era(self.framework.board.players().len())
-        {
+            self.prepare_railroad_cards_and_merchants();
+        } else if self.game_phase == GamePhase::Railroad {
             self.game_phase = GamePhase::GameEnd;
             self.end_era();
+        }
+    }
+
+    fn prepare_railroad_cards_and_merchants(&mut self) {
+        let state = &mut self.framework.board.state;
+        state.trade_post_beer.clear();
+        for (slot_idx, merchant) in state.trade_post_slots.iter().enumerate() {
+            if merchant.as_ref().is_some_and(|tile| {
+                tile.tile_type != crate::market::merchants::MerchantTileType::Blank
+            }) {
+                state.trade_post_beer.insert(slot_idx);
+            }
+        }
+
+        let discarded_cards = std::mem::take(&mut state.discard_pile);
+        state.deck.reshuffle_with_cards(discarded_cards);
+        for player_idx in 0..state.players.len() {
+            let cards = state.deck.draw_n(STARTING_HAND_SIZE as usize);
+            state.players[player_idx].hand.cards = cards;
         }
     }
 
@@ -278,8 +386,13 @@ impl GameRunner {
                 for loc_idx in LINK_LOCATIONS[road_idx].locations.ones() {
                     let bl_set = LocationName::from_usize(loc_idx).to_bl_set();
                     for bl_idx in bl_set.ones() {
-                        if let Some(building) = state.bl_to_building.get(&bl_idx) {
-                            let data = &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
+                        if let Some(building) = state
+                            .bl_to_building
+                            .get(&bl_idx)
+                            .filter(|building| building.flipped)
+                        {
+                            let data = &INDUSTRY_MAT[building.industry as usize]
+                                [building.level.as_usize()];
                             road_vps += data.road_vp as u16;
                         }
                     }
@@ -329,15 +442,6 @@ impl GameRunner {
         }
     }
 
-    fn rounds_per_era(num_players: usize) -> u32 {
-        match num_players {
-            2 => 10,
-            3 => 9,
-            4 => 8,
-            _ => 8,
-        }
-    }
-
     pub fn resolve_income_shortfall_for_player(&mut self, player_idx: usize) {
         let player = &self.framework.board.state.players[player_idx];
         let income = player.get_income_amount(player.income_level);
@@ -349,7 +453,9 @@ impl GameRunner {
         let debt = income.unsigned_abs() as u16;
         if player.money >= debt {
             self.framework.board.state.players[player_idx].money =
-                self.framework.board.state.players[player_idx].money.saturating_sub(debt);
+                self.framework.board.state.players[player_idx]
+                    .money
+                    .saturating_sub(debt);
             return;
         }
 

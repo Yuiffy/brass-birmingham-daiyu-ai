@@ -7,15 +7,15 @@
 //! - Resource availability (coal requires connection, iron does not)
 //! - Era rules (Canal: 1 building per town, Railroad: unlimited)
 
-use crate::PlayerId;
 use crate::actions::build::BuildOption;
 use crate::board::resources::ResourceSource;
 use crate::board::BoardState;
-use crate::core::building::BuiltBuilding;
 use crate::consts::{BEER_BREWERY_1, BEER_BREWERY_2};
+use crate::core::building::BuiltBuilding;
 use crate::core::static_data::BUILD_LOCATION_MASK;
 use crate::core::types::*;
 use crate::locations::LocationName;
+use crate::PlayerId;
 
 // =============================================================================
 // Resource Context - Pre-computed resource availability for a build location
@@ -228,7 +228,7 @@ pub fn card_valid_for_lonely_brewery(card: &Card, industry: IndustryType) -> boo
     if industry != IndustryType::Beer {
         return true; // Only relevant for beer
     }
-    
+
     match &card.card_type {
         CardType::Industry(ind_set) => ind_set.contains(IndustryType::Beer as usize),
         CardType::WildIndustry => true,
@@ -254,7 +254,8 @@ pub fn get_build_locations_for_card(
         CardType::Industry(industry_set) => {
             if has_network {
                 // Build only in network locations that match the industry
-                let locations_in_network = board_state.players[player_idx].get_locations_in_network(board_state);
+                let locations_in_network =
+                    board_state.players[player_idx].get_locations_in_network(board_state);
                 for location in locations_in_network.ones() {
                     let bl_set = LocationName::from_usize(location).to_bl_set();
                     for bl_idx in bl_set.ones() {
@@ -283,7 +284,8 @@ pub fn get_build_locations_for_card(
         CardType::WildIndustry => {
             if has_network {
                 // Build only in network
-                let locations_in_network = board_state.players[player_idx].get_locations_in_network(board_state);
+                let locations_in_network =
+                    board_state.players[player_idx].get_locations_in_network(board_state);
                 for location in locations_in_network.ones() {
                     let bl_set = LocationName::from_usize(location).to_bl_set();
                     build_locations.union_with(&bl_set);
@@ -307,43 +309,51 @@ pub struct BuildValidator;
 impl BuildValidator {
     /// Check if a player can overbuild an existing building at a location
     pub fn can_overbuild(
-        board_state: &BoardState, 
-        old_building: &BuiltBuilding, 
-        player_idx: usize, 
-        industry: IndustryType
+        board_state: &BoardState,
+        old_building: &BuiltBuilding,
+        player_idx: usize,
+        industry: IndustryType,
     ) -> bool {
-        let level = board_state.players[player_idx].industry_mat.get_lowest_level(industry);
-        let building_data = board_state.players[player_idx].industry_mat.get_tile_for_industry(industry);
-        
+        let level = board_state.players[player_idx]
+            .industry_mat
+            .get_lowest_level(industry);
+        let building_data = board_state.players[player_idx]
+            .industry_mat
+            .get_tile_for_industry(industry);
+
         // No tiles available for this industry
         if building_data.is_none() {
             return false;
         }
-        
+
         // Must be same industry to overbuild
         if old_building.industry != industry {
-                return false; 
+            return false;
         }
-        
+
         // Must be higher level
         if old_building.level >= level {
             return false;
         }
-        
+
         // If it's our own building, can always overbuild with higher level
         if old_building.owner == PlayerId::from_usize(player_idx) {
             return true;
         }
-        
+
         // Opponent's building - can only overbuild coal/iron when ALL of that resource is depleted
         if !industry.is_market_resource() {
-            return false; 
+            return false;
         }
 
         // Check if market resource is depleted
         match industry {
-            IndustryType::Coal => board_state.remaining_market_coal == 0 && board_state.get_total_coal_on_board() == 0,
-            IndustryType::Iron => board_state.remaining_market_iron == 0 && board_state.get_total_iron_on_board() == 0,
+            IndustryType::Coal => {
+                board_state.remaining_market_coal == 0 && board_state.get_total_coal_on_board() == 0
+            }
+            IndustryType::Iron => {
+                board_state.remaining_market_iron == 0 && board_state.get_total_iron_on_board() == 0
+            }
             _ => false,
         }
     }
@@ -352,24 +362,26 @@ impl BuildValidator {
     pub fn get_buildable_industries(board_state: &BoardState, player_idx: usize) -> IndustrySet {
         let player = &board_state.players[player_idx];
         let mut valid_industries = IndustrySet::new();
-        
+
         for industry_idx in 0..N_INDUSTRIES {
             let industry = IndustryType::from_usize(industry_idx);
-            
+
             // Must have tiles left
             if !player.industry_mat.has_tiles_left(industry) {
                 continue;
             }
-            
+
             // Must be buildable in current era
-            let building_data = player.industry_mat.get_current_level_building_data(industry);
+            let building_data = player
+                .industry_mat
+                .get_current_level_building_data(industry);
             if !building_data.can_build_in_era(board_state.era) {
                 continue;
             }
-            
+
             valid_industries.insert(industry_idx);
         }
-        
+
         valid_industries
     }
 
@@ -392,7 +404,9 @@ impl BuildValidator {
             }
 
             let level = player.industry_mat.get_lowest_level(industry);
-            let building_data = player.industry_mat.get_current_level_building_data(industry);
+            let building_data = player
+                .industry_mat
+                .get_current_level_building_data(industry);
 
             // Skip if building can't be built in current era
             if !building_data.can_build_in_era(board_state.era) {
@@ -453,8 +467,7 @@ impl BuildValidator {
         let player = &board_state.players[player_idx];
 
         // Get locations this card allows for this industry
-        let potential_locations =
-            get_build_locations_for_card(board_state, player_idx, card);
+        let potential_locations = get_build_locations_for_card(board_state, player_idx, card);
 
         // No valid locations for this card/industry combo
         if potential_locations.is_clear() {
@@ -558,24 +571,26 @@ impl BuildValidator {
     /// Returns true if the player has at least one valid build option
     pub fn can_build(board_state: &BoardState, player_idx: usize) -> bool {
         let player = &board_state.players[player_idx];
-        
+
         // Quick check: player needs at least one card
         if player.hand.cards.is_empty() {
             return false;
         }
-        
+
         // Check if any industry is potentially buildable
         let buildable_industries = Self::get_buildable_industries(board_state, player_idx);
         if buildable_industries.is_clear() {
             return false;
         }
-        
+
         // Check if player can afford the cheapest available building
         let mut cheapest_affordable = false;
         for industry_idx in buildable_industries.ones() {
             let industry = IndustryType::from_usize(industry_idx);
-            let building_data = player.industry_mat.get_current_level_building_data(industry);
-            
+            let building_data = player
+                .industry_mat
+                .get_current_level_building_data(industry);
+
             // For quick check, just verify base money cost
             // Resource costs are checked more thoroughly in get_valid_build_options
             if player.can_afford(building_data.money_cost) {
@@ -583,15 +598,15 @@ impl BuildValidator {
                 break;
             }
         }
-        
+
         if !cheapest_affordable {
             return false;
         }
-        
+
         // Do the full check - this is more expensive but accurate
         !Self::get_valid_build_options(board_state, player_idx).is_empty()
     }
-    
+
     /// Quick check if player has any potentially buildable industries
     /// This is a fast check that doesn't account for all constraints (cards, locations, resources)
     pub fn has_buildable_industries(board_state: &BoardState, player_idx: usize) -> bool {
@@ -604,7 +619,7 @@ impl BuildValidator {
 // =============================================================================
 
 /// Check if a player can build anything given their current state
-/// 
+///
 /// This considers:
 /// - Player's hand (must have at least one card)
 /// - Player's industry mat (lowest level buildings available in current era)
@@ -622,7 +637,7 @@ pub fn player_can_build_anything(board_state: &BoardState, player_idx: usize) ->
 ///
 /// This is the comprehensive validation function that returns all possible
 /// build actions a player can take given the current board state.
-/// 
+///
 /// Each BuildOption contains:
 /// - Which industry to build
 /// - Where to build it
@@ -661,8 +676,9 @@ mod tests {
 
         // Player has no buildings or roads (no network)
         // Give them a Coal industry card - Coal Level 1 requires no resources!
-        board.state.players[player_idx].hand.cards =
-            vec![Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Coal])))];
+        board.state.players[player_idx].hand.cards = vec![Card::new(CardType::Industry(
+            IndustrySet::new_from_industry_types(&[IndustryType::Coal]),
+        ))];
         board.state.players[player_idx].money = 100; // Plenty of money
 
         let options = BuildValidator::get_valid_build_options(&board.state, player_idx);
@@ -708,8 +724,9 @@ mod tests {
         board.state.connectivity.add_road(link_idx);
 
         // Give player a Goods industry card
-        board.state.players[player_idx].hand.cards =
-            vec![Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Goods])))];
+        board.state.players[player_idx].hand.cards = vec![Card::new(CardType::Industry(
+            IndustrySet::new_from_industry_types(&[IndustryType::Goods]),
+        ))];
         board.state.players[player_idx].money = 100;
 
         let options = BuildValidator::get_valid_build_options(&board.state, player_idx);
@@ -788,8 +805,9 @@ mod tests {
         board.state.coal_locations.insert(coal_loc);
 
         // Give player an Iron industry card and enough money
-        board.state.players[player_idx].hand.cards =
-            vec![Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Iron])))];
+        board.state.players[player_idx].hand.cards = vec![Card::new(CardType::Industry(
+            IndustrySet::new_from_industry_types(&[IndustryType::Iron]),
+        ))];
         board.state.players[player_idx].money = 20;
 
         // Empty the market so coal can only come from mines
@@ -849,8 +867,9 @@ mod tests {
         board.state.iron_locations.insert(iron_loc);
 
         // Give player a Beer industry card (Beer needs iron)
-        board.state.players[player_idx].hand.cards =
-            vec![Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Beer])))];
+        board.state.players[player_idx].hand.cards = vec![Card::new(CardType::Industry(
+            IndustrySet::new_from_industry_types(&[IndustryType::Beer]),
+        ))];
         board.state.players[player_idx].money = 20;
 
         // Empty market so iron can only come from the iron works
@@ -1026,8 +1045,9 @@ mod tests {
         board.state.remaining_market_coal = 2; // Low but available
 
         // Give player an Iron industry card
-        board.state.players[player_idx].hand.cards =
-            vec![Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Iron])))];
+        board.state.players[player_idx].hand.cards = vec![Card::new(CardType::Industry(
+            IndustrySet::new_from_industry_types(&[IndustryType::Iron]),
+        ))];
 
         // Player has exactly enough: building_cost + market_coal_price = 6 + 1 = 7
         // But if building needs 2 coal and mine only has 1, need to check affordability

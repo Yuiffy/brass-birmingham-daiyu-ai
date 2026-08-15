@@ -1,13 +1,16 @@
-use std::collections::VecDeque;
-use std::collections::HashMap;
-use crate::consts::{NUM_TRADE_POSTS, N_BL, N_LOCATIONS, TWO_RAILROAD_PRICE};
-use crate::core::types::{Era as GameEra, ActionType, NextActionChoiceKind, IndustryType, ResourceType};
+use crate::actions::{
+    BuildOption, DoubleRailroadSecondLinkOption, SellChoice, SellOption, SingleRailroadOption,
+};
+use crate::board::resources::{BeerSellSource, BreweryBeerSource, ResourceSource};
 use crate::board::Board;
-use crate::board::resources::{BeerSellSource, ResourceSource, BreweryBeerSource};
-use crate::actions::{SellOption, BuildOption, SellChoice, SingleRailroadOption, DoubleRailroadSecondLinkOption};
+use crate::consts::{NUM_TRADE_POSTS, N_BL, N_LOCATIONS, TWO_RAILROAD_PRICE};
+use crate::core::types::{
+    ActionType, Era as GameEra, IndustryType, NextActionChoiceKind, ResourceType,
+};
+use crate::merchants::{slot_to_trade_post, MerchantTile, TradePostBonus, TRADE_POST_TO_BONUS};
 use fixedbitset::FixedBitSet;
-use crate::merchants::{MerchantTile, slot_to_trade_post, TRADE_POST_TO_BONUS, TradePostBonus};
-
+use std::collections::HashMap;
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct GameFramework {
@@ -23,13 +26,13 @@ pub struct ActionValidationResult {
     pub build_options: Option<Vec<BuildOption>>,
     pub sell_options: Option<Vec<SellOption>>,
     pub dev_options: Option<FixedBitSet>, // Industries player *can* develop (has tiles, tile is developable)
-    pub can_loan: bool, // Added for loan check
-    pub can_scout: bool, // Added for scout check
+    pub can_loan: bool,                   // Added for loan check
+    pub can_scout: bool,                  // Added for scout check
     // Network action options
     pub canal_options: Option<Vec<usize>>, // Vec of road_idx for canal
     pub single_rail_options: Option<Vec<SingleRailroadOption>>,
     pub double_rail_first_link_options: Option<Vec<SingleRailroadOption>>,
-    // can_build_double_rail could be a bool here if pre-checked, 
+    // can_build_double_rail could be a bool here if pre-checked,
     // or derived from double_rail_first_link_options not being empty.
 }
 
@@ -42,23 +45,23 @@ pub struct ActionContext {
     pub initial_build_options: Option<Vec<BuildOption>>,
     pub current_filtered_build_options: Vec<BuildOption>,
     // Card related (used by Build, Scout, and as general action cost)
-    pub selected_card_idx: Option<usize>, 
+    pub selected_card_idx: Option<usize>,
     // Scout specific
-    pub scout_additional_discard_indices: Vec<usize>, 
+    pub scout_additional_discard_indices: Vec<usize>,
     // Sell related
     pub initial_sell_options: Option<Vec<SellOption>>,
     pub current_filtered_sell_options: Vec<SellOption>,
-    pub current_sell_choices: Vec<SellChoice>, 
-    pub pending_sell_building_loc: Option<usize>, 
+    pub current_sell_choices: Vec<SellChoice>,
+    pub pending_sell_building_loc: Option<usize>,
     pub available_beer_for_pending_sell: Vec<BeerSellSource>,
-    pub temp_merchant_beer_consumed_slots: FixedBitSet, 
-    pub temp_brewery_beer_consumed: HashMap<usize, u8>, 
+    pub temp_merchant_beer_consumed_slots: FixedBitSet,
+    pub temp_brewery_beer_consumed: HashMap<usize, u8>,
     // Develop related
     pub initial_dev_options: Option<FixedBitSet>,
     pub free_development_choice: Option<IndustryType>, // Also for 2nd develop target
     // Network related (BuildRailroad ActionType covers Canal, Single Rail, Double Rail)
-    pub selected_road_idx: Option<usize>,           // First/canal/single rail link
-    pub selected_second_road_idx: Option<usize>,    // Second rail link for double
+    pub selected_road_idx: Option<usize>, // First/canal/single rail link
+    pub selected_second_road_idx: Option<usize>, // Second rail link for double
     pub selected_network_mode: Option<NetworkMode>,
     pub initial_canal_options: Option<Vec<usize>>,
     pub initial_single_rail_options: Option<Vec<SingleRailroadOption>>,
@@ -86,8 +89,8 @@ pub struct ActionContext {
 impl ActionContext {
     pub fn new(
         action_type: ActionType,
-        player_idx: usize, 
-        validation_result: &ActionValidationResult, 
+        player_idx: usize,
+        validation_result: &ActionValidationResult,
         board: &Board,
     ) -> Self {
         let mut choices_needed = VecDeque::new();
@@ -105,9 +108,12 @@ impl ActionContext {
         // if the action isn't Build (where card choice is part of location/industry)
         // or Scout (handles its own main card flow).
         let needs_generic_card_first = match action_type {
-            ActionType::Develop | ActionType::DevelopDouble |
-            ActionType::Loan | ActionType::Pass | ActionType::BuildRailroad | ActionType::BuildDoubleRailroad =>
-                !board.players()[player_idx].hand.cards.is_empty(),
+            ActionType::Develop
+            | ActionType::DevelopDouble
+            | ActionType::Loan
+            | ActionType::Pass
+            | ActionType::BuildRailroad
+            | ActionType::BuildDoubleRailroad => !board.players()[player_idx].hand.cards.is_empty(),
             _ => false,
         };
 
@@ -116,48 +122,57 @@ impl ActionContext {
         }
 
         match action_type {
-            ActionType::BuildBuilding => { 
+            ActionType::BuildBuilding => {
                 if let Some(options) = &validation_result.build_options {
-                    initial_build_options = Some(options.clone()); 
-                    current_filtered_build_options = options.clone(); 
-                    if !current_filtered_build_options.is_empty() { choices_needed.push_back(NextActionChoiceKind::ChooseIndustry); }
+                    initial_build_options = Some(options.clone());
+                    current_filtered_build_options = options.clone();
+                    if !current_filtered_build_options.is_empty() {
+                        choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
+                    }
                 }
             }
-            ActionType::Sell => { /* No upfront card choice, card is discarded as generic cost if not chosen first */ 
-                if !board.players()[player_idx].hand.cards.is_empty() && choices_needed.is_empty() { // If no other choice, add card choice first
-                     choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+            ActionType::Sell => {
+                /* No upfront card choice, card is discarded as generic cost if not chosen first */
+                if !board.players()[player_idx].hand.cards.is_empty() && choices_needed.is_empty() {
+                    // If no other choice, add card choice first
+                    choices_needed.push_back(NextActionChoiceKind::ChooseCard);
                 }
                 if let Some(options) = &validation_result.sell_options {
                     initial_sell_options = Some(options.clone());
                     current_filtered_sell_options = options.clone();
-                    if !current_filtered_sell_options.is_empty() { choices_needed.push_back(NextActionChoiceKind::ChooseSellTargets); }
+                    if !current_filtered_sell_options.is_empty() {
+                        choices_needed.push_back(NextActionChoiceKind::ChooseSellTargets);
+                    }
                 }
             }
             ActionType::Develop => {
                 if let Some(options) = &validation_result.dev_options {
-                    if options.count_ones(..) > 0 { 
+                    if options.count_ones(..) > 0 {
                         initial_dev_options = Some(options.clone());
                         choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
                     }
                 }
             }
             ActionType::DevelopDouble => {
-                 if let Some(options) = &validation_result.dev_options {
-                     let can_afford_double_dev_iron = board.players()[player_idx].can_afford(board.get_iron_price(2)) || 
-                                                   board.iron_locations().ones().filter_map(|loc| board.bl_to_building().get(&loc)).filter(|b| !b.flipped).map(|b| b.resource_amt).sum::<u8>() >= 2;
-                     if options.count_ones(..) >= 2 && can_afford_double_dev_iron {
+                if let Some(options) = &validation_result.dev_options {
+                    let can_afford_double_dev_iron = board.can_source_iron(player_idx, 2);
+                    if options.count_ones(..) >= 2 && can_afford_double_dev_iron {
                         initial_dev_options = Some(options.clone());
                         choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
-                     }
-                 }
+                    }
+                }
             }
-            ActionType::Loan => { 
-                if validation_result.can_loan && !board.players()[player_idx].hand.cards.is_empty() {
+            ActionType::Loan => {
+                if validation_result.can_loan && !board.players()[player_idx].hand.cards.is_empty()
+                {
                     choices_needed.push_back(NextActionChoiceKind::ChooseCard);
                 }
             }
-            ActionType::Scout => { // Scout handles its first card selection internally as part of its 3 discards
-                if validation_result.can_scout { choices_needed.push_back(NextActionChoiceKind::ChooseCard); } // This is for the *first* of 3 cards.
+            ActionType::Scout => {
+                // Scout handles its first card selection internally as part of its 3 discards
+                if validation_result.can_scout {
+                    choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                } // This is for the *first* of 3 cards.
             }
             ActionType::Pass => {
                 if !board.players()[player_idx].hand.cards.is_empty() {
@@ -167,20 +182,32 @@ impl ActionContext {
             ActionType::BuildRailroad => {
                 initial_canal_options = validation_result.canal_options.clone();
                 initial_single_rail_options = validation_result.single_rail_options.clone();
-                initial_double_rail_first_link_options = validation_result.double_rail_first_link_options.clone();
+                initial_double_rail_first_link_options =
+                    validation_result.double_rail_first_link_options.clone();
                 if board.era() == GameEra::Canal {
-                    if initial_canal_options.as_ref().map_or(false, |v| !v.is_empty()) {
-                        choices_needed.push_back(NextActionChoiceKind::ChooseRoad); 
+                    if initial_canal_options
+                        .as_ref()
+                        .map_or(false, |v| !v.is_empty())
+                    {
+                        choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
                     }
                 } else {
-                    if initial_single_rail_options.as_ref().map_or(false, |v| !v.is_empty()) {
-                        choices_needed.push_back(NextActionChoiceKind::ChooseRoad); 
+                    if initial_single_rail_options
+                        .as_ref()
+                        .map_or(false, |v| !v.is_empty())
+                    {
+                        choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
                     }
                 }
             }
             ActionType::BuildDoubleRailroad => {
-                initial_double_rail_first_link_options = validation_result.double_rail_first_link_options.clone();
-                if initial_double_rail_first_link_options.as_ref().map_or(false, |v| !v.is_empty()) && board.era() == GameEra::Railroad {
+                initial_double_rail_first_link_options =
+                    validation_result.double_rail_first_link_options.clone();
+                if initial_double_rail_first_link_options
+                    .as_ref()
+                    .map_or(false, |v| !v.is_empty())
+                    && board.era() == GameEra::Railroad
+                {
                     choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
                 }
             }
@@ -195,7 +222,7 @@ impl ActionContext {
                 choices_needed.push_back(NextActionChoiceKind::Confirm);
             }
         }
-        // If ChooseCard was added and it's the only item, and then nothing else was added, 
+        // If ChooseCard was added and it's the only item, and then nothing else was added,
         // this default Confirm is fine as update_next_step will handle after card choice.
 
         Self {
@@ -204,31 +231,31 @@ impl ActionContext {
             selected_card_idx: None,
             scout_additional_discard_indices: Vec::new(),
             selected_build_location: None,
-            selected_road_idx: None, 
-            selected_second_road_idx: None, 
+            selected_road_idx: None,
+            selected_second_road_idx: None,
             selected_network_mode: None,
-            chosen_coal_sources: vec![], 
+            chosen_coal_sources: vec![],
             chosen_iron_sources: vec![],
-            chosen_beer_sources: vec![], 
-            chosen_action_beer_source: None, 
+            chosen_beer_sources: vec![],
+            chosen_action_beer_source: None,
             selected_merchant_tile: None,
             choices_needed,
             current_sell_choices: Vec::new(),
             pending_sell_building_loc: None,
             available_beer_for_pending_sell: Vec::new(),
-            free_development_choice: None, 
-            temp_merchant_beer_consumed_slots: FixedBitSet::with_capacity(NUM_TRADE_POSTS * 2), 
+            free_development_choice: None,
+            temp_merchant_beer_consumed_slots: FixedBitSet::with_capacity(NUM_TRADE_POSTS * 2),
             temp_brewery_beer_consumed: HashMap::new(),
-            initial_build_options, 
-            initial_sell_options,  
-            initial_dev_options, 
+            initial_build_options,
+            initial_sell_options,
+            initial_dev_options,
             initial_canal_options,
             initial_single_rail_options,
             initial_double_rail_first_link_options,
             available_coal_for_road1: Vec::new(),
             available_coal_for_road2: Vec::new(),
             available_beer_for_double_rail: Vec::new(),
-            current_filtered_sell_options, 
+            current_filtered_sell_options,
             current_filtered_build_options,
             available_iron_sources: Vec::new(),
             available_second_link_options_full_data: Vec::new(),
@@ -247,8 +274,246 @@ impl GameFramework {
     ) -> Vec<ResourceSource> {
         options
             .and_then(|opts| opts.iter().find(|opt| opt.road_idx == road_idx))
-            .map(|opt| opt.potential_coal_sources.ones().map(ResourceSource::from).collect())
+            .map(|opt| {
+                opt.potential_coal_sources
+                    .ones()
+                    .map(ResourceSource::from)
+                    .collect()
+            })
             .unwrap_or_default()
+    }
+
+    fn viable_first_coal_sources_for_double_rail(
+        board: &Board,
+        player_idx: usize,
+        road_idx: usize,
+        options: Option<&Vec<SingleRailroadOption>>,
+    ) -> Vec<ResourceSource> {
+        Self::coal_sources_for_rail_road(options, road_idx)
+            .into_iter()
+            .filter(|coal_source| {
+                let mut money_after_first_link = board.players()[player_idx]
+                    .money
+                    .saturating_sub(TWO_RAILROAD_PRICE);
+                if matches!(coal_source, ResourceSource::Market) {
+                    money_after_first_link =
+                        money_after_first_link.saturating_sub(board.get_coal_price(1));
+                }
+                !board
+                    .get_options_for_second_rail_link(
+                        player_idx,
+                        road_idx,
+                        coal_source,
+                        money_after_first_link,
+                    )
+                    .is_empty()
+            })
+            .collect()
+    }
+
+    fn viable_first_roads_for_double_rail(
+        board: &Board,
+        player_idx: usize,
+        options: Option<&Vec<SingleRailroadOption>>,
+    ) -> Vec<usize> {
+        options
+            .into_iter()
+            .flatten()
+            .filter(|option| {
+                !Self::viable_first_coal_sources_for_double_rail(
+                    board,
+                    player_idx,
+                    option.road_idx,
+                    options,
+                )
+                .is_empty()
+            })
+            .map(|option| option.road_idx)
+            .collect()
+    }
+
+    fn selected_iron_capacity(board: &Board, sources: &[ResourceSource]) -> u8 {
+        let mut seen = Vec::<ResourceSource>::new();
+        let mut capacity = 0_u8;
+        for source in sources {
+            if seen.contains(source) {
+                continue;
+            }
+            seen.push(*source);
+            match source {
+                ResourceSource::Market => return u8::MAX,
+                ResourceSource::Building(location) => {
+                    if let Some(building) =
+                        board.bl_to_building().get(location).filter(|building| {
+                            building.industry == IndustryType::Iron && !building.flipped
+                        })
+                    {
+                        capacity = capacity.saturating_add(building.resource_amt);
+                    }
+                }
+            }
+        }
+        capacity
+    }
+
+    fn selected_coal_capacity(board: &Board, sources: &[ResourceSource]) -> u8 {
+        let mut seen = Vec::<ResourceSource>::new();
+        let mut capacity = 0_u8;
+        for source in sources {
+            if seen.contains(source) {
+                continue;
+            }
+            seen.push(*source);
+            match source {
+                ResourceSource::Market => return u8::MAX,
+                ResourceSource::Building(location) => {
+                    if let Some(building) =
+                        board.bl_to_building().get(location).filter(|building| {
+                            building.industry == IndustryType::Coal && !building.flipped
+                        })
+                    {
+                        capacity = capacity.saturating_add(building.resource_amt);
+                    }
+                }
+            }
+        }
+        capacity
+    }
+
+    fn available_build_coal_sources_for_selection(
+        board: &Board,
+        plan: &[ResourceSource],
+        selected: &[ResourceSource],
+        needed: u8,
+    ) -> Vec<ResourceSource> {
+        if Self::selected_coal_capacity(board, selected) >= needed {
+            return Vec::new();
+        }
+
+        let mut buildings = plan
+            .iter()
+            .copied()
+            .filter(|source| matches!(source, ResourceSource::Building(_)))
+            .filter(|source| !selected.contains(source))
+            .collect::<Vec<_>>();
+        if !buildings.is_empty() {
+            buildings.sort_unstable();
+            buildings.dedup();
+            return buildings;
+        }
+
+        if plan.contains(&ResourceSource::Market) && !selected.contains(&ResourceSource::Market) {
+            vec![ResourceSource::Market]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn available_iron_sources_for_selection(
+        board: &Board,
+        player_idx: usize,
+        selected: &[ResourceSource],
+        needed: u8,
+    ) -> Vec<ResourceSource> {
+        let selected_capacity = Self::selected_iron_capacity(board, selected);
+        if selected_capacity >= needed || selected.contains(&ResourceSource::Market) {
+            return Vec::new();
+        }
+
+        let mut buildings = board
+            .iron_locations()
+            .ones()
+            .filter_map(|location| {
+                let source = ResourceSource::Building(location);
+                if selected.contains(&source) {
+                    return None;
+                }
+                board
+                    .bl_to_building()
+                    .get(&location)
+                    .filter(|building| !building.flipped && building.resource_amt > 0)
+                    .map(|_| source)
+            })
+            .collect::<Vec<_>>();
+        if !buildings.is_empty() {
+            buildings.sort_unstable();
+            return buildings;
+        }
+
+        let market_needed = needed.saturating_sub(selected_capacity);
+        if board.players()[player_idx].can_afford(board.get_iron_price(market_needed)) {
+            vec![ResourceSource::Market]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn available_beer_units_for_sell(
+        board: &Board,
+        option: &SellOption,
+        consumed_merchants: &FixedBitSet,
+        consumed_breweries: &HashMap<usize, u8>,
+    ) -> u8 {
+        let mut available = 0_u8;
+        for source_idx in option.beer_locations.ones() {
+            if source_idx >= N_BL {
+                let merchant_slot = source_idx - N_BL;
+                if board.trade_post_beer().contains(merchant_slot)
+                    && !consumed_merchants.contains(merchant_slot)
+                {
+                    available += 1;
+                }
+            } else if let Some(building) = board.bl_to_building().get(&source_idx) {
+                let reserved = consumed_breweries.get(&source_idx).copied().unwrap_or(0);
+                available =
+                    available.saturating_add(building.resource_amt.saturating_sub(reserved));
+            }
+        }
+        available
+    }
+
+    fn retain_currently_sellable_options(board: &Board, ctx: &mut ActionContext) {
+        let consumed_merchants = ctx.temp_merchant_beer_consumed_slots.clone();
+        let consumed_breweries = ctx.temp_brewery_beer_consumed.clone();
+        ctx.current_filtered_sell_options.retain(|option| {
+            let beer_needed = board
+                .get_tile_at_loc(option.location)
+                .map_or(0, |data| data.beer_needed);
+            beer_needed == 0
+                || Self::available_beer_units_for_sell(
+                    board,
+                    option,
+                    &consumed_merchants,
+                    &consumed_breweries,
+                ) >= beer_needed
+        });
+    }
+
+    fn remove_incomplete_sell_choice(ctx: &mut ActionContext, location: usize) {
+        let Some(choice_idx) = ctx
+            .current_sell_choices
+            .iter()
+            .position(|choice| choice.location == location)
+        else {
+            return;
+        };
+        let choice = ctx.current_sell_choices.remove(choice_idx);
+        for source in choice.beer_sources {
+            match source {
+                BeerSellSource::Building(source_location) => {
+                    if let Some(reserved) = ctx.temp_brewery_beer_consumed.get_mut(&source_location)
+                    {
+                        *reserved = reserved.saturating_sub(1);
+                        if *reserved == 0 {
+                            ctx.temp_brewery_beer_consumed.remove(&source_location);
+                        }
+                    }
+                }
+                BeerSellSource::TradePost(slot_idx) => {
+                    ctx.temp_merchant_beer_consumed_slots.set(slot_idx, false);
+                }
+            }
+        }
     }
 
     pub fn new(board: Board, current_player: usize) -> Self {
@@ -263,14 +528,18 @@ impl GameFramework {
     pub fn compute_valid_options(&self) -> ActionValidationResult {
         let player_idx = self.current_player;
         let mut result = ActionValidationResult::default();
-        
+
         // Build, Sell, Dev options
         let build_opts = self.board.get_valid_build_options(player_idx);
-        if !build_opts.is_empty() { result.build_options = Some(build_opts); }
-        
+        if !build_opts.is_empty() {
+            result.build_options = Some(build_opts);
+        }
+
         let sell_opts = self.board.get_valid_sell_options(player_idx);
-        if !sell_opts.is_empty() { result.sell_options = Some(sell_opts); }
-        
+        if !sell_opts.is_empty() {
+            result.sell_options = Some(sell_opts);
+        }
+
         result.dev_options = Some(self.board.get_valid_development_options(player_idx));
         result.can_loan = self.board.can_take_loan(player_idx);
         result.can_scout = self.board.can_scout(player_idx);
@@ -278,27 +547,34 @@ impl GameFramework {
         // Populate network options based on era
         if self.board.era() == GameEra::Canal {
             let canal_opts = self.board.get_valid_canal_options(player_idx);
-            if !canal_opts.is_empty() { 
-                result.canal_options = Some(canal_opts); 
+            if !canal_opts.is_empty() {
+                result.canal_options = Some(canal_opts);
             }
-        } else { // Rail Era
+        } else {
+            // Rail Era
             let single_rail_opts = self.board.get_valid_single_rail_options(player_idx);
-            if !single_rail_opts.is_empty() { 
-                result.single_rail_options = Some(single_rail_opts); 
+            if !single_rail_opts.is_empty() {
+                result.single_rail_options = Some(single_rail_opts);
             }
-            
+
             // Double rail first link options depend on overall ability to perform double rail
-            if self.board.can_double_railroad(player_idx) { // Assumes can_double_railroad checks affordability, beer, etc.
-                let double_rail_first_opts = self.board.get_valid_double_rail_first_link_options(player_idx);
-                if !double_rail_first_opts.is_empty() { 
-                    result.double_rail_first_link_options = Some(double_rail_first_opts); 
+            if self.board.can_double_railroad(player_idx) {
+                // Assumes can_double_railroad checks affordability, beer, etc.
+                let double_rail_first_opts = self
+                    .board
+                    .get_valid_double_rail_first_link_options(player_idx);
+                if !double_rail_first_opts.is_empty() {
+                    result.double_rail_first_link_options = Some(double_rail_first_opts);
                 }
             }
         }
         result
     }
 
-    pub fn get_valid_action_types(&self, validation_result: &ActionValidationResult) -> Vec<ActionType> {
+    pub fn get_valid_action_types(
+        &self,
+        validation_result: &ActionValidationResult,
+    ) -> Vec<ActionType> {
         let player_idx = self.current_player;
         let mut valid_actions: Vec<ActionType> = Vec::new();
         let has_card_to_discard = !self.board.players()[player_idx].hand.cards.is_empty();
@@ -308,44 +584,69 @@ impl GameFramework {
             return valid_actions;
         }
 
-        if validation_result.build_options.as_ref().map_or(false, |v| !v.is_empty()) { 
-            valid_actions.push(ActionType::BuildBuilding); 
+        if validation_result
+            .build_options
+            .as_ref()
+            .map_or(false, |v| !v.is_empty())
+        {
+            valid_actions.push(ActionType::BuildBuilding);
         }
-        if validation_result.sell_options.as_ref().map_or(false, |v| !v.is_empty()) { 
-            valid_actions.push(ActionType::Sell); 
+        if validation_result
+            .sell_options
+            .as_ref()
+            .map_or(false, |v| !v.is_empty())
+        {
+            valid_actions.push(ActionType::Sell);
         }
         if let Some(dev_options) = &validation_result.dev_options {
             if dev_options.count_ones(..) > 0 {
                 valid_actions.push(ActionType::Develop);
                 // DevelopDouble check
-                let can_afford_double_dev_iron = self.board.players()[player_idx].can_afford(self.board.get_iron_price(2)) || 
-                                                 self.board.iron_locations().ones().filter_map(|loc| self.board.bl_to_building().get(&loc)).filter(|b| !b.flipped).map(|b| b.resource_amt).sum::<u8>() >= 2;
+                let can_afford_double_dev_iron = self.board.can_source_iron(player_idx, 2);
                 if dev_options.count_ones(..) >= 2 && can_afford_double_dev_iron {
                     valid_actions.push(ActionType::DevelopDouble);
                 }
             }
         }
-        if validation_result.can_loan { valid_actions.push(ActionType::Loan); }
-        if validation_result.can_scout { valid_actions.push(ActionType::Scout); }
+        if validation_result.can_loan {
+            valid_actions.push(ActionType::Loan);
+        }
+        if validation_result.can_scout {
+            valid_actions.push(ActionType::Scout);
+        }
 
         // Check for Network Action (BuildRailroad is the generic type)
-        if validation_result.canal_options.as_ref().map_or(false, |v| !v.is_empty()) || 
-           validation_result.single_rail_options.as_ref().map_or(false, |v| !v.is_empty()) || 
-           validation_result.double_rail_first_link_options.as_ref().map_or(false, |v| !v.is_empty()) {
+        if validation_result
+            .canal_options
+            .as_ref()
+            .map_or(false, |v| !v.is_empty())
+            || validation_result
+                .single_rail_options
+                .as_ref()
+                .map_or(false, |v| !v.is_empty())
+            || validation_result
+                .double_rail_first_link_options
+                .as_ref()
+                .map_or(false, |v| !v.is_empty())
+        {
             valid_actions.push(ActionType::BuildRailroad);
         }
-        
+
         valid_actions.push(ActionType::Pass);
         valid_actions
     }
 
     // Modified to accept ActionValidationResult
-    pub fn start_action(&mut self, action_type: ActionType, validation_result: ActionValidationResult) {
+    pub fn start_action(
+        &mut self,
+        action_type: ActionType,
+        validation_result: ActionValidationResult,
+    ) {
         self.action_context = Some(ActionContext::new(
             action_type,
-            self.current_player, 
+            self.current_player,
             &validation_result, // Pass by reference
-            &self.board, // Pass board reference
+            &self.board,        // Pass board reference
         ));
     }
 
@@ -371,7 +672,7 @@ impl GameFramework {
                     }
                 }
                 Some(NextActionChoiceKind::ChooseFreeDevelopment) => {
-                     // This is for the Sell action's bonus development.
+                    // This is for the Sell action's bonus development.
                     ctx.free_development_choice = Some(industry);
                 }
                 _ => {
@@ -415,7 +716,8 @@ impl GameFramework {
             match ctx.action_type {
                 ActionType::Scout => {
                     if ctx.selected_card_idx.is_none() {
-                        if resolved_idx < self.board.players()[self.current_player].hand.cards.len() {
+                        if resolved_idx < self.board.players()[self.current_player].hand.cards.len()
+                        {
                             ctx.selected_card_idx = Some(resolved_idx);
                         } else {
                             if self.replay_mode {
@@ -431,15 +733,17 @@ impl GameFramework {
                             }
                         }
                     } else if ctx.scout_additional_discard_indices.len() < 2 {
-                        if resolved_idx < self.board.players()[self.current_player].hand.cards.len() &&
-                           Some(resolved_idx) != ctx.selected_card_idx &&
-                           !ctx.scout_additional_discard_indices.contains(&resolved_idx) {
+                        if resolved_idx < self.board.players()[self.current_player].hand.cards.len()
+                            && Some(resolved_idx) != ctx.selected_card_idx
+                            && !ctx.scout_additional_discard_indices.contains(&resolved_idx)
+                        {
                             ctx.scout_additional_discard_indices.push(resolved_idx);
                         } else {
                             if self.replay_mode {
-                                if let Some(fallback) = (0..hand_len)
-                                    .find(|i| Some(*i) != ctx.selected_card_idx &&
-                                        !ctx.scout_additional_discard_indices.contains(i)) {
+                                if let Some(fallback) = (0..hand_len).find(|i| {
+                                    Some(*i) != ctx.selected_card_idx
+                                        && !ctx.scout_additional_discard_indices.contains(i)
+                                }) {
                                     ctx.scout_additional_discard_indices.push(fallback);
                                 } else {
                                     eprintln!("Replay: Invalid or duplicate card index for Scout additional discard.");
@@ -452,7 +756,7 @@ impl GameFramework {
                         }
                     }
                 }
-                _ => { 
+                _ => {
                     ctx.selected_card_idx = Some(resolved_idx);
                 }
             }
@@ -465,7 +769,7 @@ impl GameFramework {
             self.update_next_step();
         }
     }
-     pub fn choose_road(&mut self, road_idx: usize) {
+    pub fn choose_road(&mut self, road_idx: usize) {
         if let Some(ctx) = self.action_context.as_mut() {
             if ctx.selected_road_idx.is_none() {
                 ctx.selected_road_idx = Some(road_idx);
@@ -486,7 +790,10 @@ impl GameFramework {
     pub fn choose_beer_source(&mut self, beer_source: BeerSellSource) {
         if let Some(ctx) = self.action_context.as_mut() {
             if let Some(pending_loc) = ctx.pending_sell_building_loc {
-                let choice = ctx.current_sell_choices.iter_mut().find(|sc| sc.location == pending_loc);
+                let choice = ctx
+                    .current_sell_choices
+                    .iter_mut()
+                    .find(|sc| sc.location == pending_loc);
                 if let Some(existing_choice) = choice {
                     existing_choice.beer_sources.push(beer_source);
                 } else {
@@ -506,7 +813,11 @@ impl GameFramework {
             self.update_next_step();
         }
     }
-     pub fn choose_resource_source(&mut self, resource_source: ResourceSource, resource_type: ResourceType) {
+    pub fn choose_resource_source(
+        &mut self,
+        resource_source: ResourceSource,
+        resource_type: ResourceType,
+    ) {
         // resource_type is a new enum: enum ResourceType { Coal, Iron }
         // This needs to be defined, probably in consts.rs
         if let Some(ctx) = self.action_context.as_mut() {
@@ -518,33 +829,44 @@ impl GameFramework {
         }
     }
 
-     pub fn choose_confirm(&mut self) -> Result<(), String> { 
-        if let Some(ctx) = self.action_context.take() { 
+    pub fn choose_confirm(&mut self) -> Result<(), String> {
+        if let Some(ctx) = self.action_context.take() {
             // Common: All actions (except potentially special cases) require a card to be discarded.
             // The specific card might be chosen as part of the action (Build) or any card (Network, Develop, etc.).
             // This discard logic is currently handled in GameRunner after action completion for Pass.
             // For actions that *use* a specific card (Build), ctx.selected_card_idx is vital.
-            // For actions that just need *a* discard (Network, Develop, Loan, Scout's main card), 
+            // For actions that just need *a* discard (Network, Develop, Loan, Scout's main card),
             // selected_card_idx should also be set.
             // Scout has additional discards handled by its board.scout_action.
 
             // Ensure a card is selected for discard for all actions.
             if ctx.selected_card_idx.is_none() {
-                return Err(format!("action {:?} confirmed without selecting card", ctx.action_type));
+                return Err(format!(
+                    "action {:?} confirmed without selecting card",
+                    ctx.action_type
+                ));
             }
 
             match ctx.action_type {
                 ActionType::BuildBuilding => {
-                    if let (Some(industry), Some(card_idx), Some(loc)) = 
-                        (ctx.selected_industry, ctx.selected_card_idx, ctx.selected_build_location) {
-                        if let Some(options) = ctx.initial_build_options { 
-                            let expected_level = self.board.players()[self.current_player].industry_mat.get_lowest_level(industry);
-                            let exact = options.iter().find(|opt|
-                                opt.industry_type == industry &&
-                                opt.build_location_idx == loc &&
-                                opt.level == expected_level &&
-                                opt.card_used_idx == card_idx
-                            ).cloned();
+                    if let (Some(industry), Some(card_idx), Some(loc)) = (
+                        ctx.selected_industry,
+                        ctx.selected_card_idx,
+                        ctx.selected_build_location,
+                    ) {
+                        if let Some(options) = ctx.initial_build_options {
+                            let expected_level = self.board.players()[self.current_player]
+                                .industry_mat
+                                .get_lowest_level(industry);
+                            let exact = options
+                                .iter()
+                                .find(|opt| {
+                                    opt.industry_type == industry
+                                        && opt.build_location_idx == loc
+                                        && opt.level == expected_level
+                                        && opt.card_used_idx == card_idx
+                                })
+                                .cloned();
 
                             // Replay/backward-compat fallback:
                             // saved games persist action choices with card indices, which can drift
@@ -600,23 +922,35 @@ falling back to industry-only. Ind: {:?}",
                             if let Some(build_opt) = build_opt {
                                 let chosen_coal = ctx.chosen_coal_sources.clone();
                                 let chosen_iron = ctx.chosen_iron_sources.clone();
-                                if let Err(e) = self.board.build_building(self.current_player, build_opt.clone(), chosen_coal, chosen_iron) {
-                                    eprintln!(
-                                        "BuildBuilding replay with chosen sources failed: {}. Retrying with option default sources.",
-                                        e
+                                if Self::selected_coal_capacity(&self.board, &chosen_coal)
+                                    < build_opt.building_data.coal_cost
+                                {
+                                    return Err(
+                                        "build action has insufficient selected coal".to_string()
                                     );
-                                    if let Err(e2) = self.board.build_building(
-                                        self.current_player,
-                                        build_opt.clone(),
-                                        build_opt.coal_sources.clone(),
-                                        build_opt.iron_sources.clone(),
-                                    ) {
-                                        return Err(format!("error executing build: {}", e2));
-                                    }
                                 }
-                            } else { return Err("chosen build combo not found".to_string()); }
+                                if Self::selected_iron_capacity(&self.board, &chosen_iron)
+                                    < build_opt.building_data.iron_cost
+                                {
+                                    return Err(
+                                        "build action has insufficient selected iron".to_string()
+                                    );
+                                }
+                                self.board
+                                    .build_building(
+                                        self.current_player,
+                                        build_opt,
+                                        chosen_coal,
+                                        chosen_iron,
+                                    )
+                                    .map_err(|error| format!("error executing build: {error}"))?;
+                            } else {
+                                return Err("chosen build combo not found".to_string());
+                            }
                         }
-                    } else { return Err("missing selections for build action".to_string()); }
+                    } else {
+                        return Err("missing selections for build action".to_string());
+                    }
                 }
                 ActionType::Sell => {
                     if let Some(card_idx) = ctx.selected_card_idx {
@@ -625,16 +959,27 @@ falling back to industry-only. Ind: {:?}",
                         return Err("sell action missing card selection".to_string());
                     }
                     self.board
-                        .sell_all_buildings(self.current_player, ctx.current_sell_choices, ctx.free_development_choice)
+                        .sell_all_buildings(
+                            self.current_player,
+                            ctx.current_sell_choices,
+                            ctx.free_development_choice,
+                        )
                         .map_err(|e| format!("sell action failed: {}", e))?;
                 }
                 ActionType::Develop => {
-                    if let (Some(industry), Some(card_idx)) = (ctx.selected_industry, ctx.selected_card_idx) {
-                        if !ctx.chosen_iron_sources.is_empty() { 
+                    if let (Some(industry), Some(card_idx)) =
+                        (ctx.selected_industry, ctx.selected_card_idx)
+                    {
+                        if Self::selected_iron_capacity(&self.board, &ctx.chosen_iron_sources) >= 1
+                        {
                             // Develop action itself also requires a card discard
-                            self.board.discard_card(self.current_player, card_idx); 
+                            self.board.discard_card(self.current_player, card_idx);
                             self.board
-                                .develop_action(self.current_player, vec![industry], ctx.chosen_iron_sources)
+                                .develop_action(
+                                    self.current_player,
+                                    vec![industry],
+                                    ctx.chosen_iron_sources,
+                                )
                                 .map_err(|e| format!("develop action failed: {}", e))?;
                         } else {
                             return Err("develop action missing iron source selection".to_string());
@@ -645,17 +990,25 @@ falling back to industry-only. Ind: {:?}",
                 }
                 ActionType::DevelopDouble => {
                     let mut industries_to_develop = Vec::new();
-                    if let Some(industry1) = ctx.selected_industry { industries_to_develop.push(industry1); }
-                    if let Some(industry2) = ctx.free_development_choice { industries_to_develop.push(industry2); } 
-                    
+                    if let Some(industry1) = ctx.selected_industry {
+                        industries_to_develop.push(industry1);
+                    }
+                    if let Some(industry2) = ctx.free_development_choice {
+                        industries_to_develop.push(industry2);
+                    }
+
                     if industries_to_develop.len() == 2 {
                         if let Some(card_idx) = ctx.selected_card_idx {
-                            // Assuming chosen_iron_sources contains enough for 2 iron.
-                            // Board's develop_action will consume from these.
-                            if ctx.chosen_iron_sources.len() >= self.board.get_iron_cost_for_develop(2) as usize {
+                            if Self::selected_iron_capacity(&self.board, &ctx.chosen_iron_sources)
+                                >= 2
+                            {
                                 self.board.discard_card(self.current_player, card_idx);
                                 self.board
-                                    .develop_action(self.current_player, industries_to_develop, ctx.chosen_iron_sources)
+                                    .develop_action(
+                                        self.current_player,
+                                        industries_to_develop,
+                                        ctx.chosen_iron_sources,
+                                    )
                                     .map_err(|e| format!("develop double action failed: {}", e))?;
                             } else {
                                 return Err("develop double missing iron sources".to_string());
@@ -667,16 +1020,25 @@ falling back to industry-only. Ind: {:?}",
                         return Err("develop double requires two industries".to_string());
                     }
                 }
-                 ActionType::BuildRailroad => { // Covers Canal or Single Rail
-                    if let (Some(road_idx), Some(card_idx)) = (ctx.selected_road_idx, ctx.selected_card_idx) {
+                ActionType::BuildRailroad => {
+                    // Covers Canal or Single Rail
+                    if let (Some(road_idx), Some(card_idx)) =
+                        (ctx.selected_road_idx, ctx.selected_card_idx)
+                    {
                         if self.board.era() == GameEra::Canal {
                             self.board
                                 .build_canal_action(self.current_player, road_idx, card_idx)
                                 .map_err(|e| format!("canal action failed: {}", e))?;
-                        } else { // Rail Era - Single Link
+                        } else {
+                            // Rail Era - Single Link
                             if !ctx.chosen_coal_sources.is_empty() {
                                 self.board
-                                    .build_single_rail_action(self.current_player, road_idx, ctx.chosen_coal_sources[0], card_idx)
+                                    .build_single_rail_action(
+                                        self.current_player,
+                                        road_idx,
+                                        ctx.chosen_coal_sources[0],
+                                        card_idx,
+                                    )
                                     .map_err(|e| format!("single rail action failed: {}", e))?;
                             } else {
                                 return Err("build railroad missing coal source".to_string());
@@ -685,58 +1047,69 @@ falling back to industry-only. Ind: {:?}",
                     } else {
                         return Err("build railroad missing road/card".to_string());
                     }
-                 }
-                 ActionType::BuildDoubleRailroad => {
-                     if let (Some(road1_idx), Some(road2_idx), Some(card_idx), Some(beer_source)) = 
-                         (ctx.selected_road_idx, ctx.selected_second_road_idx, ctx.selected_card_idx, ctx.chosen_action_beer_source) {
-                         if ctx.chosen_coal_sources.len() == 2 {
-                            self.board.build_double_rail_action(
-                                 self.current_player, 
-                                 road1_idx, road2_idx, 
-                                 ctx.chosen_coal_sources[0], ctx.chosen_coal_sources[1], 
-                                 beer_source, 
-                                 card_idx
-                            ).map_err(|e| format!("double rail action failed: {}", e))?;
-                         } else {
+                }
+                ActionType::BuildDoubleRailroad => {
+                    if let (Some(road1_idx), Some(road2_idx), Some(card_idx), Some(beer_source)) = (
+                        ctx.selected_road_idx,
+                        ctx.selected_second_road_idx,
+                        ctx.selected_card_idx,
+                        ctx.chosen_action_beer_source,
+                    ) {
+                        if ctx.chosen_coal_sources.len() == 2 {
+                            self.board
+                                .build_double_rail_action(
+                                    self.current_player,
+                                    road1_idx,
+                                    road2_idx,
+                                    ctx.chosen_coal_sources[0],
+                                    ctx.chosen_coal_sources[1],
+                                    beer_source,
+                                    card_idx,
+                                )
+                                .map_err(|e| format!("double rail action failed: {}", e))?;
+                        } else {
                             return Err("double rail missing coal sources".to_string());
-                         }
+                        }
                     } else {
                         return Err("double rail missing required selections".to_string());
                     }
-                 }
-                 ActionType::Loan => {
+                }
+                ActionType::Loan => {
                     // Loan action card discard is handled by the loan_action method
                     if let Some(card_idx) = ctx.selected_card_idx {
                         self.board.loan_action(self.current_player, card_idx);
                     } else {
                         return Err("loan action missing card".to_string());
                     }
-                 }
-                 ActionType::Scout => {
+                }
+                ActionType::Scout => {
                     // Scout action handles its 3 discards internally via board.scout_action.
                     // board.scout_action takes the 3 card indices.
                     if let Some(main_card_idx) = ctx.selected_card_idx {
-                       if ctx.scout_additional_discard_indices.len() == 2 {
-                           let mut all_discards = vec![main_card_idx];
-                           all_discards.extend(&ctx.scout_additional_discard_indices);
-                           let unique_discards: std::collections::HashSet<usize> = all_discards.iter().cloned().collect();
-                           if unique_discards.len() == 3 {
-                               self.board.scout_action(
-                                   self.current_player, 
-                                   main_card_idx, 
-                                   ctx.scout_additional_discard_indices[0], 
-                                   ctx.scout_additional_discard_indices[1]
-                               );
-                           } else {
-                               return Err("scout action discard indices are not unique".to_string());
-                           }
-                       } else {
-                           return Err("scout action missing additional discards".to_string());
-                       }
+                        if ctx.scout_additional_discard_indices.len() == 2 {
+                            let mut all_discards = vec![main_card_idx];
+                            all_discards.extend(&ctx.scout_additional_discard_indices);
+                            let unique_discards: std::collections::HashSet<usize> =
+                                all_discards.iter().cloned().collect();
+                            if unique_discards.len() == 3 {
+                                self.board.scout_action(
+                                    self.current_player,
+                                    main_card_idx,
+                                    ctx.scout_additional_discard_indices[0],
+                                    ctx.scout_additional_discard_indices[1],
+                                );
+                            } else {
+                                return Err(
+                                    "scout action discard indices are not unique".to_string()
+                                );
+                            }
+                        } else {
+                            return Err("scout action missing additional discards".to_string());
+                        }
                     } else {
                         return Err("scout action missing main card".to_string());
                     }
-                 }
+                }
                 ActionType::Pass => {
                     if let Some(card_idx) = ctx.selected_card_idx {
                         self.board.discard_card(self.current_player, card_idx);
@@ -755,7 +1128,9 @@ falling back to industry-only. Ind: {:?}",
             if ctx.action_type == ActionType::BuildDoubleRailroad {
                 ctx.chosen_action_beer_source = Some(beer_source);
             } else {
-                eprintln!("Error: choose_action_beer_source called for non-BuildDoubleRailroad action.");
+                eprintln!(
+                    "Error: choose_action_beer_source called for non-BuildDoubleRailroad action."
+                );
                 return;
             }
             self.update_next_step();
@@ -763,29 +1138,35 @@ falling back to industry-only. Ind: {:?}",
     }
 
     fn update_next_step(&mut self) {
-        if self.action_context.is_none() { return; }
+        if self.action_context.is_none() {
+            return;
+        }
         let ctx = self.action_context.as_mut().unwrap();
         let player_idx = self.current_player;
-        let board_snapshot = &self.board; 
+        let board_snapshot = &self.board;
         ctx.choices_needed.clear();
 
         match ctx.action_type {
             ActionType::BuildBuilding => {
                 if ctx.selected_industry.is_none() {
                     if !ctx.current_filtered_build_options.is_empty() {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
-                    } 
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseIndustry);
+                    }
                 } else if ctx.selected_card_idx.is_none() {
                     let industry = ctx.selected_industry.unwrap();
-                    ctx.current_filtered_build_options.retain(|opt| opt.industry_type == industry);
-                    if ctx.current_filtered_build_options.iter().any(|opt| 
+                    ctx.current_filtered_build_options
+                        .retain(|opt| opt.industry_type == industry);
+                    if ctx.current_filtered_build_options.iter().any(|opt| {
                         opt.card_used_idx < board_snapshot.players()[player_idx].hand.cards.len()
-                    ) {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                    }) {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseCard);
                     }
                 } else if ctx.selected_build_location.is_none() {
                     let card_idx = ctx.selected_card_idx.unwrap();
-                    ctx.current_filtered_build_options.retain(|opt| opt.card_used_idx == card_idx);
+                    ctx.current_filtered_build_options
+                        .retain(|opt| opt.card_used_idx == card_idx);
                     if ctx.current_filtered_build_options.is_empty() {
                         if let (Some(industry), Some(options)) =
                             (ctx.selected_industry, ctx.initial_build_options.as_ref())
@@ -799,56 +1180,90 @@ falling back to industry-only. Ind: {:?}",
                                 .collect();
                         }
                     }
-                    if !ctx.current_filtered_build_options.is_empty() { 
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseBuildLocation);
-                     } 
+                    if !ctx.current_filtered_build_options.is_empty() {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseBuildLocation);
+                    }
                 } else {
-                    let chosen_build_opt = ctx.initial_build_options.as_ref().and_then(|options| 
-                        options.iter().find(|opt|{
-                            opt.industry_type == ctx.selected_industry.unwrap() &&
-                            opt.card_used_idx == ctx.selected_card_idx.unwrap() &&
-                            opt.build_location_idx == ctx.selected_build_location.unwrap() &&
-                            opt.level == board_snapshot.players()[player_idx].industry_mat.get_lowest_level(ctx.selected_industry.unwrap())
-                        })
-                        .or_else(|| {
-                            options.iter().find(|opt|{
-                                opt.industry_type == ctx.selected_industry.unwrap() &&
-                                opt.build_location_idx == ctx.selected_build_location.unwrap() &&
-                                opt.level == board_snapshot.players()[player_idx].industry_mat.get_lowest_level(ctx.selected_industry.unwrap())
-                            })
-                        })
-                        .or_else(|| {
-                            options.iter().find(|opt|{
-                                opt.industry_type == ctx.selected_industry.unwrap() &&
-                                opt.build_location_idx == ctx.selected_build_location.unwrap()
-                            })
-                        })
-                        .or_else(|| {
-                            options.iter().find(|opt| {
+                    let chosen_build_opt = ctx.initial_build_options.as_ref().and_then(|options| {
+                        options
+                            .iter()
+                            .find(|opt| {
                                 opt.industry_type == ctx.selected_industry.unwrap()
+                                    && opt.card_used_idx == ctx.selected_card_idx.unwrap()
+                                    && opt.build_location_idx
+                                        == ctx.selected_build_location.unwrap()
+                                    && opt.level
+                                        == board_snapshot.players()[player_idx]
+                                            .industry_mat
+                                            .get_lowest_level(ctx.selected_industry.unwrap())
                             })
-                        })
-                        .or_else(|| options.first())
-                    );
+                            .or_else(|| {
+                                options.iter().find(|opt| {
+                                    opt.industry_type == ctx.selected_industry.unwrap()
+                                        && opt.build_location_idx
+                                            == ctx.selected_build_location.unwrap()
+                                        && opt.level
+                                            == board_snapshot.players()[player_idx]
+                                                .industry_mat
+                                                .get_lowest_level(ctx.selected_industry.unwrap())
+                                })
+                            })
+                            .or_else(|| {
+                                options.iter().find(|opt| {
+                                    opt.industry_type == ctx.selected_industry.unwrap()
+                                        && opt.build_location_idx
+                                            == ctx.selected_build_location.unwrap()
+                                })
+                            })
+                            .or_else(|| {
+                                options
+                                    .iter()
+                                    .find(|opt| opt.industry_type == ctx.selected_industry.unwrap())
+                            })
+                            .or_else(|| options.first())
+                    });
 
                     if let Some(current_opt) = chosen_build_opt {
                         let coal_needed = current_opt.building_data.coal_cost;
                         let iron_needed = current_opt.building_data.iron_cost;
 
-                        let coal_satisfied = coal_needed == 0 || !ctx.chosen_coal_sources.is_empty(); 
-                        let iron_satisfied = iron_needed == 0 || !ctx.chosen_iron_sources.is_empty();
+                        let coal_satisfied = coal_needed == 0
+                            || Self::selected_coal_capacity(
+                                board_snapshot,
+                                &ctx.chosen_coal_sources,
+                            ) >= coal_needed;
+                        let iron_satisfied = iron_needed == 0
+                            || Self::selected_iron_capacity(
+                                board_snapshot,
+                                &ctx.chosen_iron_sources,
+                            ) >= iron_needed;
 
                         if coal_needed > 0 && !coal_satisfied {
-                            ctx.available_build_coal_sources = current_opt.coal_sources.clone();
+                            ctx.available_build_coal_sources =
+                                Self::available_build_coal_sources_for_selection(
+                                    board_snapshot,
+                                    &current_opt.coal_sources,
+                                    &ctx.chosen_coal_sources,
+                                    coal_needed,
+                                );
                             if !ctx.available_build_coal_sources.is_empty() {
-                                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCoalSource);
-                            } 
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseCoalSource);
+                            }
                         } else if iron_needed > 0 && !iron_satisfied {
-                            ctx.available_build_iron_sources = current_opt.iron_sources.clone();
+                            ctx.available_build_iron_sources =
+                                Self::available_iron_sources_for_selection(
+                                    board_snapshot,
+                                    player_idx,
+                                    &ctx.chosen_iron_sources,
+                                    iron_needed,
+                                );
                             if !ctx.available_build_iron_sources.is_empty() {
-                                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIronSource);
-                            } 
-                        } 
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseIronSource);
+                            }
+                        }
                     } else {
                         eprintln!("Error: BuildBuilding - Could not find matching BuildOption for current selections. Ind: {:?}, Card: {:?}, Loc: {:?}", 
                             ctx.selected_industry, ctx.selected_card_idx, ctx.selected_build_location);
@@ -857,63 +1272,70 @@ falling back to industry-only. Ind: {:?}",
             }
             ActionType::Sell => {
                 if ctx.pending_sell_building_loc.is_none() {
-                    ctx.current_filtered_sell_options.retain(|sell_opt| {
-                        let beer_needed = self.board.get_tile_at_loc(sell_opt.location)
-                            .map_or(0, |data| data.beer_needed);
-                        if beer_needed == 0 { return true; }
-
-                        let mut temp_available_beer_count = 0;
-                        for beer_source_candidate_loc in sell_opt.beer_locations.ones() {
-                             if beer_source_candidate_loc >= N_BL { // Trade post
-                                let merchant_slot = beer_source_candidate_loc - N_BL;
-                                let is_consumed_temp = ctx.temp_merchant_beer_consumed_slots.contains(merchant_slot);
-                                if !is_consumed_temp { temp_available_beer_count += 1;}
-                             } else { // Brewery
-                                let consumed_from_this_brewery = ctx.temp_brewery_beer_consumed.get(&beer_source_candidate_loc).copied().unwrap_or(0);
-                                if let Some(building) = self.board.bl_to_building().get(&beer_source_candidate_loc) {
-                                    let original_brewery_beer = building.get_resource_amt();
-                                    if original_brewery_beer > consumed_from_this_brewery {
-                                        temp_available_beer_count += original_brewery_beer - consumed_from_this_brewery;
-                                    }
-                                }
-                            }
-                        }
-                        temp_available_beer_count >= beer_needed
-                    });
+                    Self::retain_currently_sellable_options(board_snapshot, ctx);
 
                     if !ctx.current_filtered_sell_options.is_empty() {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseSellTargets);
-                    } 
-                } else { // A building is pending (ctx.pending_sell_building_loc is Some)
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseSellTargets);
+                    }
+                } else {
+                    // A building is pending (ctx.pending_sell_building_loc is Some)
                     let pending_loc = ctx.pending_sell_building_loc.unwrap();
-                    let beer_needed_for_pending = self.board.get_tile_at_loc(pending_loc)
+                    let beer_needed_for_pending = self
+                        .board
+                        .get_tile_at_loc(pending_loc)
                         .map_or(0, |data| data.beer_needed);
 
                     let mut beer_chosen_for_pending = 0;
-                    if let Some(current_choice) = ctx.current_sell_choices.iter().find(|sc| sc.location == pending_loc) {
-                        beer_chosen_for_pending = current_choice.beer_sources.len() as u8; // Assumes 1 source = 1 beer
+                    if let Some(current_choice) = ctx
+                        .current_sell_choices
+                        .iter()
+                        .find(|sc| sc.location == pending_loc)
+                    {
+                        beer_chosen_for_pending = current_choice.beer_sources.len() as u8;
+                        // Assumes 1 source = 1 beer
                     }
 
                     if beer_chosen_for_pending < beer_needed_for_pending {
                         ctx.available_beer_for_pending_sell.clear();
-                        let initial_options = ctx.initial_sell_options.as_ref().expect("Initial sell options missing");
-                        if let Some(original_sell_opt) = initial_options.iter().find(|so: &&SellOption| so.location == pending_loc) {
+                        let initial_options = ctx
+                            .initial_sell_options
+                            .as_ref()
+                            .expect("Initial sell options missing");
+                        if let Some(original_sell_opt) = initial_options
+                            .iter()
+                            .find(|so: &&SellOption| so.location == pending_loc)
+                        {
                             for beer_source_loc_idx in original_sell_opt.beer_locations.ones() {
-                                if beer_source_loc_idx >= N_BL { // Trade post beer source (merchant)
+                                if beer_source_loc_idx >= N_BL {
+                                    // Trade post beer source (merchant)
                                     let merchant_slot_idx = beer_source_loc_idx - N_BL;
-                                    let slot_data = self.board.trade_post_slots().get(merchant_slot_idx);
-                                    let merchant = slot_data.and_then(|opt_merchant| opt_merchant.as_ref());
-                                    let has_beer_in_slot = merchant.map_or(false, |m| m.has_beer);
-                                    let is_consumed_temp = ctx.temp_merchant_beer_consumed_slots.contains(merchant_slot_idx);
+                                    let has_beer_in_slot =
+                                        self.board.trade_post_beer().contains(merchant_slot_idx);
+                                    let is_consumed_temp = ctx
+                                        .temp_merchant_beer_consumed_slots
+                                        .contains(merchant_slot_idx);
 
                                     if has_beer_in_slot && !is_consumed_temp {
-                                        ctx.available_beer_for_pending_sell.push(BeerSellSource::TradePost(merchant_slot_idx));
+                                        ctx.available_beer_for_pending_sell
+                                            .push(BeerSellSource::TradePost(merchant_slot_idx));
                                     }
-                                } else { // Brewery beer source
-                                    if let Some(brewery_building) = self.board.bl_to_building().get(&beer_source_loc_idx) {
-                                        let already_consumed_temp = ctx.temp_brewery_beer_consumed.get(&beer_source_loc_idx).copied().unwrap_or(0);
-                                        if brewery_building.get_resource_amt() > already_consumed_temp {
-                                            ctx.available_beer_for_pending_sell.push(BeerSellSource::Building(beer_source_loc_idx));
+                                } else {
+                                    // Brewery beer source
+                                    if let Some(brewery_building) =
+                                        self.board.bl_to_building().get(&beer_source_loc_idx)
+                                    {
+                                        let already_consumed_temp = ctx
+                                            .temp_brewery_beer_consumed
+                                            .get(&beer_source_loc_idx)
+                                            .copied()
+                                            .unwrap_or(0);
+                                        if brewery_building.get_resource_amt()
+                                            > already_consumed_temp
+                                        {
+                                            ctx.available_beer_for_pending_sell.push(
+                                                BeerSellSource::Building(beer_source_loc_idx),
+                                            );
                                         }
                                     }
                                 }
@@ -921,24 +1343,34 @@ falling back to industry-only. Ind: {:?}",
                         }
 
                         if !ctx.available_beer_for_pending_sell.is_empty() {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseBeerSource);
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseBeerSource);
                         } else {
-                            // No available beer — remove this building so it
-                            // doesn't reappear in the sell target list.
+                            Self::remove_incomplete_sell_choice(ctx, pending_loc);
                             ctx.pending_sell_building_loc = None;
-                            ctx.current_filtered_sell_options.retain(|opt| opt.location != pending_loc);
+                            ctx.current_filtered_sell_options
+                                .retain(|opt| opt.location != pending_loc);
+                            Self::retain_currently_sellable_options(board_snapshot, ctx);
                             if !ctx.current_filtered_sell_options.is_empty() {
-                                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseSellTargets);
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseSellTargets);
                             }
                         }
-                    } else { // Beer requirement met for pending building
+                    } else {
+                        // Beer requirement met for pending building
                         // Check for free development if a merchant beer was used that gives it
                         let mut chose_dev_bonus_merchant = false;
-                        if let Some(choice_for_pending) = ctx.current_sell_choices.iter().find(|sc| sc.location == pending_loc) {
+                        if let Some(choice_for_pending) = ctx
+                            .current_sell_choices
+                            .iter()
+                            .find(|sc| sc.location == pending_loc)
+                        {
                             for beer_src in &choice_for_pending.beer_sources {
                                 if let BeerSellSource::TradePost(slot_idx) = beer_src {
                                     let trade_post_enum = slot_to_trade_post(*slot_idx);
-                                    if TRADE_POST_TO_BONUS[trade_post_enum.to_index()] == TradePostBonus::FreeDevelopment {
+                                    if TRADE_POST_TO_BONUS[trade_post_enum.to_index()]
+                                        == TradePostBonus::FreeDevelopment
+                                    {
                                         chose_dev_bonus_merchant = true;
                                         break;
                                     }
@@ -946,19 +1378,30 @@ falling back to industry-only. Ind: {:?}",
                             }
                         }
                         if chose_dev_bonus_merchant && ctx.free_development_choice.is_none() {
-                             // TODO: Populate valid industries for free development
-                             ctx.choices_needed.push_back(NextActionChoiceKind::ChooseFreeDevelopment);
+                            // TODO: Populate valid industries for free development
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseFreeDevelopment);
                         }
 
                         // Ensure a SellChoice entry exists (needed when beer_needed == 0)
-                        if !ctx.current_sell_choices.iter().any(|sc| sc.location == pending_loc) {
-                            ctx.current_sell_choices.push(SellChoice::new(pending_loc, vec![]));
+                        if !ctx
+                            .current_sell_choices
+                            .iter()
+                            .any(|sc| sc.location == pending_loc)
+                        {
+                            ctx.current_sell_choices
+                                .push(SellChoice::new(pending_loc, vec![]));
                         }
 
                         ctx.pending_sell_building_loc = None;
-                        ctx.current_filtered_sell_options.retain(|opt| opt.location != pending_loc);
-                        if !ctx.current_filtered_sell_options.is_empty() && ctx.choices_needed.is_empty() {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseSellTargets);
+                        ctx.current_filtered_sell_options
+                            .retain(|opt| opt.location != pending_loc);
+                        Self::retain_currently_sellable_options(board_snapshot, ctx);
+                        if !ctx.current_filtered_sell_options.is_empty()
+                            && ctx.choices_needed.is_empty()
+                        {
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseSellTargets);
                         }
                     }
                 }
@@ -967,145 +1410,226 @@ falling back to industry-only. Ind: {:?}",
                 if ctx.selected_industry.is_none() {
                     if let Some(initial_opts) = &ctx.initial_dev_options {
                         if initial_opts.count_ones(..) > 0 {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
-                        } 
-                    }
-                } else if ctx.chosen_iron_sources.is_empty() { 
-                    ctx.available_iron_sources = self.board.get_iron_sources_for_develop(player_idx, 1);
-                    if !ctx.available_iron_sources.is_empty() {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIronSource);
-                    } // If no sources, action might fail or auto-confirm to fail.
-                } 
-            }
-             ActionType::DevelopDouble => {
-                if ctx.selected_industry.is_none() {
-                    if let Some(initial_opts) = &ctx.initial_dev_options {
-                        if initial_opts.count_ones(..) > 0 { 
-                             ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIndustry);
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseIndustry);
                         }
                     }
-                } else if ctx.free_development_choice.is_none() { 
+                } else if Self::selected_iron_capacity(board_snapshot, &ctx.chosen_iron_sources) < 1
+                {
+                    ctx.available_iron_sources = Self::available_iron_sources_for_selection(
+                        board_snapshot,
+                        player_idx,
+                        &ctx.chosen_iron_sources,
+                        1,
+                    );
+                    if !ctx.available_iron_sources.is_empty() {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseIronSource);
+                    } // If no sources, action might fail or auto-confirm to fail.
+                }
+            }
+            ActionType::DevelopDouble => {
+                if ctx.selected_industry.is_none() {
+                    if let Some(initial_opts) = &ctx.initial_dev_options {
+                        if initial_opts.count_ones(..) > 0 {
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseIndustry);
+                        }
+                    }
+                } else if ctx.free_development_choice.is_none() {
                     if let Some(initial_opts) = &ctx.initial_dev_options {
                         let mut remaining_options = initial_opts.clone();
                         if let Some(first_choice) = ctx.selected_industry {
                             remaining_options.set(first_choice as usize, false);
                         }
                         if remaining_options.count_ones(..) > 0 {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseSecondIndustry);
-                        } 
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseSecondIndustry);
+                        }
                     }
-                } else if ctx.chosen_iron_sources.len() < self.board.get_iron_cost_for_develop(2) as usize {
-                    // get_iron_cost_for_develop returns number of iron cubes (2)
-                    // chosen_iron_sources stores ResourceSource. If Market is one, it can fulfill multiple.
-                    // This logic needs to be: if total iron provided by chosen_iron_sources < 2
-                    // For now, assume if len < 2 and not market, or len < 1 and market, then prompt.
-                    // Simplified: if not enough sources chosen yet for 2 iron.
-                    ctx.available_iron_sources = self.board.get_iron_sources_for_develop(player_idx, 2);
-                     if !ctx.available_iron_sources.is_empty() {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseIronSource);
+                } else if Self::selected_iron_capacity(board_snapshot, &ctx.chosen_iron_sources) < 2
+                {
+                    ctx.available_iron_sources = Self::available_iron_sources_for_selection(
+                        board_snapshot,
+                        player_idx,
+                        &ctx.chosen_iron_sources,
+                        2,
+                    );
+                    if !ctx.available_iron_sources.is_empty() {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseIronSource);
                     } // If no sources, might fail.
                 }
             }
             ActionType::BuildRailroad => {
-                if ctx.selected_card_idx.is_none() && !board_snapshot.players()[player_idx].hand.cards.is_empty() {
-                    ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                if ctx.selected_card_idx.is_none()
+                    && !board_snapshot.players()[player_idx].hand.cards.is_empty()
+                {
+                    ctx.choices_needed
+                        .push_back(NextActionChoiceKind::ChooseCard);
                 } else if board_snapshot.era() == GameEra::Canal {
                     if ctx.selected_road_idx.is_none() {
-                        if ctx.initial_canal_options.as_ref().map_or(false, |v| !v.is_empty()) {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
+                        if ctx
+                            .initial_canal_options
+                            .as_ref()
+                            .map_or(false, |v| !v.is_empty())
+                        {
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseRoad);
                         }
-                    } 
-                } else { // Rail Era - SINGLE RAIL LINK PATH
+                    }
+                } else {
+                    // Rail Era - SINGLE RAIL LINK PATH
                     if ctx.selected_road_idx.is_none() {
-                        if ctx.initial_single_rail_options.as_ref().map_or(false, |v| !v.is_empty()) {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
-                        } 
-                    } else if ctx.chosen_coal_sources.is_empty() { 
+                        if ctx
+                            .initial_single_rail_options
+                            .as_ref()
+                            .map_or(false, |v| !v.is_empty())
+                        {
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseRoad);
+                        }
+                    } else if ctx.chosen_coal_sources.is_empty() {
                         if let Some(road_idx) = ctx.selected_road_idx {
                             ctx.available_coal_for_road1 = Self::coal_sources_for_rail_road(
                                 ctx.initial_single_rail_options.as_ref(),
                                 road_idx,
                             );
                             if !ctx.available_coal_for_road1.is_empty() {
-                                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCoalSource);
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseCoalSource);
                             }
-                        } 
+                        }
                     }
                 }
             }
             ActionType::BuildDoubleRailroad => {
-                if ctx.selected_card_idx.is_none() && !board_snapshot.players()[player_idx].hand.cards.is_empty() {
-                     ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
-                } else if ctx.selected_road_idx.is_none() { // Step 1: Choose 1st road
-                    if ctx.initial_double_rail_first_link_options.as_ref().map_or(false, |v| !v.is_empty()) {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseRoad);
-                    } else { /* No valid first links for double action, will go to Confirm & fail */ }
-                } else if ctx.chosen_coal_sources.get(0).is_none() { // Step 2: Choose coal for 1st road
+                if ctx.selected_card_idx.is_none()
+                    && !board_snapshot.players()[player_idx].hand.cards.is_empty()
+                {
+                    ctx.choices_needed
+                        .push_back(NextActionChoiceKind::ChooseCard);
+                } else if ctx.selected_road_idx.is_none() {
+                    // Step 1: Choose 1st road
+                    if ctx
+                        .initial_double_rail_first_link_options
+                        .as_ref()
+                        .map_or(false, |v| !v.is_empty())
+                    {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseRoad);
+                    } else { /* No valid first links for double action, will go to Confirm & fail */
+                    }
+                } else if ctx.chosen_coal_sources.get(0).is_none() {
+                    // Step 2: Choose coal for 1st road
                     if let Some(road1_idx) = ctx.selected_road_idx {
-                        ctx.available_coal_for_road1 = Self::coal_sources_for_rail_road(
-                            ctx.initial_double_rail_first_link_options.as_ref(),
-                            road1_idx,
-                        );
+                        ctx.available_coal_for_road1 =
+                            Self::viable_first_coal_sources_for_double_rail(
+                                board_snapshot,
+                                player_idx,
+                                road1_idx,
+                                ctx.initial_double_rail_first_link_options.as_ref(),
+                            );
                         if !ctx.available_coal_for_road1.is_empty() {
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCoalSource);
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseCoalSource);
                         }
                     }
-                } else if ctx.selected_second_road_idx.is_none() { // Step 3: Choose 2nd road
-                    if let (Some(r1_idx), Some(coal1_src)) = (ctx.selected_road_idx, ctx.chosen_coal_sources.get(0).cloned()) {
+                } else if ctx.selected_second_road_idx.is_none() {
+                    // Step 3: Choose 2nd road
+                    if let (Some(r1_idx), Some(coal1_src)) = (
+                        ctx.selected_road_idx,
+                        ctx.chosen_coal_sources.get(0).cloned(),
+                    ) {
                         // Calculate money after TWO_RAILROAD_PRICE (15) and cost of first coal (if market)
-                        let mut money_for_2nd_coal_check = board_snapshot.players()[player_idx].money;
-                        money_for_2nd_coal_check = money_for_2nd_coal_check.saturating_sub(TWO_RAILROAD_PRICE);
+                        let mut money_for_2nd_coal_check =
+                            board_snapshot.players()[player_idx].money;
+                        money_for_2nd_coal_check =
+                            money_for_2nd_coal_check.saturating_sub(TWO_RAILROAD_PRICE);
                         if let ResourceSource::Market = coal1_src {
-                            money_for_2nd_coal_check = money_for_2nd_coal_check.saturating_sub(board_snapshot.get_coal_price(1));
+                            money_for_2nd_coal_check = money_for_2nd_coal_check
+                                .saturating_sub(board_snapshot.get_coal_price(1));
                         }
 
-                        let second_link_options_data = board_snapshot.get_options_for_second_rail_link(player_idx, r1_idx, &coal1_src, money_for_2nd_coal_check);
+                        let second_link_options_data = board_snapshot
+                            .get_options_for_second_rail_link(
+                                player_idx,
+                                r1_idx,
+                                &coal1_src,
+                                money_for_2nd_coal_check,
+                            );
                         if !second_link_options_data.is_empty() {
                             ctx.available_second_link_options_full_data = second_link_options_data;
-                            ctx.choices_needed.push_back(NextActionChoiceKind::ChooseSecondRoad);
+                            ctx.choices_needed
+                                .push_back(NextActionChoiceKind::ChooseSecondRoad);
                         } // Else, no valid second links found.
-                    } 
-                } else if ctx.chosen_coal_sources.len() < 2 { // Step 4: Coal for 2nd road (idx 1 in vec)
+                    }
+                } else if ctx.chosen_coal_sources.len() < 2 {
+                    // Step 4: Coal for 2nd road (idx 1 in vec)
                     if let Some(sel_road2_idx) = ctx.selected_second_road_idx {
-                        if let Some(chosen_second_link_data) = ctx.available_second_link_options_full_data.iter().find(|opt| opt.second_road_idx == sel_road2_idx) {
-                            ctx.available_coal_for_road2 = chosen_second_link_data.potential_coal_sources_for_second_link.clone();
+                        if let Some(chosen_second_link_data) = ctx
+                            .available_second_link_options_full_data
+                            .iter()
+                            .find(|opt| opt.second_road_idx == sel_road2_idx)
+                        {
+                            ctx.available_coal_for_road2 = chosen_second_link_data
+                                .potential_coal_sources_for_second_link
+                                .clone();
                             if !ctx.available_coal_for_road2.is_empty() {
-                                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCoalSource); 
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseCoalSource);
                             } // Else, no coal for 2nd link from pre-calc.
-                        } 
-                    } 
-                } else if ctx.chosen_action_beer_source.is_none() { // Step 5: Choose action beer
+                        }
+                    }
+                } else if ctx.chosen_action_beer_source.is_none() {
+                    // Step 5: Choose action beer
                     if let Some(sel_road2_idx) = ctx.selected_second_road_idx {
-                        if let Some(chosen_second_link_data) = ctx.available_second_link_options_full_data.iter().find(|opt| opt.second_road_idx == sel_road2_idx) {
+                        if let Some(chosen_second_link_data) = ctx
+                            .available_second_link_options_full_data
+                            .iter()
+                            .find(|opt| opt.second_road_idx == sel_road2_idx)
+                        {
                             ctx.available_beer_for_double_rail.clear();
-                            ctx.available_beer_for_double_rail.extend(chosen_second_link_data.potential_beer_sources_for_action.iter().cloned());
-                            ctx.available_beer_for_double_rail.extend(chosen_second_link_data.own_brewery_sources.iter().cloned());
+                            ctx.available_beer_for_double_rail.extend(
+                                chosen_second_link_data
+                                    .potential_beer_sources_for_action
+                                    .iter()
+                                    .cloned(),
+                            );
+                            ctx.available_beer_for_double_rail.extend(
+                                chosen_second_link_data.own_brewery_sources.iter().cloned(),
+                            );
                             if !ctx.available_beer_for_double_rail.is_empty() {
-                                 ctx.choices_needed.push_back(NextActionChoiceKind::ChooseBeerSource); 
+                                ctx.choices_needed
+                                    .push_back(NextActionChoiceKind::ChooseBeerSource);
                             }
-                        } 
-                    } 
+                        }
+                    }
                 }
             }
             ActionType::Scout => {
                 let hand_size = self.board.players()[self.current_player].hand.cards.len();
                 if ctx.selected_card_idx.is_none() {
-                    if hand_size > 0 { // Can choose the first card
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                    if hand_size > 0 {
+                        // Can choose the first card
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseCard);
                     }
                 } else if ctx.scout_additional_discard_indices.len() == 0 {
                     // Need to choose 1st additional card from remaining (hand_size - 1) cards
-                    if hand_size > 1 { 
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                    if hand_size > 1 {
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseCard);
                     }
                 } else if ctx.scout_additional_discard_indices.len() == 1 {
-                     // Need to choose 2nd additional card from remaining (hand_size - 2) cards
+                    // Need to choose 2nd additional card from remaining (hand_size - 2) cards
                     if hand_size > 2 {
-                        ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                        ctx.choices_needed
+                            .push_back(NextActionChoiceKind::ChooseCard);
                     }
                 }
                 // If all three cards selected, Confirm will be added by default logic later
-             }
+            }
             ActionType::Loan | ActionType::Pass => {
                 // These actions should directly go to Confirm if all pre-conditions met.
                 // For Loan, can_take_loan is checked before starting action.
@@ -1119,7 +1643,8 @@ falling back to industry-only. Ind: {:?}",
                 && ctx.selected_card_idx.is_none()
                 && !player_hand_is_empty
             {
-                ctx.choices_needed.push_back(NextActionChoiceKind::ChooseCard);
+                ctx.choices_needed
+                    .push_back(NextActionChoiceKind::ChooseCard);
             } else {
                 ctx.choices_needed.push_back(NextActionChoiceKind::Confirm);
             }
@@ -1195,12 +1720,13 @@ pub struct DraftActionState {
 }
 
 /// Serializable top-level action intent payload that can be sent by UI or AI.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionIntent {
     pub action_type: ActionType,
     pub selected_industry: Option<IndustryType>,
     pub selected_second_industry: Option<IndustryType>,
     pub selected_card_idx: Option<usize>,
+    pub scout_additional_discard_indices: Vec<usize>,
     pub selected_build_location: Option<usize>,
     pub selected_road_idx: Option<usize>,
     pub selected_second_road_idx: Option<usize>,
@@ -1219,6 +1745,7 @@ pub struct ActionSession {
     pub player_idx: usize,
     pub action_type: ActionType,
     pub next_choices: Vec<NextActionChoiceKind>,
+    pub can_confirm: bool,
     pub intent: ActionIntent,
     pub draft: DraftActionState,
 }
@@ -1254,7 +1781,8 @@ impl GameFramework {
     pub fn start_action_session(&mut self, action_type: ActionType) -> ActionSession {
         let validation: ActionValidationResult = self.compute_valid_options();
         self.start_action(action_type, validation);
-        self.current_session().expect("Action session should exist right after start_action")
+        self.current_session()
+            .expect("Action session should exist right after start_action")
     }
 
     pub fn current_session(&self) -> Option<ActionSession> {
@@ -1262,6 +1790,7 @@ impl GameFramework {
             player_idx: self.current_player,
             action_type: ctx.action_type,
             next_choices: ctx.choices_needed.iter().copied().collect(),
+            can_confirm: self.can_confirm(),
             intent: Self::intent_from_context(ctx),
             draft: Self::draft_from_context(ctx),
         })
@@ -1272,10 +1801,14 @@ impl GameFramework {
     }
 
     pub fn can_confirm(&self) -> bool {
-        self.action_context
-            .as_ref()
-            .and_then(|ctx| ctx.choices_needed.front().copied())
-            == Some(NextActionChoiceKind::Confirm)
+        self.action_context.as_ref().is_some_and(|ctx| {
+            ctx.choices_needed.front().copied() == Some(NextActionChoiceKind::Confirm)
+                || (ctx.action_type == ActionType::Sell
+                    && ctx.pending_sell_building_loc.is_none()
+                    && !ctx.current_sell_choices.is_empty()
+                    && ctx.choices_needed.front().copied()
+                        == Some(NextActionChoiceKind::ChooseSellTargets))
+        })
     }
 
     pub fn get_next_choice_set(&self) -> Option<ChoiceSet> {
@@ -1292,14 +1825,18 @@ impl GameFramework {
                     }
                     ChoiceSet::Industry(inds)
                 } else {
-                    ChoiceSet::Industry(Self::industries_from_bitset(ctx.initial_dev_options.as_ref()))
+                    ChoiceSet::Industry(Self::industries_from_bitset(
+                        ctx.initial_dev_options.as_ref(),
+                    ))
                 }
             }
-            NextActionChoiceKind::ChooseSecondIndustry => {
-                ChoiceSet::SecondIndustry(Self::industries_from_bitset(ctx.initial_dev_options.as_ref()))
-            }
+            NextActionChoiceKind::ChooseSecondIndustry => ChoiceSet::SecondIndustry(
+                Self::industries_from_bitset(ctx.initial_dev_options.as_ref()),
+            ),
             NextActionChoiceKind::ChooseFreeDevelopment => {
-                let dev_opts = self.board.get_valid_free_development_options(self.current_player);
+                let dev_opts = self
+                    .board
+                    .get_valid_free_development_options(self.current_player);
                 ChoiceSet::FreeDevelopment(Self::industries_from_bitset(Some(&dev_opts)))
             }
             NextActionChoiceKind::ChooseCard => {
@@ -1331,34 +1868,50 @@ impl GameFramework {
                     && ctx.selected_network_mode.is_none()
                 {
                     let mut modes = vec![NetworkMode::Single];
-                    if ctx.initial_double_rail_first_link_options.as_ref().map_or(false, |v| !v.is_empty()) {
+                    if !Self::viable_first_roads_for_double_rail(
+                        &self.board,
+                        self.current_player,
+                        ctx.initial_double_rail_first_link_options.as_ref(),
+                    )
+                    .is_empty()
+                    {
                         modes.push(NetworkMode::Double);
                     }
                     ChoiceSet::NetworkMode(modes)
-                } else
-                if self.board.era() == GameEra::Canal {
+                } else if self.board.era() == GameEra::Canal {
                     ChoiceSet::Road(ctx.initial_canal_options.clone().unwrap_or_default())
                 } else {
-                    let roads = ctx
-                        .initial_single_rail_options
-                        .as_ref()
-                        .map(|o| o.iter().map(|x| x.road_idx).collect())
-                        .unwrap_or_default();
+                    let options = if ctx.action_type == ActionType::BuildDoubleRailroad {
+                        ctx.initial_double_rail_first_link_options.as_ref()
+                    } else {
+                        ctx.initial_single_rail_options.as_ref()
+                    };
+                    let roads = if ctx.action_type == ActionType::BuildDoubleRailroad {
+                        Self::viable_first_roads_for_double_rail(
+                            &self.board,
+                            self.current_player,
+                            options,
+                        )
+                    } else {
+                        options
+                            .map(|entries| entries.iter().map(|entry| entry.road_idx).collect())
+                            .unwrap_or_default()
+                    };
                     ChoiceSet::Road(roads)
                 }
             }
-            NextActionChoiceKind::ChooseSecondRoad => {
-                ChoiceSet::SecondRoad(
-                    ctx.available_second_link_options_full_data
-                        .iter()
-                        .map(|o| o.second_road_idx)
-                        .collect(),
-                )
-            }
+            NextActionChoiceKind::ChooseSecondRoad => ChoiceSet::SecondRoad(
+                ctx.available_second_link_options_full_data
+                    .iter()
+                    .map(|o| o.second_road_idx)
+                    .collect(),
+            ),
             NextActionChoiceKind::ChooseCoalSource => {
                 if ctx.action_type == ActionType::BuildBuilding {
                     ChoiceSet::CoalSource(ctx.available_build_coal_sources.clone())
-                } else if ctx.action_type == ActionType::BuildDoubleRailroad && ctx.chosen_coal_sources.len() >= 1 {
+                } else if ctx.action_type == ActionType::BuildDoubleRailroad
+                    && ctx.chosen_coal_sources.len() >= 1
+                {
                     ChoiceSet::CoalSource(ctx.available_coal_for_road2.clone())
                 } else {
                     ChoiceSet::CoalSource(ctx.available_coal_for_road1.clone())
@@ -1378,16 +1931,22 @@ impl GameFramework {
                     ChoiceSet::BeerSource(ctx.available_beer_for_pending_sell.clone())
                 }
             }
-            NextActionChoiceKind::ChooseSellTargets => {
-                ChoiceSet::SellTarget(ctx.current_filtered_sell_options.iter().map(|o| o.location).collect())
-            }
+            NextActionChoiceKind::ChooseSellTargets => ChoiceSet::SellTarget(
+                ctx.current_filtered_sell_options
+                    .iter()
+                    .map(|o| o.location)
+                    .collect(),
+            ),
             NextActionChoiceKind::ChooseMerchant => ChoiceSet::ConfirmOnly,
             NextActionChoiceKind::Confirm => ChoiceSet::ConfirmOnly,
         };
         Some(set)
     }
 
-    pub fn apply_action_choice(&mut self, choice: ActionChoice) -> Result<Option<ActionSession>, String> {
+    pub fn apply_action_choice(
+        &mut self,
+        choice: ActionChoice,
+    ) -> Result<Option<ActionSession>, String> {
         if self.action_context.is_none() {
             return Err("No active action session".to_string());
         }
@@ -1470,7 +2029,8 @@ impl GameFramework {
             ActionType::Sell => {
                 if index < ctx.current_sell_choices.len() {
                     let removed = ctx.current_sell_choices.remove(index);
-                    ctx.current_filtered_sell_options.retain(|o| o.location != removed.location);
+                    ctx.current_filtered_sell_options
+                        .retain(|o| o.location != removed.location);
                 }
             }
             ActionType::DevelopDouble => {
@@ -1520,7 +2080,8 @@ impl GameFramework {
         let mut removable_tiles = Vec::<ShortfallTileChoice>::new();
         for loc in self.board.state.player_building_mask[player_idx].ones() {
             if let Some(building) = self.board.state.bl_to_building.get(&loc) {
-                let original_cost = INDUSTRY_MAT[building.industry as usize][building.level.as_usize()].money_cost;
+                let original_cost =
+                    INDUSTRY_MAT[building.industry as usize][building.level.as_usize()].money_cost;
                 removable_tiles.push(ShortfallTileChoice {
                     build_location_idx: loc,
                     liquidation_value: original_cost / 2,
@@ -1549,7 +2110,11 @@ impl GameFramework {
             if session.shortfall == 0 {
                 break;
             }
-            let Some(tile) = session.removable_tiles.iter().find(|t| t.build_location_idx == chosen_loc) else {
+            let Some(tile) = session
+                .removable_tiles
+                .iter()
+                .find(|t| t.build_location_idx == chosen_loc)
+            else {
                 continue;
             };
             self.board.state.players[session.player_idx].gain_money(tile.liquidation_value);
@@ -1572,6 +2137,7 @@ impl GameFramework {
             selected_industry: ctx.selected_industry,
             selected_second_industry: ctx.free_development_choice,
             selected_card_idx: ctx.selected_card_idx,
+            scout_additional_discard_indices: ctx.scout_additional_discard_indices.clone(),
             selected_build_location: ctx.selected_build_location,
             selected_road_idx: ctx.selected_road_idx,
             selected_second_road_idx: ctx.selected_second_road_idx,
@@ -1591,7 +2157,11 @@ impl GameFramework {
             consumed_coal_sources: ctx.chosen_coal_sources.clone(),
             consumed_iron_sources: ctx.chosen_iron_sources.clone(),
             consumed_beer_sources: ctx.chosen_beer_sources.clone(),
-            provisional_sell_targets: ctx.current_sell_choices.iter().map(|s| s.location).collect(),
+            provisional_sell_targets: ctx
+                .current_sell_choices
+                .iter()
+                .map(|s| s.location)
+                .collect(),
         }
     }
 

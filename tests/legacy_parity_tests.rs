@@ -1,11 +1,8 @@
 use fast_brass::actions::network::NetworkActions;
-use fast_brass::board::Board;
 use fast_brass::board::resources::ResourceManager;
+use fast_brass::board::Board;
 use fast_brass::consts::{
-    CANAL_PRICE,
-    STARTING_CARDS_2P_LEN,
-    STARTING_CARDS_3P_LEN,
-    STARTING_CARDS_4P_LEN,
+    CANAL_PRICE, STARTING_CARDS_2P_LEN, STARTING_CARDS_3P_LEN, STARTING_CARDS_4P_LEN,
     STARTING_HAND_SIZE,
 };
 use fast_brass::core::building::BuiltBuilding;
@@ -23,19 +20,25 @@ fn test_legacy_initial_setup_deck_market_and_players() {
     // Functional parity with legacy setup checks:
     // verify total deck composition per player-count and post-deal deck size.
     let cases = [
-        (2usize, *STARTING_CARDS_2P_LEN),
-        (3usize, *STARTING_CARDS_3P_LEN),
-        (4usize, *STARTING_CARDS_4P_LEN),
+        (2usize, *STARTING_CARDS_2P_LEN, 40usize),
+        (3usize, *STARTING_CARDS_3P_LEN, 54usize),
+        (4usize, *STARTING_CARDS_4P_LEN, 64usize),
     ];
 
-    for (num_players, total_cards) in cases {
+    for (num_players, total_cards, expected_total) in cases {
+        assert_eq!(total_cards, expected_total);
         let board = Board::new(num_players, Some(42));
-        let expected_deck_left = total_cards - (num_players * STARTING_HAND_SIZE as usize);
+        let expected_deck_left = total_cards - (num_players * STARTING_HAND_SIZE as usize) - 1;
 
         assert_eq!(
             board.state.deck.cards_left(),
             expected_deck_left,
-            "Deck size after dealing should match legacy expectation for {num_players} players"
+            "Deck size should account for hands and the face-down discard for {num_players} players"
+        );
+        assert_eq!(
+            board.state.discard_pile.len(),
+            1,
+            "Setup should place one card face down in the discard pile"
         );
         assert_eq!(
             board.state.remaining_market_coal, 13,
@@ -85,7 +88,10 @@ fn test_legacy_canal_build_connectivity_and_cost() {
 
     let money_before = board.state.players[player_idx].money;
     let res = NetworkActions::execute_build_canal_action(&mut board.state, player_idx, road_idx, 0);
-    assert!(res.is_ok(), "Canal build should succeed on a canal-capable road");
+    assert!(
+        res.is_ok(),
+        "Canal build should succeed on a canal-capable road"
+    );
 
     assert!(
         board.state.built_roads.contains(road_idx),
@@ -155,11 +161,21 @@ fn test_legacy_canal_to_railroad_transition_clears_roads_and_retires_level1() {
     );
 
     assert!(
-        !runner.framework.board.state.bl_to_building.contains_key(&coal_i_bl),
+        !runner
+            .framework
+            .board
+            .state
+            .bl_to_building
+            .contains_key(&coal_i_bl),
         "Level I coal tile should retire at canal->railroad transition"
     );
     assert!(
-        runner.framework.board.state.bl_to_building.contains_key(&coal_ii_bl),
+        runner
+            .framework
+            .board
+            .state
+            .bl_to_building
+            .contains_key(&coal_ii_bl),
         "Level II coal tile should remain after transition"
     );
 }
@@ -215,11 +231,13 @@ fn test_legacy_end_canal_era_refills_hands_and_switches_phase() {
     let mut runner = GameRunner::new(2, Some(42));
     runner.game_phase = GamePhase::Canal;
     runner.framework.board.state.era = Era::Canal;
-    runner.round_in_phase = 9; // 2p: next end_round transitions to railroad
-
-    // Mirror legacy end-era expectation: players redraw to full hand.
-    runner.framework.board.state.players[0].hand.cards.clear();
-    runner.framework.board.state.players[1].hand.cards.clear();
+    let state = &mut runner.framework.board.state;
+    let mut discarded = std::mem::take(&mut state.deck.cards);
+    discarded.append(&mut state.discard_pile);
+    for player in &mut state.players {
+        discarded.append(&mut player.hand.cards);
+    }
+    state.discard_pile = discarded;
 
     runner.end_round();
 
@@ -233,6 +251,50 @@ fn test_legacy_end_canal_era_refills_hands_and_switches_phase() {
         runner.framework.board.state.players[1].hand.cards.len(),
         STARTING_HAND_SIZE as usize
     );
+    assert!(runner.framework.board.state.discard_pile.is_empty());
+    assert_eq!(runner.round_in_phase, 0);
+}
+
+#[test]
+fn test_final_railroad_round_skips_income() {
+    let mut runner = GameRunner::new(2, Some(91));
+    runner.game_phase = GamePhase::Railroad;
+    runner.framework.board.state.era = Era::Railroad;
+
+    let state = &mut runner.framework.board.state;
+    state.deck.cards.clear();
+    for player in &mut state.players {
+        player.hand.cards.clear();
+    }
+    state.players[0].income_level = 20;
+    let money_before = state.players[0].money;
+
+    runner.end_round();
+
+    assert_eq!(runner.game_phase, GamePhase::GameEnd);
+    assert_eq!(runner.framework.board.state.players[0].money, money_before);
+}
+
+#[test]
+fn test_round_order_uses_only_current_round_spending() {
+    let mut runner = GameRunner::new(2, Some(92));
+    let original_order = runner.framework.board.state.turn_order.clone();
+    runner.framework.board.state.players[original_order[0]].spent_this_turn = 9;
+    runner.framework.board.state.players[original_order[1]].spent_this_turn = 2;
+
+    runner.end_round();
+
+    assert_eq!(
+        runner.framework.board.state.turn_order,
+        vec![original_order[1], original_order[0]]
+    );
+    assert!(runner
+        .framework
+        .board
+        .state
+        .players
+        .iter()
+        .all(|player| player.spent_this_turn == 0));
 }
 
 #[test]
@@ -321,33 +383,41 @@ fn test_legacy_scout_action_discards_three_and_adds_two_wilds() {
     let p = runner.framework.current_player;
 
     runner.framework.board.state.players[p].hand.cards = vec![
-        Card::new(CardType::Location(fast_brass::locations::TownName::Birmingham)),
-        Card::new(CardType::Location(fast_brass::locations::TownName::Coventry)),
+        Card::new(CardType::Location(
+            fast_brass::locations::TownName::Birmingham,
+        )),
+        Card::new(CardType::Location(
+            fast_brass::locations::TownName::Coventry,
+        )),
         Card::new(CardType::Location(fast_brass::locations::TownName::Dudley)),
-        Card::new(CardType::Location(fast_brass::locations::TownName::Worcester)),
+        Card::new(CardType::Location(
+            fast_brass::locations::TownName::Worcester,
+        )),
     ];
-    let before = runner.framework.board.state.players[p].hand.cards.len();
-
     let actions = runner.start_turn();
     assert!(actions.contains(&ActionType::Scout));
     let _ = runner.start_action(ActionType::Scout);
     let _ = runner.apply_choice(ActionChoice::Card(0));
     let _ = runner.apply_choice(ActionChoice::Card(1));
     let _ = runner.apply_choice(ActionChoice::Card(2));
-    runner.confirm_action().expect("Scout action should confirm");
+    runner
+        .confirm_action()
+        .expect("Scout action should confirm");
 
     let hand = &runner.framework.board.state.players[p].hand.cards;
     assert_eq!(
         hand.len(),
-        before - 1,
-        "Scout discards 3 and grants 2 wild cards (net -1)"
+        STARTING_HAND_SIZE as usize,
+        "Scout should refill to eight after replacing three cards with two wilds"
     );
     assert!(
-        hand.iter().any(|c| matches!(c.card_type, CardType::WildLocation)),
+        hand.iter()
+            .any(|c| matches!(c.card_type, CardType::WildLocation)),
         "Scout should add wild-location card"
     );
     assert!(
-        hand.iter().any(|c| matches!(c.card_type, CardType::WildIndustry)),
+        hand.iter()
+            .any(|c| matches!(c.card_type, CardType::WildIndustry)),
         "Scout should add wild-industry card"
     );
 }
@@ -408,19 +478,35 @@ fn test_legacy_second_phase_equivalent_non_retired_and_rail_available() {
             PlayerId::from_usize(p),
         ),
     );
-    runner.framework.board.state.build_locations_occupied.insert(coal_ii_bl);
+    runner
+        .framework
+        .board
+        .state
+        .build_locations_occupied
+        .insert(coal_ii_bl);
     runner.framework.board.state.player_building_mask[p].insert(coal_ii_bl);
-    runner.framework.board.state.coal_locations.insert(coal_ii_bl);
+    runner
+        .framework
+        .board
+        .state
+        .coal_locations
+        .insert(coal_ii_bl);
 
     runner.game_phase = GamePhase::Railroad;
     runner.framework.board.state.era = Era::Railroad;
     runner.end_era();
 
     assert!(
-        runner.framework.board.state.bl_to_building.contains_key(&coal_ii_bl),
+        runner
+            .framework
+            .board
+            .state
+            .bl_to_building
+            .contains_key(&coal_ii_bl),
         "Non-retired higher-level buildings should remain after canal->rail transition"
     );
-    let rail_opts = NetworkValidator::get_valid_single_rail_options(&runner.framework.board.state, p);
+    let rail_opts =
+        NetworkValidator::get_valid_single_rail_options(&runner.framework.board.state, p);
     assert!(
         !rail_opts.is_empty(),
         "After railroad transition, rail options should be available"

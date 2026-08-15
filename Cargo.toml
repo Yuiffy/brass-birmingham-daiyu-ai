@@ -2,6 +2,7 @@
 name = "fast_brass"
 version = "0.1.0"
 edition = "2021"
+default-run = "fast_brass"
 
 [lib]
 name = "fast_brass"
@@ -9,7 +10,8 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 default = []
-python-bindings = ["dep:pyo3", "pyo3/abi3-py38", "pyo3/extension-module"]
+python-bindings = ["dep:pyo3", "pyo3/abi3-py38", "pyo3/auto-initialize"]
+python-extension = ["python-bindings", "pyo3/extension-module"]
 
 [dependencies]
 pyo3 = { version = "0.24.0", optional = true }
@@ -25,6 +27,7 @@ rust-embed = "8"
 mime_guess = "2"
 tower-http = { version = "0.5", features = ["cors"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [dev-dependencies]
 proptest = "1.0"

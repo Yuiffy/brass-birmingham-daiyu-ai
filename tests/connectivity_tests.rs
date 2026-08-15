@@ -5,8 +5,8 @@ mod connectivity_tests {
     use fast_brass::board::Board;
     use fast_brass::core::building::BuiltBuilding;
     use fast_brass::core::player::PlayerId;
-    use fast_brass::core::types::*;
     use fast_brass::core::types::IndustryLevel;
+    use fast_brass::core::types::*;
     use fast_brass::game::framework::{ActionChoice, ChoiceSet, GameFramework};
     use fast_brass::game::runner::GameRunner;
 
@@ -18,60 +18,78 @@ mod connectivity_tests {
     #[test]
     fn test_board_connectivity_initial_state() {
         let board = setup_board(4);
-        
+
         // Board should have proper data structures initialized
-        assert_eq!(board.state.player_building_mask.len(), 4, "Should have building mask for each player");
-        assert_eq!(board.state.player_road_mask.len(), 4, "Should have road mask for each player");
-        assert_eq!(board.state.player_network_mask.len(), 4, "Should have network mask for each player");
+        assert_eq!(
+            board.state.player_building_mask.len(),
+            4,
+            "Should have building mask for each player"
+        );
+        assert_eq!(
+            board.state.player_road_mask.len(),
+            4,
+            "Should have road mask for each player"
+        );
+        assert_eq!(
+            board.state.player_network_mask.len(),
+            4,
+            "Should have network mask for each player"
+        );
     }
 
     #[test]
     fn test_canal_options_available() {
         let board = setup_board(4);
         let player_idx = 0;
-        
+
         // In canal era with no network, player can build canal anywhere
         let canal_options = board.get_valid_canal_options(player_idx);
-        
+
         // Should have some canal options available
-        assert!(!canal_options.is_empty(), "Should have canal options available initially");
+        assert!(
+            !canal_options.is_empty(),
+            "Should have canal options available initially"
+        );
     }
 
     #[test]
     fn test_double_railroad_basic_validation() {
         let mut board = setup_board(4);
         let player_idx = 0;
-        
+
         // Set up rail era
         board.state.era = Era::Railroad;
-        
+
         // Give player enough money
         board.state.players[player_idx].money = 30;
-        
+
         // Add some coal availability
         use fast_brass::core::building::BuiltBuilding;
         use fast_brass::core::player::PlayerId;
-        
+
         board.state.coal_locations.insert(27);
-        board.state.bl_to_building.insert(27, BuiltBuilding::build(
-            IndustryType::Coal, 
-            IndustryLevel::from_usize(0), 
-            27, 
-            PlayerId::from_usize(0)
-        ));
-        
+        board.state.bl_to_building.insert(
+            27,
+            BuiltBuilding::build(
+                IndustryType::Coal,
+                IndustryLevel::from_usize(0),
+                27,
+                PlayerId::from_usize(0),
+            ),
+        );
+
         // Add beer availability
         board.state.beer_locations.insert(26);
         let mut brewery = BuiltBuilding::build(
-            IndustryType::Beer, 
-            IndustryLevel::from_usize(0), 
-            26, 
-            PlayerId::from_usize(player_idx)
+            IndustryType::Beer,
+            IndustryLevel::from_usize(0),
+            26,
+            PlayerId::from_usize(player_idx),
         );
         brewery.resource_amt = 1;
         board.state.bl_to_building.insert(26, brewery);
         board.state.player_building_mask[player_idx].insert(26);
-        
+
         // Test basic validation - should be able to build double railroad with resources
         let can_double = board.can_double_railroad(player_idx);
         // This depends on connectivity setup, but the function should not panic
@@ -82,22 +100,25 @@ mod connectivity_tests {
     fn test_double_railroad_insufficient_money() {
         let mut board = setup_board(4);
         let player_idx = 0;
-        
+
         // Set up rail era
         board.state.era = Era::Railroad;
-        
+
         // Give player insufficient money (less than £15 required)
         board.state.players[player_idx].money = 10;
-        
+
         let can_double = board.can_double_railroad(player_idx);
-        assert!(!can_double, "Player should not be able to build double railroad with insufficient money");
+        assert!(
+            !can_double,
+            "Player should not be able to build double railroad with insufficient money"
+        );
     }
 
     #[test]
     fn test_loan_availability() {
         let board = setup_board(4);
         let player_idx = 0;
-        
+
         // Initial state - player should be able to take loan
         let can_loan = board.can_take_loan(player_idx);
         assert!(can_loan, "Player should be able to take loan initially");
@@ -107,12 +128,12 @@ mod connectivity_tests {
     fn test_scout_availability() {
         let board = setup_board(4);
         let player_idx = 0;
-        
+
         // For scout, player needs at least 3 cards and wild cards available
         // Initial state should have wild cards available
         assert!(board.state.wild_location_cards_available > 0);
         assert!(board.state.wild_industry_cards_available > 0);
-        
+
         // Player should have 8 cards initially, so should be able to scout
         let can_scout = board.can_scout(player_idx);
         // Note: Scout requires player to NOT already have both wild cards
@@ -122,10 +143,10 @@ mod connectivity_tests {
     #[test]
     fn test_canal_vs_rail_era_state() {
         let mut board = setup_board(4);
-        
+
         // Initial era should be Canal
         assert_eq!(board.state.era, Era::Canal);
-        
+
         // Switch to Railroad era
         board.state.era = Era::Railroad;
         assert_eq!(board.state.era, Era::Railroad);
@@ -134,16 +155,22 @@ mod connectivity_tests {
     #[test]
     fn test_market_state() {
         let board = setup_board(4);
-        
+
         // Market should be reasonably full at game start
-        assert!(board.state.remaining_market_coal >= 10, "Should have most coal in market");
-        assert!(board.state.remaining_market_iron >= 5, "Should have most iron in market");
+        assert!(
+            board.state.remaining_market_coal >= 10,
+            "Should have most coal in market"
+        );
+        assert!(
+            board.state.remaining_market_iron >= 5,
+            "Should have most iron in market"
+        );
     }
 
     #[test]
     fn test_trade_post_beer_initial_state() {
         let board = setup_board(4);
-        
+
         // Trade posts should have merchant tiles
         assert!(!board.state.trade_post_slots.is_empty());
     }
@@ -151,30 +178,36 @@ mod connectivity_tests {
     #[test]
     fn test_player_network_connectivity() {
         let board = setup_board(4);
-        
+
         // Initial connectivity should be set up
         // The connectivity DSU structure should be initialized
         // Each player should have their own network connectivity tracker
-        assert_eq!(board.state.player_network_mask.len(), 4,
-            "Should have connectivity for each player");
+        assert_eq!(
+            board.state.player_network_mask.len(),
+            4,
+            "Should have connectivity for each player"
+        );
     }
 
     #[test]
     fn test_build_locations_initial_state() {
         let board = setup_board(4);
-        
+
         // Build locations data structure should be initialized
         // Note: Some game setups may place initial buildings
         let total_bl = board.state.build_locations_occupied.count_ones();
         println!("Build locations occupied at start: {}", total_bl);
-        
+
         // Resource location tracking should be initialized
         let coal_count = board.state.coal_locations.count_ones();
         let iron_count = board.state.iron_locations.count_ones();
         let beer_count = board.state.beer_locations.count_ones();
-        
-        println!("Resource locations - coal: {}, iron: {}, beer: {}", coal_count, iron_count, beer_count);
-        
+
+        println!(
+            "Resource locations - coal: {}, iron: {}, beer: {}",
+            coal_count, iron_count, beer_count
+        );
+
         // At minimum, the data structures should exist and be usable
         assert!(total_bl <= 49, "Should not exceed max build locations");
     }

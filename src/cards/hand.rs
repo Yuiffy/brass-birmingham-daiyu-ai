@@ -28,7 +28,11 @@ impl Hand {
     /// Removes the first occurrence of a specific card type.
     /// Returns true if removed, false otherwise.
     pub fn remove_card_by_type(&mut self, card_type_to_remove: CardType) -> bool {
-        if let Some(pos) = self.cards.iter().position(|c| c.card_type == card_type_to_remove) {
+        if let Some(pos) = self
+            .cards
+            .iter()
+            .position(|c| c.card_type == card_type_to_remove)
+        {
             self.cards.remove(pos);
             true
         } else {

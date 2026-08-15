@@ -2,9 +2,11 @@ use serde::Serialize;
 
 use crate::board::state::BoardState;
 use crate::core::building::BuiltBuilding;
-use crate::core::static_data::{INDUSTRY_MAT, MAX_LEVELS_PER_INDUSTRY, NUM_INDUSTRIES, TOWNS_RANGES};
-use crate::core::types::*;
+use crate::core::static_data::{
+    INDUSTRY_MAT, MAX_LEVELS_PER_INDUSTRY, NUM_INDUSTRIES, TOWNS_RANGES,
+};
 use crate::core::types::ActionType;
+use crate::core::types::*;
 use crate::game::framework::{ActionIntent, ChoiceSet};
 use crate::game::runner::{GamePhase, GameRunner};
 
@@ -208,10 +210,14 @@ pub fn serialize_game_state(runner: &GameRunner) -> FullGameState {
         .iter()
         .map(|a| serialize_turn_action(a, state, runner.framework.current_player, None))
         .collect();
-    let current_action_selections = runner
-        .framework
-        .current_session()
-        .map(|s| serialize_turn_action(&s.intent, state, runner.framework.current_player, Some(current_hand)));
+    let current_action_selections = runner.framework.current_session().map(|s| {
+        serialize_turn_action(
+            &s.intent,
+            state,
+            runner.framework.current_player,
+            Some(current_hand),
+        )
+    });
     let discard_history = runner
         .discard_history()
         .iter()
@@ -321,34 +327,43 @@ fn serialize_turn_action(
     }
 }
 
-fn serialize_industry_mat(mat: &crate::core::industry_mat::PlayerIndustryMat) -> Vec<IndustryTileJson> {
+fn serialize_industry_mat(
+    mat: &crate::core::industry_mat::PlayerIndustryMat,
+) -> Vec<IndustryTileJson> {
     use crate::core::types::IndustryType;
     const INDUSTRIES: [IndustryType; 6] = [
-        IndustryType::Coal, IndustryType::Iron, IndustryType::Beer,
-        IndustryType::Goods, IndustryType::Pottery, IndustryType::Cotton,
+        IndustryType::Coal,
+        IndustryType::Iron,
+        IndustryType::Beer,
+        IndustryType::Goods,
+        IndustryType::Pottery,
+        IndustryType::Cotton,
     ];
-    INDUSTRIES.iter().map(|&ind| {
-        let exhausted = !mat.has_tiles_left(ind);
-        let level = mat.get_lowest_level(ind);
-        let remaining = mat.get_remaining_tiles_at_level(ind);
-        let data = &INDUSTRY_MAT[ind as usize][level.as_usize()];
-        IndustryTileJson {
-            industry: industry_str(ind),
-            level: level.as_usize() + 1,
-            tiles_remaining: remaining,
-            money_cost: data.money_cost,
-            coal_cost: data.coal_cost,
-            iron_cost: data.iron_cost,
-            beer_needed: data.beer_needed,
-            vp_on_flip: data.vp_on_flip,
-            road_vp: data.road_vp,
-            resource_amt: data.resource_amt,
-            income: data.income,
-            removed_after_phase1: data.removed_after_phase1,
-            can_develop: data.can_develop,
-            exhausted,
-        }
-    }).collect()
+    INDUSTRIES
+        .iter()
+        .map(|&ind| {
+            let exhausted = !mat.has_tiles_left(ind);
+            let level = mat.get_lowest_level(ind);
+            let remaining = mat.get_remaining_tiles_at_level(ind);
+            let data = &INDUSTRY_MAT[ind as usize][level.as_usize()];
+            IndustryTileJson {
+                industry: industry_str(ind),
+                level: level.as_usize() + 1,
+                tiles_remaining: remaining,
+                money_cost: data.money_cost,
+                coal_cost: data.coal_cost,
+                iron_cost: data.iron_cost,
+                beer_needed: data.beer_needed,
+                vp_on_flip: data.vp_on_flip,
+                road_vp: data.road_vp,
+                resource_amt: data.resource_amt,
+                income: data.income,
+                removed_after_phase1: data.removed_after_phase1,
+                can_develop: data.can_develop,
+                exhausted,
+            }
+        })
+        .collect()
 }
 
 fn serialize_building(loc: usize, b: &BuiltBuilding) -> BuildingJson {
@@ -371,13 +386,18 @@ fn serialize_pending_developments(runner: &GameRunner) -> Vec<PendingDevelopment
     let Some(session) = runner.framework.current_session() else {
         return out;
     };
-    if session.action_type != ActionType::Develop && session.action_type != ActionType::DevelopDouble {
+    if session.action_type != ActionType::Develop
+        && session.action_type != ActionType::DevelopDouble
+    {
         return out;
     }
     let player_idx = session.player_idx;
     let mat = &runner.framework.board.state.players[player_idx].industry_mat;
 
-    for industry in [session.intent.selected_industry, session.intent.selected_second_industry] {
+    for industry in [
+        session.intent.selected_industry,
+        session.intent.selected_second_industry,
+    ] {
         if let Some(ind) = industry {
             let current_level = mat.get_lowest_level(ind);
             let develop_to_level = current_level.as_usize() + 2; // 1-based display: we develop to next level
@@ -470,14 +490,18 @@ fn serialize_choice_set(cs: &ChoiceSet, hand: &[Card]) -> ChoiceSetJson {
                 .iter()
                 .map(|s| {
                     let (val, lbl) = match s {
-                        crate::board::resources::ResourceSource::Building(loc) => {
-                            (serde_json::json!({"Building": loc}), format!("Coal at loc {}", loc))
-                        }
+                        crate::board::resources::ResourceSource::Building(loc) => (
+                            serde_json::json!({"Building": loc}),
+                            format!("Coal at loc {}", loc),
+                        ),
                         crate::board::resources::ResourceSource::Market => {
                             (serde_json::json!("Market"), "Market".to_string())
                         }
                     };
-                    ChoiceOptionJson { value: val, label: lbl }
+                    ChoiceOptionJson {
+                        value: val,
+                        label: lbl,
+                    }
                 })
                 .collect(),
         },
@@ -487,14 +511,18 @@ fn serialize_choice_set(cs: &ChoiceSet, hand: &[Card]) -> ChoiceSetJson {
                 .iter()
                 .map(|s| {
                     let (val, lbl) = match s {
-                        crate::board::resources::ResourceSource::Building(loc) => {
-                            (serde_json::json!({"Building": loc}), format!("Iron at loc {}", loc))
-                        }
+                        crate::board::resources::ResourceSource::Building(loc) => (
+                            serde_json::json!({"Building": loc}),
+                            format!("Iron at loc {}", loc),
+                        ),
                         crate::board::resources::ResourceSource::Market => {
                             (serde_json::json!("Market"), "Market".to_string())
                         }
                     };
-                    ChoiceOptionJson { value: val, label: lbl }
+                    ChoiceOptionJson {
+                        value: val,
+                        label: lbl,
+                    }
                 })
                 .collect(),
         },
@@ -504,14 +532,19 @@ fn serialize_choice_set(cs: &ChoiceSet, hand: &[Card]) -> ChoiceSetJson {
                 .iter()
                 .map(|s| {
                     let (val, lbl) = match s {
-                        crate::board::resources::BeerSellSource::Building(loc) => {
-                            (serde_json::json!({"Building": loc}), format!("Brewery at {}", loc))
-                        }
-                        crate::board::resources::BeerSellSource::TradePost(slot) => {
-                            (serde_json::json!({"TradePost": slot}), format!("Merchant slot {}", slot))
-                        }
+                        crate::board::resources::BeerSellSource::Building(loc) => (
+                            serde_json::json!({"Building": loc}),
+                            format!("Brewery at {}", loc),
+                        ),
+                        crate::board::resources::BeerSellSource::TradePost(slot) => (
+                            serde_json::json!({"TradePost": slot}),
+                            format!("Merchant slot {}", slot),
+                        ),
                     };
-                    ChoiceOptionJson { value: val, label: lbl }
+                    ChoiceOptionJson {
+                        value: val,
+                        label: lbl,
+                    }
                 })
                 .collect(),
         },
@@ -521,14 +554,19 @@ fn serialize_choice_set(cs: &ChoiceSet, hand: &[Card]) -> ChoiceSetJson {
                 .iter()
                 .map(|s| {
                     let (val, lbl) = match s {
-                        crate::board::resources::BreweryBeerSource::OwnBrewery(loc) => {
-                            (serde_json::json!({"OwnBrewery": loc}), format!("Own brewery at {}", loc))
-                        }
-                        crate::board::resources::BreweryBeerSource::OpponentBrewery(loc) => {
-                            (serde_json::json!({"OpponentBrewery": loc}), format!("Opponent brewery at {}", loc))
-                        }
+                        crate::board::resources::BreweryBeerSource::OwnBrewery(loc) => (
+                            serde_json::json!({"OwnBrewery": loc}),
+                            format!("Own brewery at {}", loc),
+                        ),
+                        crate::board::resources::BreweryBeerSource::OpponentBrewery(loc) => (
+                            serde_json::json!({"OpponentBrewery": loc}),
+                            format!("Opponent brewery at {}", loc),
+                        ),
                     };
-                    ChoiceOptionJson { value: val, label: lbl }
+                    ChoiceOptionJson {
+                        value: val,
+                        label: lbl,
+                    }
                 })
                 .collect(),
         },
@@ -663,12 +701,28 @@ fn player_color(idx: usize) -> &'static str {
     }
 }
 
-fn town_name_for_bl(bl_idx: usize) -> String {
+pub(crate) fn town_name_for_bl(bl_idx: usize) -> String {
     static TOWN_NAMES: [&str; 20] = [
-        "Stafford", "Burton-Upon-Trent", "Cannock", "Tamworth", "Walsall",
-        "Leek", "Stoke-On-Trent", "Stone", "Uttoxeter", "Belper",
-        "Derby", "Coalbrookdale", "Wolverhampton", "Dudley", "Kidderminster",
-        "Worcester", "Birmingham", "Nuneaton", "Coventry", "Redditch",
+        "Stafford",
+        "Burton-Upon-Trent",
+        "Cannock",
+        "Tamworth",
+        "Walsall",
+        "Leek",
+        "Stoke-On-Trent",
+        "Stone",
+        "Uttoxeter",
+        "Belper",
+        "Derby",
+        "Coalbrookdale",
+        "Wolverhampton",
+        "Dudley",
+        "Kidderminster",
+        "Worcester",
+        "Birmingham",
+        "Nuneaton",
+        "Coventry",
+        "Redditch",
     ];
     if bl_idx == 47 {
         return "beer1".to_string();
@@ -710,7 +764,7 @@ fn format_card_type(ct: &CardType) -> String {
     }
 }
 
-fn format_card_label(ct: &CardType) -> String {
+pub(crate) fn format_card_label(ct: &CardType) -> String {
     match ct {
         CardType::Location(town) => format!("{:?}", town),
         CardType::Industry(ind_set) => {
@@ -745,8 +799,12 @@ pub struct IndustryLevelDataJson {
 pub fn serialize_all_industry_data() -> serde_json::Value {
     use crate::core::types::IndustryType;
     const INDUSTRIES: [IndustryType; 6] = [
-        IndustryType::Coal, IndustryType::Iron, IndustryType::Beer,
-        IndustryType::Goods, IndustryType::Pottery, IndustryType::Cotton,
+        IndustryType::Coal,
+        IndustryType::Iron,
+        IndustryType::Beer,
+        IndustryType::Goods,
+        IndustryType::Pottery,
+        IndustryType::Cotton,
     ];
     let mut result = serde_json::Map::new();
     for &ind in &INDUSTRIES {

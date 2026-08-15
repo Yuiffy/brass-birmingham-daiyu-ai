@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { gameState, choiceSet } from '$lib/store';
+	import { analysisHighlights, gameState, choiceSet } from '$lib/store';
 	import { applyChoice, confirmAction } from '$lib/api';
 	import {
 		BOARD_W, BOARD_H, BUILDING_COORDS, ROAD_COORDS,
@@ -10,7 +10,7 @@
 		MERCHANT_COLORS, MERCHANT_ABBR,
 		coalCubeCoords, ironCubeCoords, COAL_MARKET, IRON_MARKET
 	} from '$lib/coords';
-	import type { GameState, Building, Road, TradePostSlot, ChoiceSet as CS } from '$lib/types';
+	import type { AnalysisHighlights, GameState, Building, Road, TradePostSlot, ChoiceSet as CS } from '$lib/types';
 
 	let canvas: HTMLCanvasElement;
 	let boardImg: HTMLImageElement;
@@ -22,8 +22,9 @@
 
 	$: gs = $gameState;
 	$: cs = $choiceSet;
+	$: ah = $analysisHighlights;
 
-	$: if (gs && canvas && imagesReady) draw(gs, cs, performance.now());
+	$: if (gs && canvas && imagesReady) draw(gs, cs, ah, visualNow(performance.now()));
 
 	onMount(() => {
 		const tileTypes = ['all', 'blank', 'cotton', 'goods', 'pottery'];
@@ -43,12 +44,17 @@
 
 		window.addEventListener('resize', fitBoard);
 		const tick = (t: number) => {
-			if (gs && canvas && imagesReady) draw(gs, cs, t);
+			if (gs && canvas && imagesReady) draw(gs, cs, ah, visualNow(t));
 			rafId = requestAnimationFrame(tick);
 		};
+		const redrawForTestTime = () => {
+			if (gs && canvas && imagesReady) draw(gs, cs, ah, visualNow(performance.now()));
+		};
+		window.addEventListener('brass:advance-time', redrawForTestTime);
 		rafId = requestAnimationFrame(tick);
 		return () => {
 			window.removeEventListener('resize', fitBoard);
+			window.removeEventListener('brass:advance-time', redrawForTestTime);
 			if (rafId !== null) cancelAnimationFrame(rafId);
 		};
 	});
@@ -67,10 +73,14 @@
 		if (scale <= 0) scale = 0.5;
 		canvas.width = BOARD_W * scale;
 		canvas.height = BOARD_H * scale;
-		if (gs) draw(gs, cs, performance.now());
+		if (gs) draw(gs, cs, ah, visualNow(performance.now()));
 	}
 
-	function draw(state: GameState, choices: CS | null, nowMs: number) {
+	function visualNow(fallback: number): number {
+		return (window as typeof window & { __brassVisualTime?: number }).__brassVisualTime ?? fallback;
+	}
+
+	function draw(state: GameState, choices: CS | null, highlights: AnalysisHighlights | null, nowMs: number) {
 		const ctx = canvas.getContext('2d')!;
 		const s = scale;
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -109,8 +119,55 @@
 		// Draw iron market
 		drawIronMarket(ctx, s, state.iron_market);
 
+		drawAnalysisHighlights(ctx, s, highlights, nowMs);
+
 		// Draw top-layer selection UI so every selectable option stays visible.
 		drawBoardSelectionOverlay(ctx, s, choices, nowMs);
+	}
+
+	function drawAnalysisHighlights(
+		ctx: CanvasRenderingContext2D,
+		s: number,
+		highlights: AnalysisHighlights | null,
+		nowMs: number
+	) {
+		if (!highlights) return;
+		const pulse = 0.7 + 0.3 * Math.sin(nowMs / 320);
+		ctx.save();
+		ctx.lineWidth = (3 + pulse) * s;
+		ctx.strokeStyle = `rgba(8, 127, 91, ${0.78 + pulse * 0.18})`;
+		for (const location of highlights.building_locations) {
+			const co = blIdxToCoords(location);
+			if (!co) continue;
+			ctx.strokeRect((co[0] - 31) * s, (co[1] - 31) * s, 62 * s, 62 * s);
+		}
+
+		ctx.setLineDash([7 * s, 5 * s]);
+		ctx.strokeStyle = `rgba(0, 105, 148, ${0.72 + pulse * 0.2})`;
+		for (const location of highlights.source_locations) {
+			const co = blIdxToCoords(location);
+			if (!co) continue;
+			ctx.beginPath();
+			ctx.arc(co[0] * s, co[1] * s, 34 * s, 0, Math.PI * 2);
+			ctx.stroke();
+		}
+		ctx.setLineDash([]);
+
+		ctx.strokeStyle = `rgba(181, 64, 49, ${0.8 + pulse * 0.16})`;
+		for (const road of highlights.roads) {
+			const co = ROAD_COORDS[road];
+			if (!co) continue;
+			ctx.beginPath();
+			ctx.arc(co[0] * s, co[1] * s, 23 * s, 0, Math.PI * 2);
+			ctx.stroke();
+		}
+
+		for (const slot of highlights.merchant_slots) {
+			const co = TRADE_POST_TILE_COORDS[slot];
+			if (!co) continue;
+			ctx.strokeRect((co[0] - 4) * s, (co[1] - 4) * s, 56 * s, 58 * s);
+		}
+		ctx.restore();
 	}
 
 	type SelectionRect = { x: number; y: number; half: number };

@@ -1,6 +1,6 @@
-use crate::core::types::{IndustryType, IndustryLevel};
-use crate::core::player::PlayerId;
 use crate::core::locations::LocationName;
+use crate::core::player::PlayerId;
+use crate::core::types::{IndustryLevel, IndustryType};
 // Built Building
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BuiltBuilding {
@@ -15,8 +15,16 @@ pub struct BuiltBuilding {
 impl BuiltBuilding {
     pub fn build(industry: IndustryType, level: IndustryLevel, loc: u8, owner: PlayerId) -> Self {
         // Get Resource Amount from INDUSTRY_MAT
-        let resource_amt = crate::static_data::INDUSTRY_MAT[industry as usize][level.as_usize()].resource_amt;
-        Self { industry, level, loc, owner, resource_amt, flipped: false }
+        let resource_amt =
+            crate::static_data::INDUSTRY_MAT[industry as usize][level.as_usize()].resource_amt;
+        Self {
+            industry,
+            level,
+            loc,
+            owner,
+            resource_amt,
+            flipped: false,
+        }
     }
 
     pub fn flip(&mut self) {
@@ -52,4 +60,3 @@ impl BuiltBuilding {
         LocationName::from_bl_idx(self.loc as usize)
     }
 }
-

@@ -9,10 +9,10 @@ use crate::core::static_data::{LOCATION_TO_ROADS, TOWN_TO_BL_SET};
 // This will need to be moved to a separate constants file or lazy static
 // For now, we'll reference the original location
 // Re-export consts that are NOT also defined in types.rs to avoid ambiguity
-pub use crate::consts::{ INDUSTRY_TO_BYTES,
-    STARTING_CARDS_2P, STARTING_CARDS_3P, STARTING_CARDS_4P,
-    STARTING_CARDS_2P_LEN, STARTING_CARDS_3P_LEN, STARTING_CARDS_4P_LEN,
-    BEER_BREWERY_1, BEER_BREWERY_2, TOTAL_TOWNS
+pub use crate::consts::{
+    BEER_BREWERY_1, BEER_BREWERY_2, INDUSTRY_TO_BYTES, STARTING_CARDS_2P, STARTING_CARDS_2P_LEN,
+    STARTING_CARDS_3P, STARTING_CARDS_3P_LEN, STARTING_CARDS_4P, STARTING_CARDS_4P_LEN,
+    TOTAL_TOWNS,
 };
 // INDUSTRY_MAT is in static_data, not consts
 pub use crate::core::static_data::INDUSTRY_MAT;
@@ -200,13 +200,16 @@ impl LocationName {
     }
 
     pub fn from_bl_idx(location_idx: usize) -> Self {
-
         if location_idx >= NUM_BL_WITH_TRADE_POSTS {
-            panic!("Invalid location index: {}. Max NUM_BL_WITH_TRADE_POSTS: {}", location_idx, NUM_BL_WITH_TRADE_POSTS);
+            panic!(
+                "Invalid location index: {}. Max NUM_BL_WITH_TRADE_POSTS: {}",
+                location_idx, NUM_BL_WITH_TRADE_POSTS
+            );
         }
 
         if location_idx >= N_BL {
-            return LocationName::from_usize(NUM_TOTAL_BUILD_TOWNS + 2 + (location_idx - N_BL)); // 2 is for the two lone breweries
+            return LocationName::from_usize(NUM_TOTAL_BUILD_TOWNS + 2 + (location_idx - N_BL));
+            // 2 is for the two lone breweries
         }
 
         use super::static_data::BUILD_LOCATION_TO_TOWN;
@@ -311,22 +314,20 @@ impl TownName {
     }
 }
 
-
-
-
-
-
 #[derive(Debug, Clone)]
 pub struct BuildTown {
     pub town_name: TownName,
     pub bl_range: (u8, u8),
     pub town_color: TownColors,
 }
-    
 
 impl BuildTown {
     pub fn new(town_name: TownName, bl_range: (u8, u8), town_color: TownColors) -> Self {
-        Self { town_name, bl_range, town_color }
+        Self {
+            town_name,
+            bl_range,
+            town_color,
+        }
     }
 
     pub fn get_build_locations(&self) -> FixedBitSet {
@@ -339,7 +340,6 @@ impl BuildTown {
         self.town_name.to_location_set()
     }
 }
-
 
 pub fn get_bl_by_industry(industry: IndustryType) -> FixedBitSet {
     use super::static_data::BUILD_LOCATION_MASK;
@@ -364,9 +364,7 @@ mod tests {
         let location_name = LocationName::from_bl_idx(BEER_BREWERY_1 as usize);
         assert_eq!(location_name, LocationName::LoneBrewery1);
         let location_name = LocationName::from_bl_idx(BEER_BREWERY_2 as usize);
-        assert_eq!(location_name, LocationName::LoneBrewery2);   
-
-
+        assert_eq!(location_name, LocationName::LoneBrewery2);
     }
 
     #[test]
@@ -374,8 +372,14 @@ mod tests {
         let lb1 = LocationName::LoneBrewery1;
         let lb2 = LocationName::LoneBrewery2;
 
-        assert!(!lb1.is_town(), "Lone brewery 1 should not be classified as a town");
-        assert!(!lb2.is_town(), "Lone brewery 2 should not be classified as a town");
+        assert!(
+            !lb1.is_town(),
+            "Lone brewery 1 should not be classified as a town"
+        );
+        assert!(
+            !lb2.is_town(),
+            "Lone brewery 2 should not be classified as a town"
+        );
 
         let lb1_set = lb1.to_bl_set();
         let lb2_set = lb2.to_bl_set();

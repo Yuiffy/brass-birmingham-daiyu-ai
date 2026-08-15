@@ -6,11 +6,13 @@ pub struct MarketPricing;
 impl MarketPricing {
     /// Calculate coal price for given number of cubes
     pub fn coal_price(remaining_market_coal: u8, cubes: u8) -> u16 {
-        if cubes == 0 { return 0; }
-        
+        if cubes == 0 {
+            return 0;
+        }
+
         let mut total_cost = 0;
         let mut market_idx = remaining_market_coal;
-        
+
         for _ in 0..cubes {
             if market_idx > 0 {
                 total_cost += COAL_PRICE_TABLE[(MAX_MARKET_COAL - market_idx) as usize] as u16;
@@ -24,11 +26,13 @@ impl MarketPricing {
 
     /// Calculate iron price for given number of cubes
     pub fn iron_price(remaining_market_iron: u8, cubes: u8) -> u16 {
-        if cubes == 0 { return 0; }
-        
+        if cubes == 0 {
+            return 0;
+        }
+
         let mut total_cost = 0;
         let mut market_idx = remaining_market_iron;
-        
+
         for _ in 0..cubes {
             if market_idx > 0 {
                 total_cost += IRON_PRICE_TABLE[(MAX_MARKET_IRON - market_idx) as usize] as u16;

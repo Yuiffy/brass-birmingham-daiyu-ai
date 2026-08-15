@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { Dices } from 'lucide-svelte';
 	import { gameState, turnPhase, actionsAvailable, choiceSet, logs, moneyAtTurnStart, pendingDevelopments, actionBudgetAtTurnStart } from '$lib/store';
 	import { INDUSTRY_COLORS } from '$lib/coords';
 	import { startTurn, selectAction, applyChoice, confirmAction, cancelAction, endTurn, undoLastAction } from '$lib/api';
@@ -55,10 +56,10 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		Develop: 'Develop', DevelopDouble: 'Develop x2', Sell: 'Sell',
 		Loan: 'Loan', Scout: 'Scout', Pass: 'Pass'
 	};
-	const ACTION_EMOJI: Record<string, string> = {
-		BuildBuilding: '🏗️', BuildRailroad: '🛤️', BuildDoubleRailroad: '🚆',
-		Develop: '🔧', DevelopDouble: '⚙️', Sell: '💰',
-		Loan: '🏦', Scout: '🧭', Pass: '⏭️'
+	const ACTION_MARK: Record<string, string> = {
+		BuildBuilding: 'B', BuildRailroad: 'N', BuildDoubleRailroad: 'N2',
+		Develop: 'D', DevelopDouble: 'D2', Sell: 'S',
+		Loan: 'L', Scout: 'SC', Pass: 'P'
 	};
 	const CHOICE_TITLES: Record<string, string> = {
 		industry: 'Choose Industry', card: 'Choose Card', build_location: 'Choose Location',
@@ -129,7 +130,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 			&middot; Action {currentActionNumber()}/{actionBudget}
 		</div>
 		<button class="seed-chip" on:click={copySeed} title="Copy seed to clipboard">
-			🎲 Seed {gs.seed}
+			<Dices size={13} aria-hidden="true" /> Seed {gs.seed}
 		</button>
 		{#if seedCopied}
 			<div class="seed-copied">Copied seed</div>
@@ -184,7 +185,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		{#each gs.turn_action_history ?? [] as act, idx}
 			<div class="history-item">
 				<div class="history-title">
-					<span>{ACTION_EMOJI[act.action_type] || '🎯'}</span>
+					<span class="action-mark">{ACTION_MARK[act.action_type] || '?'}</span>
 					<span>{idx + 1}. {ACTION_LABELS[act.action_type] || act.action_type}</span>
 				</div>
 				{#if act.selections.length > 0}
@@ -199,7 +200,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		{#if gs.current_action_selections}
 			<div class="history-item current">
 				<div class="history-title">
-					<span>{ACTION_EMOJI[gs.current_action_selections.action_type] || '🎯'}</span>
+					<span class="action-mark">{ACTION_MARK[gs.current_action_selections.action_type] || '?'}</span>
 					<span>Current: {ACTION_LABELS[gs.current_action_selections.action_type] || gs.current_action_selections.action_type}</span>
 				</div>
 				{#if gs.current_action_selections.selections.length > 0}
@@ -293,22 +294,23 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	.sidebar {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-		padding: 8px;
+		padding: 0 18px 24px;
 		overflow-y: auto;
-		height: 100vh;
-		width: 290px;
+		height: 100%;
+		width: 100%;
 		position: relative;
+		background: #f5f6f4;
+		color: #202321;
 	}
 	.round-toast {
 		position: sticky;
 		top: 0;
 		z-index: 5;
 		text-align: center;
-		background: linear-gradient(90deg, #14532d, #166534);
-		color: #dcfce7;
-		border: 1px solid #22c55e;
-		border-radius: 8px;
+		background: #087f5b;
+		color: #fff;
+		border: 0;
+		border-radius: 0 0 6px 6px;
 		padding: 8px 10px;
 		font-size: 12px;
 		font-weight: 700;
@@ -319,61 +321,65 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		to { opacity: 1; transform: translateY(0); }
 	}
 	.panel {
-		background: #16213e;
-		border-radius: 8px;
-		padding: 10px 12px;
-		border: 1px solid #2a3a5c;
+		background: transparent;
+		border-radius: 0;
+		padding: 14px 0;
+		border: 0;
+		border-bottom: 1px solid #d4d8d5;
 	}
 	.panel h3 {
-		font-size: 11px;
+		font-size: 10px;
 		text-transform: uppercase;
-		letter-spacing: 1px;
-		color: #7a8ba8;
+		letter-spacing: 0;
+		color: #747a76;
 		margin: 0 0 6px;
 	}
-	.phase-panel { text-align: center; }
-	.phase-era { font-size: 16px; font-weight: 700; color: #c7a750; }
-	.phase-sub { font-size: 11px; color: #7a8ba8; margin-top: 2px; }
+	.phase-panel { text-align: left; padding-top: 18px; }
+	.phase-era { font-size: 18px; font-weight: 750; color: #202321; }
+	.phase-sub { font-size: 11px; color: #747a76; margin-top: 3px; }
 	.seed-chip {
 		margin-top: 8px;
-		background: #1e293b;
-		border: 1px solid #334155;
-		color: #cbd5e1;
-		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		background: #fff;
+		border: 1px solid #cbd0cc;
+		color: #555b57;
+		border-radius: 5px;
 		padding: 4px 10px;
 		font-size: 11px;
 		font-weight: 700;
 		cursor: pointer;
 	}
-	.seed-chip:hover { border-color: #22c55e; color: #dcfce7; }
-	.seed-copied { margin-top: 4px; font-size: 10px; color: #86efac; }
+	.seed-chip:hover { border-color: #087f5b; color: #087f5b; }
+	.seed-copied { margin-top: 4px; font-size: 10px; color: #087f5b; }
 
 	.player-row {
 		display: flex; align-items: center; padding: 4px 6px; border-radius: 5px;
 		margin-bottom: 2px; font-size: 12px;
 	}
-	.player-row.active { background: rgba(37,99,235,0.2); border: 1px solid #2563eb; }
+	.player-row.active { background: #e4f3ed; box-shadow: inset 2px 0 #087f5b; }
 	.turn-num {
-		font-size: 10px; font-weight: 700; color: #64748b;
+		font-size: 10px; font-weight: 700; color: #7c827e;
 		width: 16px; text-align: center; flex-shrink: 0;
 	}
 	.dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
 	.pname { font-weight: 600; min-width: 60px; }
-	.pstats { color: #94a3b8; font-size: 11px; margin-left: auto; white-space: nowrap; }
-	.money-delta { color: #ef4444; font-size: 10px; }
+	.pstats { color: #666c68; font-size: 11px; margin-left: auto; white-space: nowrap; }
+	.money-delta { color: #b54031; font-size: 10px; }
 	.mini-btn {
 		margin-left: 4px;
 		padding: 2px 6px;
 		font-size: 10px;
 		border-radius: 6px;
-		border: 1px solid #475569;
-		background: #1e293b;
-		color: #cbd5e1;
+		border: 1px solid #c6cbc7;
+		background: #fff;
+		color: #545a56;
 		cursor: pointer;
 	}
 	.mini-btn:hover {
-		border-color: #7c3aed;
-		color: #e2e8f0;
+		border-color: #087f5b;
+		color: #087f5b;
 	}
 
 	.market-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
@@ -382,37 +388,38 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	.cube.iron { background: #f97316; }
 
 	.controls { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
-	.game-over { text-align: center; font-size: 18px; font-weight: 700; color: #ef4444; }
+	.game-over { text-align: center; font-size: 18px; font-weight: 700; color: #b54031; }
 
 	.btn {
 		padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer;
 		font-size: 12px; font-weight: 600; color: #fff; transition: background 0.15s;
 	}
-	.btn.primary { background: #2563eb; }
-	.btn.primary:hover { background: #1d4ed8; }
-	.btn.secondary { background: #475569; }
-	.btn.secondary:hover { background: #374151; }
-	.btn.action { background: #065f46; }
-	.btn.action:hover { background: #047857; }
-	.btn.choice { background: #7c3aed; min-width: 90px; }
-	.btn.choice:hover { background: #6d28d9; }
-	.btn.cancel { background: #991b1b; margin-top: 6px; }
-	.btn.cancel:hover { background: #7f1d1d; }
-	.btn.mat-btn { background: #334155; font-size: 11px; padding: 5px 10px; }
-	.btn.mat-btn:hover { background: #475569; }
-	.btn.undo-btn { background: #7f1d1d; font-size: 11px; padding: 5px 10px; }
-	.btn.undo-btn:hover { background: #991b1b; }
+	.btn.primary { background: #087f5b; }
+	.btn.primary:hover { background: #066b4c; }
+	.btn.secondary { background: #343936; }
+	.btn.secondary:hover { background: #242826; }
+	.btn.action { background: #087f5b; }
+	.btn.action:hover { background: #066b4c; }
+	.btn.choice { background: #006994; min-width: 90px; }
+	.btn.choice:hover { background: #00577b; }
+	.btn.cancel { background: #b54031; margin-top: 6px; }
+	.btn.cancel:hover { background: #943327; }
+	.btn.mat-btn { background: #fff; color: #343936; border: 1px solid #c6cbc7; font-size: 11px; padding: 5px 10px; }
+	.btn.mat-btn:hover { border-color: #087f5b; color: #087f5b; }
+	.btn.undo-btn { background: #b54031; font-size: 11px; padding: 5px 10px; }
+	.btn.undo-btn:hover { background: #943327; }
 
 	.btn-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 
 	.hint-panel { text-align: center; }
-	.hint-text { color: #22c55e; font-size: 13px; margin: 8px 0; }
+	.hint-text { color: #087f5b; font-size: 13px; margin: 8px 0; }
 	.history-panel { display: flex; flex-direction: column; gap: 6px; }
-	.history-item { background: rgba(15,23,42,0.6); border: 1px solid #2a3a5c; border-radius: 8px; padding: 6px; }
-	.history-item.current { border-color: #22c55e; }
-	.history-title { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #e2e8f0; font-weight: 700; }
+	.history-item { background: #fff; border: 1px solid #d6dad7; border-radius: 6px; padding: 7px; }
+	.history-item.current { border-color: #087f5b; }
+	.history-title { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #252925; font-weight: 700; }
+	.action-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e5e8e5; color: #404541; font-size: 9px; }
 	.history-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-	.history-tag { font-size: 10px; color: #cbd5e1; background: #1e293b; border-radius: 999px; padding: 2px 8px; }
+	.history-tag { font-size: 10px; color: #575d59; background: #eceeec; border-radius: 4px; padding: 2px 6px; }
 	.develop-hint .dev-selections {
 		display: flex;
 		flex-wrap: wrap;
@@ -421,20 +428,20 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 		margin: 8px 0;
 		justify-content: center;
 	}
-	.dev-label { font-size: 11px; color: #7a8ba8; margin-right: 4px; }
+	.dev-label { font-size: 11px; color: #747a76; margin-right: 4px; }
 	.dev-tile {
 		display: flex;
 		align-items: center;
 		gap: 6px;
 		padding: 6px 10px;
-		background: rgba(0,0,0,0.3);
-		border-radius: 8px;
+		background: #fff;
+		border-radius: 6px;
 		border: 1px solid var(--ind-color, #555);
 	}
 	.dev-tile-icon { width: 24px; height: 24px; object-fit: contain; }
-	.dev-tile-label { font-size: 12px; font-weight: 600; color: #eee; }
+	.dev-tile-label { font-size: 12px; font-weight: 600; color: #292d2a; }
 
 	.log-panel { flex: 1; min-height: 80px; }
-	.log-scroll { max-height: 200px; overflow-y: auto; font-size: 10px; color: #94a3b8; line-height: 1.6; }
-	.log-entry { border-bottom: 1px solid #1e293b; padding: 1px 0; }
+	.log-scroll { max-height: 200px; overflow-y: auto; font-size: 10px; color: #747a76; line-height: 1.6; }
+	.log-entry { border-bottom: 1px solid #e0e3e0; padding: 2px 0; }
 </style>

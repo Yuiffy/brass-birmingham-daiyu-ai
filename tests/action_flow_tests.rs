@@ -1,19 +1,31 @@
+use fast_brass::board::resources::ResourceManager;
 use fast_brass::board::Board;
 use fast_brass::core::building::BuiltBuilding;
 use fast_brass::core::player::PlayerId;
-use fast_brass::core::types::{ActionType, Card, CardType, IndustryLevel, IndustrySet, IndustryType};
+use fast_brass::core::types::{
+    ActionType, Card, CardType, IndustryLevel, IndustrySet, IndustryType,
+};
 use fast_brass::game::framework::{ActionChoice, ChoiceSet, GameFramework};
 use fast_brass::game::runner::GameRunner;
 use fast_brass::locations::TownName;
 use fast_brass::validation::{build_validation::BuildValidator, NetworkValidator};
-use fast_brass::board::resources::ResourceManager;
 
 fn do_pass_action(runner: &mut GameRunner) {
     let cs = runner.start_action(ActionType::Pass);
-    assert!(matches!(cs, ChoiceSet::Card(_)), "Pass should require card choice, got {:?}", cs);
+    assert!(
+        matches!(cs, ChoiceSet::Card(_)),
+        "Pass should require card choice, got {:?}",
+        cs
+    );
     let cs = runner.apply_choice(ActionChoice::Card(0));
-    assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)), "Pass should move to confirm after card, got {:?}", cs);
-    runner.confirm_action().expect("pass confirm should succeed");
+    assert!(
+        matches!(cs, Some(ChoiceSet::ConfirmOnly)),
+        "Pass should move to confirm after card, got {:?}",
+        cs
+    );
+    runner
+        .confirm_action()
+        .expect("pass confirm should succeed");
 }
 
 #[test]
@@ -69,12 +81,20 @@ fn test_pass_requires_card_and_discards_it() {
     let discard_before = runner.framework.board.state.discard_pile.len();
 
     let cs = runner.start_action(ActionType::Pass);
-    assert!(matches!(cs, ChoiceSet::Card(_)), "Pass must prompt for card selection");
+    assert!(
+        matches!(cs, ChoiceSet::Card(_)),
+        "Pass must prompt for card selection"
+    );
 
     let cs = runner.apply_choice(ActionChoice::Card(0));
-    assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)), "Pass should confirm only after card selection");
+    assert!(
+        matches!(cs, Some(ChoiceSet::ConfirmOnly)),
+        "Pass should confirm only after card selection"
+    );
 
-    runner.confirm_action().expect("pass confirm should succeed after selecting a card");
+    runner
+        .confirm_action()
+        .expect("pass confirm should succeed after selecting a card");
 
     let hand_after = runner.framework.board.state.players[runner.framework.current_player]
         .hand
@@ -82,8 +102,15 @@ fn test_pass_requires_card_and_discards_it() {
         .len();
     let discard_after = runner.framework.board.state.discard_pile.len();
 
-    assert_eq!(hand_after, hand_before - 1, "Pass should discard one card from hand");
-    assert_eq!(discard_after, discard_before + 1, "Pass should add one card to discard pile");
+    assert_eq!(
+        hand_after, hand_before,
+        "Pass should refill the hand after discarding"
+    );
+    assert_eq!(
+        discard_after,
+        discard_before + 1,
+        "Pass should add one card to discard pile"
+    );
 }
 
 #[test]
@@ -96,7 +123,9 @@ fn test_can_undo_last_confirmed_action_within_turn() {
     assert!(matches!(cs, ChoiceSet::Card(_)));
     let cs = runner.apply_choice(ActionChoice::Card(0));
     assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)));
-    runner.confirm_action().expect("pass confirm should succeed");
+    runner
+        .confirm_action()
+        .expect("pass confirm should succeed");
     assert_eq!(runner.actions_remaining_in_turn, 0);
     assert_eq!(runner.turn_action_history().len(), 1);
 
@@ -194,7 +223,10 @@ fn test_turn_order_updates_after_round_based_on_spending() {
             );
             opts[0]
         }
-        other => panic!("Expected SecondIndustry for second industry, got {:?}", other),
+        other => panic!(
+            "Expected SecondIndustry for second industry, got {:?}",
+            other
+        ),
     };
     let cs = runner.apply_choice(ActionChoice::FreeDevelopment(second_industry));
 
@@ -259,11 +291,7 @@ fn test_turn_order_updates_after_round_based_on_spending() {
     runner.confirm_action().unwrap();
 
     let money_after_p2 = runner.framework.board.state.players[second_player].money;
-    assert_eq!(
-        money_after_p2,
-        money_before_p2 + 30,
-        "Loan should give £30"
-    );
+    assert_eq!(money_after_p2, money_before_p2 + 30, "Loan should give £30");
     assert_eq!(
         runner.framework.board.state.players[second_player].spent_this_turn, 0,
         "Loan player should have spent £0"
@@ -315,19 +343,39 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
     runner.framework.board.state.players[brunel].hand.cards = vec![
         Card::new(CardType::Location(TownName::Coalbrookdale)),
         Card::new(CardType::Location(TownName::Coalbrookdale)),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Iron]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Coal]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Beer]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Goods]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Iron,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Cotton,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Coal,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Beer,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Goods,
+        ]))),
         Card::new(CardType::Location(TownName::Birmingham)),
     ];
     runner.framework.board.state.players[coade].hand.cards = vec![
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Coal]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Iron]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Beer]))),
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Goods]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Coal,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Cotton,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Iron,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Beer,
+        ]))),
+        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[
+            IndustryType::Goods,
+        ]))),
         Card::new(CardType::Location(TownName::Birmingham)),
         Card::new(CardType::Location(TownName::Stafford)),
         Card::new(CardType::Location(TownName::Derby)),
@@ -337,25 +385,50 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
     // Brunel builds road 20 (Shrewbury-Coalbrookdale)
     let actions = runner.start_turn();
     assert_eq!(runner.framework.current_player, brunel);
-    assert!(actions.contains(&ActionType::BuildRailroad), "Network should be available");
+    assert!(
+        actions.contains(&ActionType::BuildRailroad),
+        "Network should be available"
+    );
 
     let cs = runner.start_action(ActionType::BuildRailroad);
-    assert!(matches!(cs, ChoiceSet::Card(_)), "First choice should be card, got {:?}", cs);
+    assert!(
+        matches!(cs, ChoiceSet::Card(_)),
+        "First choice should be card, got {:?}",
+        cs
+    );
     // Use the Iron industry card (index 2) for the discard
     let cs = runner.apply_choice(ActionChoice::Card(2));
-    assert!(matches!(cs, Some(ChoiceSet::Road(_))), "Should choose road, got {:?}", cs);
+    assert!(
+        matches!(cs, Some(ChoiceSet::Road(_))),
+        "Should choose road, got {:?}",
+        cs
+    );
     let cs = runner.apply_choice(ActionChoice::Road(20));
-    assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)), "Should confirm, got {:?}", cs);
-    runner.confirm_action().expect("Canal build should succeed for road 20");
+    assert!(
+        matches!(cs, Some(ChoiceSet::ConfirmOnly)),
+        "Should confirm, got {:?}",
+        cs
+    );
+    runner
+        .confirm_action()
+        .expect("Canal build should succeed for road 20");
     runner.finish_turn_and_advance();
 
     // Verify road 20 is built and connectivity updated
-    assert!(runner.framework.board.state.built_roads.contains(20), "Road 20 should be built");
     assert!(
-        runner.framework.board.state.connectivity.are_towns_connected(
-            fast_brass::locations::LocationName::Coalbrookdale,
-            fast_brass::locations::LocationName::Shrewbury,
-        ),
+        runner.framework.board.state.built_roads.contains(20),
+        "Road 20 should be built"
+    );
+    assert!(
+        runner
+            .framework
+            .board
+            .state
+            .connectivity
+            .are_towns_connected(
+                fast_brass::locations::LocationName::Coalbrookdale,
+                fast_brass::locations::LocationName::Shrewbury,
+            ),
         "Coalbrookdale should be connected to Shrewbury after road 20"
     );
 
@@ -370,7 +443,9 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
     assert!(matches!(cs, Some(ChoiceSet::Road(_))));
     let cs = runner.apply_choice(ActionChoice::Road(21));
     assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)));
-    runner.confirm_action().expect("Canal build should succeed for road 21");
+    runner
+        .confirm_action()
+        .expect("Canal build should succeed for road 21");
     runner.finish_turn_and_advance();
 
     // === Round 2: Brunel does DevelopDouble on Cotton, then Build ===
@@ -419,16 +494,22 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
     );
 
     // Verify Brunel still has a Coalbrookdale card
-    let has_coalbrookdale_card = runner.framework.board.state.players[brunel].hand.cards.iter()
+    let has_coalbrookdale_card = runner.framework.board.state.players[brunel]
+        .hand
+        .cards
+        .iter()
         .any(|c| matches!(&c.card_type, CardType::Location(t) if *t == TownName::Coalbrookdale));
-    assert!(has_coalbrookdale_card, "Brunel should still have a Coalbrookdale card");
-
-    // Check build options for Brunel
-    let build_options = BuildValidator::get_valid_build_options(
-        &runner.framework.board.state, brunel
+    assert!(
+        has_coalbrookdale_card,
+        "Brunel should still have a Coalbrookdale card"
     );
 
-    let iron_options: Vec<_> = build_options.iter()
+    // Check build options for Brunel
+    let build_options =
+        BuildValidator::get_valid_build_options(&runner.framework.board.state, brunel);
+
+    let iron_options: Vec<_> = build_options
+        .iter()
         .filter(|opt| opt.industry_type == IndustryType::Iron)
         .collect();
 
@@ -438,13 +519,18 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
          Coalbrookdale is connected to Shrewbury trade post. \
          Available industries: {:?}",
         brunel_money,
-        build_options.iter()
-            .map(|o| format!("{:?} at BL {} (£{})", o.industry_type, o.build_location_idx, o.total_money_cost))
+        build_options
+            .iter()
+            .map(|o| format!(
+                "{:?} at BL {} (£{})",
+                o.industry_type, o.build_location_idx, o.total_money_cost
+            ))
             .collect::<Vec<_>>()
     );
 
     // Verify at least one Iron option is at Coalbrookdale (BLs 25-26 support Iron)
-    let iron_at_coalbrookdale: Vec<_> = iron_options.iter()
+    let iron_at_coalbrookdale: Vec<_> = iron_options
+        .iter()
         .filter(|opt| opt.build_location_idx >= 25 && opt.build_location_idx <= 26)
         .collect();
 
@@ -452,7 +538,8 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
         !iron_at_coalbrookdale.is_empty(),
         "Iron Works I should be buildable at Coalbrookdale (BLs 25-26). \
          All iron options: {:?}",
-        iron_options.iter()
+        iron_options
+            .iter()
             .map(|o| format!("BL {} (£{})", o.build_location_idx, o.total_money_cost))
             .collect::<Vec<_>>()
     );
@@ -460,17 +547,26 @@ fn test_iron_available_at_coalbrookdale_after_develop_and_road_build() {
 
 fn do_develop_double_cotton(runner: &mut GameRunner, player_idx: usize) {
     assert!(
-        runner.framework.get_valid_root_actions().contains(&ActionType::DevelopDouble),
-        "DevelopDouble should be available for player {}", player_idx
+        runner
+            .framework
+            .get_valid_root_actions()
+            .contains(&ActionType::DevelopDouble),
+        "DevelopDouble should be available for player {}",
+        player_idx
     );
 
     let cs = runner.start_action(ActionType::DevelopDouble);
-    assert!(matches!(cs, ChoiceSet::Card(_)), "DevelopDouble first choice should be card, got {:?}", cs);
+    assert!(
+        matches!(cs, ChoiceSet::Card(_)),
+        "DevelopDouble first choice should be card, got {:?}",
+        cs
+    );
     // Discard first available card (index 0 = first Coalbrookdale card)
     let cs = runner.apply_choice(ActionChoice::Card(0));
     assert!(
         matches!(cs, Some(ChoiceSet::Industry(_))),
-        "After card, should choose first industry, got {:?}", cs
+        "After card, should choose first industry, got {:?}",
+        cs
     );
 
     // Choose Cotton as first industry
@@ -485,7 +581,10 @@ fn do_develop_double_cotton(runner: &mut GameRunner, player_idx: usize) {
             );
             IndustryType::Cotton
         }
-        other => panic!("Expected SecondIndustry for second industry, got {:?}", other),
+        other => panic!(
+            "Expected SecondIndustry for second industry, got {:?}",
+            other
+        ),
     };
     let cs = runner.apply_choice(ActionChoice::FreeDevelopment(second_industry));
 
@@ -498,9 +597,12 @@ fn do_develop_double_cotton(runner: &mut GameRunner, player_idx: usize) {
 
     assert!(
         matches!(cs, Some(ChoiceSet::ConfirmOnly)),
-        "Should be ready to confirm DevelopDouble, got {:?}", cs
+        "Should be ready to confirm DevelopDouble, got {:?}",
+        cs
     );
-    runner.confirm_action().expect("DevelopDouble should succeed");
+    runner
+        .confirm_action()
+        .expect("DevelopDouble should succeed");
 }
 
 /// Bug: start_turn() was resetting actions_remaining_in_turn every time it was called.
@@ -515,7 +617,10 @@ fn test_start_turn_does_not_reset_actions_remaining_mid_turn() {
     // --- Round 1: both pass (1 action each) ---
     runner.start_turn();
     assert_eq!(runner.framework.current_player, first_player);
-    assert_eq!(runner.actions_remaining_in_turn, 1, "First round = 1 action");
+    assert_eq!(
+        runner.actions_remaining_in_turn, 1,
+        "First round = 1 action"
+    );
     do_pass_action(&mut runner);
     assert_eq!(runner.actions_remaining_in_turn, 0);
     runner.finish_turn_and_advance();
@@ -531,11 +636,17 @@ fn test_start_turn_does_not_reset_actions_remaining_mid_turn() {
 
     runner.start_turn();
     assert_eq!(runner.framework.current_player, round2_first);
-    assert_eq!(runner.actions_remaining_in_turn, 2, "Second round = 2 actions");
+    assert_eq!(
+        runner.actions_remaining_in_turn, 2,
+        "Second round = 2 actions"
+    );
 
     // Do first action (Pass)
     do_pass_action(&mut runner);
-    assert_eq!(runner.actions_remaining_in_turn, 1, "After 1 action, 1 remaining");
+    assert_eq!(
+        runner.actions_remaining_in_turn, 1,
+        "After 1 action, 1 remaining"
+    );
 
     // Simulate what the frontend does: call start_turn() again to refresh actions
     let _actions = runner.start_turn();
@@ -547,7 +658,10 @@ fn test_start_turn_does_not_reset_actions_remaining_mid_turn() {
 
     // Do second action (Pass)
     do_pass_action(&mut runner);
-    assert_eq!(runner.actions_remaining_in_turn, 0, "After 2 actions, 0 remaining");
+    assert_eq!(
+        runner.actions_remaining_in_turn, 0,
+        "After 2 actions, 0 remaining"
+    );
 
     // Calling start_turn again with 0 remaining should NOT give more actions
     // (the turn is done; end_turn must be called first)
@@ -592,7 +706,10 @@ fn test_turn_switches_to_other_player_after_two_actions() {
 
     // Simulate frontend: call start_turn between actions
     runner.start_turn();
-    assert_eq!(runner.actions_remaining_in_turn, 1, "Must not reset mid-turn");
+    assert_eq!(
+        runner.actions_remaining_in_turn, 1,
+        "Must not reset mid-turn"
+    );
 
     // Action 2
     do_pass_action(&mut runner);
@@ -610,10 +727,9 @@ fn test_turn_switches_to_other_player_after_two_actions() {
     assert_eq!(runner.actions_remaining_in_turn, 2);
 }
 
-/// Bug: players were not drawing cards at the end of each round.
-/// After using cards for actions, hands should be refilled to 8 from the deck.
+/// Every action refills the acting player's hand immediately.
 #[test]
-fn test_players_draw_cards_at_end_of_round() {
+fn test_players_draw_cards_after_each_action() {
     let mut runner = GameRunner::new(2, Some(42));
 
     let p0 = runner.framework.board.state.turn_order[0];
@@ -621,11 +737,13 @@ fn test_players_draw_cards_at_end_of_round() {
 
     // Initial hand size should be 8
     assert_eq!(
-        runner.framework.board.state.players[p0].hand.cards.len(), 8,
+        runner.framework.board.state.players[p0].hand.cards.len(),
+        8,
         "Initial hand size should be 8"
     );
     assert_eq!(
-        runner.framework.board.state.players[p1].hand.cards.len(), 8,
+        runner.framework.board.state.players[p1].hand.cards.len(),
+        8,
         "Initial hand size should be 8"
     );
 
@@ -640,8 +758,11 @@ fn test_players_draw_cards_at_end_of_round() {
     runner.confirm_action().unwrap();
     runner.finish_turn_and_advance();
 
-    // After action but before round end: hand should be 7
-    // (cards are drawn at round end, which happens when last player finishes)
+    assert_eq!(
+        runner.framework.board.state.players[p0].hand.cards.len(),
+        8,
+        "P0 should refill immediately after its action"
+    );
 
     // Player 1: Loan
     runner.start_turn();
@@ -650,35 +771,41 @@ fn test_players_draw_cards_at_end_of_round() {
     runner.apply_choice(ActionChoice::Card(0));
     runner.confirm_action().unwrap();
 
-    // Before finish_turn_and_advance: both players used 1 card
+    // Both players refill before the round advances.
     assert_eq!(
-        runner.framework.board.state.players[p0].hand.cards.len(), 7,
-        "P0 should have 7 cards before round end (used 1)"
+        runner.framework.board.state.players[p0].hand.cards.len(),
+        8,
+        "P0 should still have 8 cards before round end"
     );
     assert_eq!(
-        runner.framework.board.state.players[p1].hand.cards.len(), 7,
-        "P1 should have 7 cards before round end (used 1)"
+        runner.framework.board.state.players[p1].hand.cards.len(),
+        8,
+        "P1 should refill immediately after its action"
     );
 
-    // This triggers end_round() which should draw cards
+    // Advancing the round does not draw any additional cards.
     runner.finish_turn_and_advance();
 
     // After round end: both hands should be back to 8
     assert_eq!(
-        runner.framework.board.state.players[p0].hand.cards.len(), 8,
-        "P0 should have 8 cards after round end (drew 1 from deck)"
+        runner.framework.board.state.players[p0].hand.cards.len(),
+        8,
+        "P0 should have 8 cards after round end"
     );
     assert_eq!(
-        runner.framework.board.state.players[p1].hand.cards.len(), 8,
-        "P1 should have 8 cards after round end (drew 1 from deck)"
+        runner.framework.board.state.players[p1].hand.cards.len(),
+        8,
+        "P1 should have 8 cards after round end"
     );
 
     // Deck should have 2 fewer cards (1 drawn per player)
     let deck_size_after = runner.framework.board.state.deck.cards_left();
     assert_eq!(
-        deck_size_before - deck_size_after, 2,
+        deck_size_before - deck_size_after,
+        2,
         "Deck should have lost 2 cards (1 per player). Before: {}, After: {}",
-        deck_size_before, deck_size_after
+        deck_size_before,
+        deck_size_after
     );
 }
 
@@ -711,7 +838,10 @@ fn test_iron_works_flip_increases_income() {
     // Player 2: Build Coal Mine I at Redditch bl 45
     let coal_bl = 45;
     let coal_building = BuiltBuilding::build(
-        IndustryType::Coal, IndustryLevel::I, coal_bl as u8, PlayerId::from_usize(coal_owner),
+        IndustryType::Coal,
+        IndustryLevel::I,
+        coal_bl as u8,
+        PlayerId::from_usize(coal_owner),
     );
     board.bl_to_building.insert(coal_bl, coal_building);
     board.build_locations_occupied.insert(coal_bl);
@@ -721,14 +851,20 @@ fn test_iron_works_flip_increases_income() {
     // Player 3: Build Iron Works I at Redditch bl 46
     let iron_bl = 46;
     let iron_building = BuiltBuilding::build(
-        IndustryType::Iron, IndustryLevel::I, iron_bl as u8, PlayerId::from_usize(iron_owner),
+        IndustryType::Iron,
+        IndustryLevel::I,
+        iron_bl as u8,
+        PlayerId::from_usize(iron_owner),
     );
     board.bl_to_building.insert(iron_bl, iron_building.clone());
     board.build_locations_occupied.insert(iron_bl);
     board.player_building_mask[iron_owner].insert(iron_bl);
     board.iron_locations.insert(iron_bl);
 
-    assert_eq!(board.players[iron_owner].income_level, 10, "Starting income level");
+    assert_eq!(
+        board.players[iron_owner].income_level, 10,
+        "Starting income level"
+    );
     let money_before = board.players[iron_owner].money;
 
     // Sell iron to market (this is called automatically after build)
@@ -737,7 +873,10 @@ fn test_iron_works_flip_increases_income() {
 
     // The building should be flipped (all 4 iron went to market which had 4 free slots)
     let building = board.bl_to_building.get(&iron_bl).unwrap();
-    assert!(building.flipped, "Iron Works should be flipped after all iron sold to market");
+    assert!(
+        building.flipped,
+        "Iron Works should be flipped after all iron sold to market"
+    );
 
     // Income level should have increased by 3 (Iron Works I income = 3)
     assert_eq!(
@@ -747,7 +886,8 @@ fn test_iron_works_flip_increases_income() {
     );
 
     // Income amount at level 13 = (13-10+1)/2 = 2
-    let income_amount = board.players[iron_owner].get_income_amount(board.players[iron_owner].income_level);
+    let income_amount =
+        board.players[iron_owner].get_income_amount(board.players[iron_owner].income_level);
     assert_eq!(income_amount, 2, "Income at level 13 should be +2");
 
     // Now simulate round end → player should receive +2 income
@@ -755,9 +895,11 @@ fn test_iron_works_flip_increases_income() {
     runner.resolve_income_shortfall_for_player(iron_owner);
     let money_after_income = runner.framework.board.state.players[iron_owner].money;
     assert_eq!(
-        money_after_income, money_after_sell + 2,
+        money_after_income,
+        money_after_sell + 2,
         "Player should receive +2 income at round end. Money before: {}, after: {}",
-        money_after_sell, money_after_income
+        money_after_sell,
+        money_after_income
     );
 }
 
@@ -781,7 +923,10 @@ fn test_player_cannot_build_roads_via_other_players_links() {
     // Player 1 builds coal mine at Coventry (bl 43 = Goods/Coal slot)
     let coventry_bl = 43;
     let coal_building = BuiltBuilding::build(
-        IndustryType::Coal, IndustryLevel::I, coventry_bl as u8, PlayerId::from_usize(p1),
+        IndustryType::Coal,
+        IndustryLevel::I,
+        coventry_bl as u8,
+        PlayerId::from_usize(p1),
     );
     board.bl_to_building.insert(coventry_bl, coal_building);
     board.build_locations_occupied.insert(coventry_bl);
@@ -819,8 +964,8 @@ fn test_player_cannot_build_roads_via_other_players_links() {
 ///      NEXT CHOICE SHOULD BE BeerSource, NOT SellTarget again
 #[test]
 fn test_sell_advances_to_beer_source_after_choosing_building() {
-    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
     use fast_brass::board::resources::BeerSellSource;
+    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
 
     let mut runner = GameRunner::new(2, Some(42));
     let board = &mut runner.framework.board.state;
@@ -839,16 +984,19 @@ fn test_sell_advances_to_beer_source_after_choosing_building() {
     // Player 2 builds Cotton I at Birmingham bl 36
     let cotton_bl = 36;
     let cotton_building = BuiltBuilding::build(
-        IndustryType::Cotton, IndustryLevel::I, cotton_bl as u8, PlayerId::from_usize(p2),
+        IndustryType::Cotton,
+        IndustryLevel::I,
+        cotton_bl as u8,
+        PlayerId::from_usize(p2),
     );
     board.bl_to_building.insert(cotton_bl, cotton_building);
     board.build_locations_occupied.insert(cotton_bl);
     board.player_building_mask[p2].insert(cotton_bl);
 
     // Give player 2 a card to discard for selling
-    board.players[p2].hand.cards = vec![
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-    ];
+    board.players[p2].hand.cards = vec![Card::new(CardType::Industry(
+        IndustrySet::new_from_industry_types(&[IndustryType::Cotton]),
+    ))];
     board.players[p2].money = 50;
 
     // Set current player to p2
@@ -860,7 +1008,8 @@ fn test_sell_advances_to_beer_source_after_choosing_building() {
     // First should be choosing a card
     assert!(
         matches!(first_choice, ChoiceSet::Card(_)),
-        "First choice should be Card, got {:?}", first_choice
+        "First choice should be Card, got {:?}",
+        first_choice
     );
 
     // Choose card index 0
@@ -869,7 +1018,8 @@ fn test_sell_advances_to_beer_source_after_choosing_building() {
     assert!(
         matches!(&after_card, Some(ChoiceSet::SellTarget(targets)) if targets.contains(&cotton_bl)),
         "After card choice, should get SellTarget containing bl {}, got {:?}",
-        cotton_bl, after_card
+        cotton_bl,
+        after_card
     );
 
     // Choose the cotton building as sell target
@@ -887,7 +1037,10 @@ fn test_sell_advances_to_beer_source_after_choosing_building() {
         ChoiceSet::BeerSource(sources) => sources,
         other => panic!("Expected BeerSource, got {:?}", other),
     };
-    assert!(!beer_sources.is_empty(), "Should have at least one beer source");
+    assert!(
+        !beer_sources.is_empty(),
+        "Should have at least one beer source"
+    );
 
     let after_beer = runner.apply_choice(ActionChoice::BeerSource(beer_sources[0]));
     // After choosing beer, the building should be removed from sell targets.
@@ -936,11 +1089,13 @@ fn test_sell_confirm_discards_selected_card() {
     runner.framework.current_player = p2;
     runner.actions_remaining_in_turn = 2;
 
-    let hand_before = board.players[p2].hand.cards.len();
     let discard_before = board.discard_pile.len();
 
     let first = runner.start_action(ActionType::Sell);
-    assert!(matches!(first, ChoiceSet::Card(_)), "Sell should start with card choice");
+    assert!(
+        matches!(first, ChoiceSet::Card(_)),
+        "Sell should start with card choice"
+    );
     let after_card = runner.apply_choice(ActionChoice::Card(0));
     assert!(matches!(&after_card, Some(ChoiceSet::SellTarget(t)) if t.contains(&cotton_bl)));
     let after_target = runner.apply_choice(ActionChoice::SellTarget(cotton_bl));
@@ -956,12 +1111,18 @@ fn test_sell_confirm_discards_selected_card() {
     let after_beer = runner.apply_choice(ActionChoice::BeerSource(BeerSellSource::TradePost(1)));
     assert!(matches!(after_beer, Some(ChoiceSet::ConfirmOnly)));
 
-    runner.confirm_action().expect("Sell confirm should succeed");
+    runner
+        .confirm_action()
+        .expect("Sell confirm should succeed");
 
     let hand_after = runner.framework.board.state.players[p2].hand.cards.len();
     let discard_after = runner.framework.board.state.discard_pile.len();
-    assert_eq!(hand_after, hand_before - 1, "Sell should discard selected card");
-    assert_eq!(discard_after, discard_before + 1, "Sell should add one card to discard pile");
+    assert_eq!(hand_after, 8, "Sell should refill the acting player's hand");
+    assert_eq!(
+        discard_after,
+        discard_before + 1,
+        "Sell should add one card to discard pile"
+    );
 }
 
 /// Bug: When selling via a Gloucester merchant (FreeDevelopment bonus), the
@@ -976,8 +1137,8 @@ fn test_sell_confirm_discards_selected_card() {
 ///      NEXT CHOICE SHOULD BE FreeDevelopment with non-empty industry list
 #[test]
 fn test_sell_with_gloucester_merchant_offers_free_development() {
-    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
     use fast_brass::board::resources::BeerSellSource;
+    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
 
     let mut runner = GameRunner::new(2, Some(42));
     let board = &mut runner.framework.board.state;
@@ -997,16 +1158,19 @@ fn test_sell_with_gloucester_merchant_offers_free_development() {
     // Player 2 builds Cotton I at Birmingham bl 36
     let cotton_bl = 36;
     let cotton_building = BuiltBuilding::build(
-        IndustryType::Cotton, IndustryLevel::I, cotton_bl as u8, PlayerId::from_usize(p2),
+        IndustryType::Cotton,
+        IndustryLevel::I,
+        cotton_bl as u8,
+        PlayerId::from_usize(p2),
     );
     board.bl_to_building.insert(cotton_bl, cotton_building);
     board.build_locations_occupied.insert(cotton_bl);
     board.player_building_mask[p2].insert(cotton_bl);
 
     // Give player 2 a card to discard
-    board.players[p2].hand.cards = vec![
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-    ];
+    board.players[p2].hand.cards = vec![Card::new(CardType::Industry(
+        IndustrySet::new_from_industry_types(&[IndustryType::Cotton]),
+    ))];
     board.players[p2].money = 50;
 
     runner.framework.current_player = p2;
@@ -1029,9 +1193,13 @@ fn test_sell_with_gloucester_merchant_offers_free_development() {
     };
 
     // The only beer source should be from Gloucester slot 3
-    let gloucester_source = beer_sources.iter()
+    let gloucester_source = beer_sources
+        .iter()
         .find(|s| matches!(s, BeerSellSource::TradePost(3)));
-    assert!(gloucester_source.is_some(), "Should have Gloucester beer source (slot 3)");
+    assert!(
+        gloucester_source.is_some(),
+        "Should have Gloucester beer source (slot 3)"
+    );
 
     // Choose the Gloucester merchant beer
     let after_beer = runner.apply_choice(ActionChoice::BeerSource(BeerSellSource::TradePost(3)));
@@ -1056,8 +1224,8 @@ fn test_sell_with_gloucester_merchant_offers_free_development() {
 /// player cannot afford normal Develop iron costs.
 #[test]
 fn test_sell_with_gloucester_free_development_ignores_iron_affordability() {
-    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
     use fast_brass::board::resources::BeerSellSource;
+    use fast_brass::market::merchants::{MerchantTile, MerchantTileType};
 
     let mut runner = GameRunner::new(2, Some(1234));
     let board = &mut runner.framework.board.state;
@@ -1090,9 +1258,9 @@ fn test_sell_with_gloucester_free_development_ignores_iron_affordability() {
     // Low money + no board iron + empty iron market => normal Develop options would be empty.
     board.remaining_market_iron = 0;
     board.players[p2].money = 3;
-    board.players[p2].hand.cards = vec![
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-    ];
+    board.players[p2].hand.cards = vec![Card::new(CardType::Industry(
+        IndustrySet::new_from_industry_types(&[IndustryType::Cotton]),
+    ))];
 
     runner.framework.current_player = p2;
     runner.actions_remaining_in_turn = 2;
@@ -1117,7 +1285,10 @@ fn test_sell_with_gloucester_free_development_ignores_iron_affordability() {
                 "Free development industries should be selectable even with no iron affordability"
             );
         }
-        other => panic!("Expected FreeDevelopment after Gloucester beer, got {:?}", other),
+        other => panic!(
+            "Expected FreeDevelopment after Gloucester beer, got {:?}",
+            other
+        ),
     }
 }
 
@@ -1159,7 +1330,7 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
 
     // Roads from the scenario.
     board.place_link(tinsley, 37); // Worcester-Gloucester
-    board.place_link(brunel, 38);  // Worcester-LoneBrewery2-Kidderminster
+    board.place_link(brunel, 38); // Worcester-LoneBrewery2-Kidderminster
 
     // Gloucester slots:
     // - slot 3: Cotton merchant with beer (valid for cotton sell)
@@ -1170,10 +1341,10 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
     board.trade_post_beer.insert(4);
 
     // Build locations:
-    let coade_uttoxeter_brewery_bl = 17usize;   // Uttoxeter
+    let coade_uttoxeter_brewery_bl = 17usize; // Uttoxeter
     let arkwright_coalbrookdale_brewery_bl = 25usize; // Coalbrookdale
-    let brunel_lone_brewery_bl = 48usize;       // LoneBrewery2
-    let coade_worcester_cotton_bl = 34usize;    // Worcester
+    let brunel_lone_brewery_bl = 48usize; // LoneBrewery2
+    let coade_worcester_cotton_bl = 34usize; // Worcester
 
     // Coade brewery at Uttoxeter (own beer should always be available).
     let coade_brewery = BuiltBuilding::build(
@@ -1182,8 +1353,12 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
         coade_uttoxeter_brewery_bl as u8,
         PlayerId::from_usize(coade),
     );
-    board.bl_to_building.insert(coade_uttoxeter_brewery_bl, coade_brewery);
-    board.build_locations_occupied.insert(coade_uttoxeter_brewery_bl);
+    board
+        .bl_to_building
+        .insert(coade_uttoxeter_brewery_bl, coade_brewery);
+    board
+        .build_locations_occupied
+        .insert(coade_uttoxeter_brewery_bl);
     board.player_building_mask[coade].insert(coade_uttoxeter_brewery_bl);
 
     // Brunel brewery at LoneBrewery2 (connected to Worcester via road 38).
@@ -1193,8 +1368,12 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
         brunel_lone_brewery_bl as u8,
         PlayerId::from_usize(brunel),
     );
-    board.bl_to_building.insert(brunel_lone_brewery_bl, brunel_brewery);
-    board.build_locations_occupied.insert(brunel_lone_brewery_bl);
+    board
+        .bl_to_building
+        .insert(brunel_lone_brewery_bl, brunel_brewery);
+    board
+        .build_locations_occupied
+        .insert(brunel_lone_brewery_bl);
     board.player_building_mask[brunel].insert(brunel_lone_brewery_bl);
 
     // Arkwright brewery at Coalbrookdale (not connected to Worcester in this setup).
@@ -1204,8 +1383,12 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
         arkwright_coalbrookdale_brewery_bl as u8,
         PlayerId::from_usize(arkwright),
     );
-    board.bl_to_building.insert(arkwright_coalbrookdale_brewery_bl, arkwright_brewery);
-    board.build_locations_occupied.insert(arkwright_coalbrookdale_brewery_bl);
+    board
+        .bl_to_building
+        .insert(arkwright_coalbrookdale_brewery_bl, arkwright_brewery);
+    board
+        .build_locations_occupied
+        .insert(arkwright_coalbrookdale_brewery_bl);
     board.player_building_mask[arkwright].insert(arkwright_coalbrookdale_brewery_bl);
 
     // Coade cotton building at Worcester to sell.
@@ -1215,21 +1398,28 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
         coade_worcester_cotton_bl as u8,
         PlayerId::from_usize(coade),
     );
-    board.bl_to_building.insert(coade_worcester_cotton_bl, coade_cotton);
-    board.build_locations_occupied.insert(coade_worcester_cotton_bl);
+    board
+        .bl_to_building
+        .insert(coade_worcester_cotton_bl, coade_cotton);
+    board
+        .build_locations_occupied
+        .insert(coade_worcester_cotton_bl);
     board.player_building_mask[coade].insert(coade_worcester_cotton_bl);
 
     // Give Coade a card to discard for Sell action.
-    board.players[coade].hand.cards = vec![
-        Card::new(CardType::Industry(IndustrySet::new_from_industry_types(&[IndustryType::Cotton]))),
-    ];
+    board.players[coade].hand.cards = vec![Card::new(CardType::Industry(
+        IndustrySet::new_from_industry_types(&[IndustryType::Cotton]),
+    ))];
     board.players[coade].money = 50;
 
     runner.framework.current_player = coade;
     runner.actions_remaining_in_turn = 2;
 
     let first = runner.start_action(ActionType::Sell);
-    assert!(matches!(first, ChoiceSet::Card(_)), "Expected first sell step to be Card");
+    assert!(
+        matches!(first, ChoiceSet::Card(_)),
+        "Expected first sell step to be Card"
+    );
 
     let after_card = runner.apply_choice(ActionChoice::Card(0));
     assert!(
@@ -1241,7 +1431,10 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
     let after_target = runner.apply_choice(ActionChoice::SellTarget(coade_worcester_cotton_bl));
     let beer_sources = match after_target {
         Some(ChoiceSet::BeerSource(sources)) => sources,
-        other => panic!("Expected BeerSource after picking sell target, got {:?}", other),
+        other => panic!(
+            "Expected BeerSource after picking sell target, got {:?}",
+            other
+        ),
     };
 
     assert!(
@@ -1265,7 +1458,9 @@ fn test_sell_beer_accessibility_own_and_connected_only() {
         beer_sources
     );
     assert!(
-        !beer_sources.contains(&BeerSellSource::Building(arkwright_coalbrookdale_brewery_bl)),
+        !beer_sources.contains(&BeerSellSource::Building(
+            arkwright_coalbrookdale_brewery_bl
+        )),
         "Did not expect unconnected Arkwright Coalbrookdale brewery beer. Got {:?}",
         beer_sources
     );
@@ -1291,7 +1486,9 @@ fn test_build_iron_ii_market_refill_profit_after_undo() {
     assert!(matches!(cs, ChoiceSet::Card(_)));
     let cs = runner.apply_choice(ActionChoice::Card(0));
     assert!(matches!(cs, Some(ChoiceSet::ConfirmOnly)));
-    runner.confirm_action().expect("pass confirm should succeed");
+    runner
+        .confirm_action()
+        .expect("pass confirm should succeed");
     runner
         .undo_last_confirmed_action()
         .expect("undo should restore turn state");
@@ -1303,7 +1500,9 @@ fn test_build_iron_ii_market_refill_profit_after_undo() {
     board.remaining_market_coal = 8; // market coal price for 1 cube = £4 in current price table
 
     // Force next iron build to be Iron II.
-    board.players[coade].industry_mat.pop_tile(IndustryType::Iron);
+    board.players[coade]
+        .industry_mat
+        .pop_tile(IndustryType::Iron);
 
     // Give exactly the "Iron card" flavor from report.
     board.players[coade].hand.cards = vec![Card::new(CardType::Industry(
@@ -1319,13 +1518,30 @@ fn test_build_iron_ii_market_refill_profit_after_undo() {
     let opts = BuildValidator::get_valid_build_options(board, coade);
     let iron_redditch = opts
         .iter()
-        .find(|o| o.industry_type == IndustryType::Iron && o.build_location_idx == iron_redditch_bl && o.card_used_idx == 0)
+        .find(|o| {
+            o.industry_type == IndustryType::Iron
+                && o.build_location_idx == iron_redditch_bl
+                && o.card_used_idx == 0
+        })
         .cloned()
         .expect("Expected an Iron build option at Redditch slot 47 with the Iron card");
-    assert_eq!(iron_redditch.level, IndustryLevel::II, "Expected Iron II build at Redditch");
-    assert_eq!(iron_redditch.building_data.money_cost, 7, "Iron II base cost mismatch");
-    assert_eq!(iron_redditch.total_coal_cost, 1, "Iron II should require one coal in current data");
-    assert_eq!(iron_redditch.total_money_cost, 11, "Expected £11 total (7 base + 4 coal market)");
+    assert_eq!(
+        iron_redditch.level,
+        IndustryLevel::II,
+        "Expected Iron II build at Redditch"
+    );
+    assert_eq!(
+        iron_redditch.building_data.money_cost, 7,
+        "Iron II base cost mismatch"
+    );
+    assert_eq!(
+        iron_redditch.total_coal_cost, 1,
+        "Iron II should require one coal in current data"
+    );
+    assert_eq!(
+        iron_redditch.total_money_cost, 11,
+        "Expected £11 total (7 base + 4 coal market)"
+    );
     // Drive the Build action session to confirmation.
     let mut cs = Some(runner.start_action(ActionType::BuildBuilding));
     loop {
@@ -1351,7 +1567,9 @@ fn test_build_iron_ii_market_refill_profit_after_undo() {
             other => panic!("Unexpected choice sequence for build flow: {:?}", other),
         }
     }
-    runner.confirm_action().expect("Build should confirm successfully");
+    runner
+        .confirm_action()
+        .expect("Build should confirm successfully");
 
     let money_after = runner.framework.board.state.players[coade].money;
     assert_eq!(

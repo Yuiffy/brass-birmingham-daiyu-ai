@@ -1,8 +1,19 @@
 <script lang="ts">
-	import { gameState, choiceSet, turnPhase } from '$lib/store';
+	import { get } from 'svelte/store';
+	import { onMount } from 'svelte';
+	import { BrainCircuit, Gamepad2 } from 'lucide-svelte';
+	import {
+		analysisReport,
+		aiPlayback,
+		choiceSet,
+		gameState,
+		selectedAnalysisCandidate,
+		turnPhase
+	} from '$lib/store';
 	import SetupScreen from '$lib/components/SetupScreen.svelte';
 	import Board from '$lib/components/Board.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import AnalysisPanel from '$lib/components/AnalysisPanel.svelte';
 	import CardHand from '$lib/components/CardHand.svelte';
 	import IndustryMat from '$lib/components/IndustryMat.svelte';
 	import DiscardPileViewer from '$lib/components/DiscardPileViewer.svelte';
@@ -12,10 +23,98 @@
 	let matPlayerIndex: number | null = null;
 	let discardOpen = false;
 	let discardPlayerIndex: number | null = null;
+	let inspectorTab: 'game' | 'analysis' = 'game';
+
+	function showGameInspector() {
+		inspectorTab = 'game';
+		aiPlayback.update(playback => playback.status === 'running'
+			? { ...playback, status: 'paused' }
+			: playback
+		);
+	}
 
 	$: gs = $gameState;
 	$: cs = $choiceSet;
 	$: isCardChoice = cs?.kind === 'card';
+
+	onMount(() => {
+		const testWindow = window as typeof window & {
+			render_game_to_text?: () => string;
+			advanceTime?: (ms: number) => void;
+			__brassVisualTime?: number;
+		};
+		testWindow.render_game_to_text = () => {
+			const state = get(gameState);
+			const report = get(analysisReport);
+			const selected = get(selectedAnalysisCandidate);
+			const playback = get(aiPlayback);
+			return JSON.stringify({
+				mode: !started ? 'setup' : state?.game_over ? 'game_over' : get(turnPhase),
+				coordinate_system: 'Board image pixels; origin top-left; x right; y down.',
+				game: state ? {
+					era: state.era,
+					round: state.round_in_phase + 1,
+					turn: state.turn_count + 1,
+					current_player: state.current_player,
+					actions_remaining: state.actions_remaining,
+					players: state.players.map(player => ({
+						index: player.index,
+						money: player.money,
+						income: player.income_amount,
+						vp: player.victory_points,
+						hand_size: player.hand_size
+					})),
+					buildings: state.buildings,
+					roads: state.roads,
+					choice_set: state.choice_set,
+					available_actions: state.available_actions
+				} : null,
+				analysis: report ? {
+					method: report.method,
+					value_source: report.value_source,
+					model_id: report.model_id,
+					root_model_shared_win_rate: report.root_model_shared_win_rate,
+					simulations: report.completed_simulations,
+					max_search_depth: report.max_search_depth,
+					neural_leaf_evaluations: report.neural_leaf_evaluations,
+					inference_batches: report.inference_batches,
+					coverage: report.coverage,
+					evaluated_action_count: report.evaluated_action_count,
+					visited_action_count: report.visited_action_count,
+					selected_action_key: selected?.action_key ?? null,
+					recommendations: report.recommendations.map(candidate => ({
+						rank: candidate.rank,
+						action_key: candidate.action_key,
+						visits: candidate.visits,
+						visit_share: candidate.visit_share,
+						value_source: candidate.value_source,
+						value_sample_count: candidate.value_sample_count,
+						policy_probability: candidate.policy_probability,
+						estimated_shared_win_rate: candidate.estimated_shared_win_rate
+					}))
+				} : null,
+				ai_playback: playback
+			});
+		};
+		testWindow.advanceTime = (ms: number) => {
+			testWindow.__brassVisualTime = (testWindow.__brassVisualTime ?? 0) + Math.max(0, ms);
+			window.dispatchEvent(new CustomEvent('brass:advance-time'));
+		};
+
+		const toggleFullscreen = (event: KeyboardEvent) => {
+			if (event.key.toLowerCase() !== 'f') return;
+			const target = event.target as HTMLElement | null;
+			if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+			if (document.fullscreenElement) void document.exitFullscreen();
+			else void document.documentElement.requestFullscreen();
+		};
+		window.addEventListener('keydown', toggleFullscreen);
+		return () => {
+			window.removeEventListener('keydown', toggleFullscreen);
+			delete testWindow.render_game_to_text;
+			delete testWindow.advanceTime;
+		};
+	});
 </script>
 
 {#if !started}
@@ -34,16 +133,31 @@
 			</div>
 		</div>
 		<div class="right-col">
-			<Sidebar
-				on:openMat={(e) => {
-					matPlayerIndex = e.detail?.playerIndex ?? null;
-					matOpen = true;
-				}}
-				on:openDiscard={(e) => {
-					discardPlayerIndex = e.detail?.playerIndex ?? null;
-					discardOpen = true;
-				}}
-			/>
+			<nav class="inspector-tabs" aria-label="侧边栏视图">
+				<button class:active={inspectorTab === 'game'} on:click={showGameInspector}>
+					<Gamepad2 size={16} aria-hidden="true" /><span>对局</span>
+				</button>
+				<button class:active={inspectorTab === 'analysis'} on:click={() => inspectorTab = 'analysis'}>
+					<BrainCircuit size={16} aria-hidden="true" /><span>AI 分析</span>
+				</button>
+			</nav>
+			<div class="inspector-content">
+				<div class="inspector-view" class:active={inspectorTab === 'game'} aria-hidden={inspectorTab !== 'game'}>
+					<Sidebar
+						on:openMat={(e) => {
+							matPlayerIndex = e.detail?.playerIndex ?? null;
+							matOpen = true;
+						}}
+						on:openDiscard={(e) => {
+							discardPlayerIndex = e.detail?.playerIndex ?? null;
+							discardOpen = true;
+						}}
+					/>
+				</div>
+				<div class="inspector-view" class:active={inspectorTab === 'analysis'} aria-hidden={inspectorTab !== 'analysis'}>
+					<AnalysisPanel on:applied={() => inspectorTab = 'game'} />
+				</div>
+			</div>
 		</div>
 	</div>
 	<IndustryMat bind:open={matOpen} playerIndex={matPlayerIndex} on:close={() => matOpen = false} />
@@ -53,8 +167,9 @@
 <style>
 	.game-layout {
 		display: flex;
-		height: 100vh;
+		height: 100svh;
 		overflow: hidden;
+		background: #d7dbd8;
 	}
 	.left-col {
 		flex: 1;
@@ -67,31 +182,73 @@
 		overflow: hidden;
 		position: relative;
 		min-height: 0;
+		background: #c9cecb;
 	}
 	.bottom-bar {
 		flex-shrink: 0;
-		background: #0f172a;
-		border-top: 1px solid #2a3a5c;
+		background: #191c1a;
+		border-top: 1px solid #343936;
 		padding: 4px 16px;
 		min-height: 130px;
 		transition: background 0.3s;
 	}
 	.bottom-bar.card-active {
-		background: #1e1b4b;
-		border-top-color: #7c3aed;
+		background: #152a23;
+		border-top-color: #2b9b73;
 	}
 	.card-prompt {
 		text-align: center;
-		color: #a78bfa;
+		color: #70d7ae;
 		font-size: 13px;
 		font-weight: 600;
 		margin-bottom: 2px;
 	}
 	.right-col {
-		width: 300px;
+		width: clamp(350px, 28vw, 430px);
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
-		border-left: 1px solid #2a3a5c;
+		border-left: 1px solid #afb5b1;
+		background: #f5f6f4;
+		min-width: 0;
+	}
+	.inspector-tabs {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		min-height: 45px;
+		border-bottom: 1px solid #cdd2ce;
+		background: #eceeec;
+	}
+	.inspector-tabs button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		border: 0;
+		border-right: 1px solid #cdd2ce;
+		border-bottom: 2px solid transparent;
+		background: transparent;
+		color: #6a706c;
+		font-size: 12px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.inspector-tabs button:last-child { border-right: 0; }
+	.inspector-tabs button.active { color: #202321; border-bottom-color: #087f5b; background: #f5f6f4; }
+	.inspector-content {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.inspector-view { display: none; min-height: 100%; }
+	.inspector-view.active { display: block; }
+	@media (max-width: 960px) {
+		.right-col { width: 340px; }
+	}
+	@media (max-width: 760px) {
+		.game-layout { height: auto; min-height: 100svh; flex-direction: column; overflow: visible; }
+		.left-col { height: 72svh; min-height: 560px; }
+		.right-col { width: 100%; min-height: 70svh; border-left: 0; border-top: 1px solid #afb5b1; }
+		.inspector-content { overflow: visible; }
 	}
 </style>

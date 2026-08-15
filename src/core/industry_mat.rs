@@ -1,13 +1,13 @@
 use super::types::IndustryLevel;
-use crate::core::types::IndustryType;
-use crate::static_data::{NUM_INDUSTRIES, MAX_LEVELS_PER_INDUSTRY, INDUSTRY_MAT};
 use crate::core::types::BuildingTypeData;
+use crate::core::types::IndustryType;
+use crate::static_data::{INDUSTRY_MAT, MAX_LEVELS_PER_INDUSTRY, NUM_INDUSTRIES};
 
 type IndustryProgress = (IndustryLevel, u8);
 
 #[derive(Debug, Clone)]
 pub struct PlayerIndustryMat {
-    // For each industry (0..5), 
+    // For each industry (0..5),
     //what's the lowest available *level*, and how many tiles left at that level
     progress: [IndustryProgress; NUM_INDUSTRIES],
 }
@@ -46,19 +46,21 @@ impl PlayerIndustryMat {
         }
         tiles
     }
-    
-    pub fn get_tile_for_industry(&self, industry: IndustryType) -> Option<&'static BuildingTypeData> {
+
+    pub fn get_tile_for_industry(
+        &self,
+        industry: IndustryType,
+    ) -> Option<&'static BuildingTypeData> {
         if self.is_max_level(industry) {
             None
         } else {
             Some(&INDUSTRY_MAT[industry.as_usize()][self.get_lowest_level(industry).as_usize()])
         }
     }
-    
+
     pub fn get_lowest_level(&self, industry: IndustryType) -> IndustryLevel {
-            let (level, _) = self.progress[industry.as_usize()];
-            level
-           
+        let (level, _) = self.progress[industry.as_usize()];
+        level
     }
 
     pub fn get_remaining_tiles_at_level(&self, industry: IndustryType) -> u8 {
@@ -75,7 +77,9 @@ impl PlayerIndustryMat {
 
         let max_level = MAX_LEVELS_PER_INDUSTRY[industry.as_usize()];
 
-        if remaining == 0 && current_level == max_level { return current_level; } // No tiles left at any level
+        if remaining == 0 && current_level == max_level {
+            return current_level;
+        } // No tiles left at any level
 
         let new_remaining = remaining - 1;
 
@@ -86,7 +90,7 @@ impl PlayerIndustryMat {
             self.progress[industry.as_usize()] = (next_level, num_tiles);
             return next_level;
         }
-        
+
         self.progress[industry.as_usize()] = (current_level, new_remaining);
         return current_level;
     }
@@ -101,10 +105,11 @@ impl PlayerIndustryMat {
         level == MAX_LEVELS_PER_INDUSTRY[industry.as_usize()]
     }
 
-    pub fn get_current_level_building_data(&self, industry: IndustryType) -> &'static BuildingTypeData {
+    pub fn get_current_level_building_data(
+        &self,
+        industry: IndustryType,
+    ) -> &'static BuildingTypeData {
         let (level, _) = self.progress[industry.as_usize()];
         &INDUSTRY_MAT[industry as usize][level.as_usize()]
     }
 }
-
-
