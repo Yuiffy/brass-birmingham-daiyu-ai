@@ -74,9 +74,13 @@ This exposes the `fast_brass` Python module when the `python-bindings` feature i
   default to two players.
 - Search visit share, policy prior, and backed-up model value are different signals. The UI keeps
   them separate instead of presenting them as one probability.
-- The current checkpoint has beaten the project's initial smoke baseline, but it has not yet been
-  calibrated on a held-out set or benchmarked against strong human play. Displayed model values
-  must not be interpreted as reliable real-world win probabilities.
+- Training now uses separate self-play shards for optimization and validation. This prevents
+  positions from the same game leaking into both sets, but the value head has not yet been
+  probability-calibrated or benchmarked against strong human play. Displayed model values must not
+  be interpreted as reliable real-world win probabilities.
+- The deployed champion has beaten only the project's initial smoke baseline. A later candidate won
+  60% of a 40-game, seat-rotated PUCT match, but its paired 95% confidence lower bound remained below
+  zero, so it was correctly not promoted. The project does not yet claim top-level strength.
 - Model checkpoints and generated self-play data are local artifacts under `output/` and are not
   included in this repository. Set `FAST_BRASS_INFERENCE_URL` to a compatible inference service to
   enable neural analysis; an unset URL retains the non-neural search path.
@@ -98,6 +102,42 @@ python -m training.model_self_play \
 
 The exporter refuses to overwrite an existing shard. It writes to a `.partial` file and only
 renames it after every game and terminal value target has been written successfully.
+
+When PyTorch runs on a different host or outside the rules-engine container, replace `--checkpoint`
+with `--inference-url http://HOST:PORT`. Remote inference is schema-checked, model-ID-checked, and
+retried on bounded transient transport failures.
+
+### Train with an independent validation partition
+
+```bash
+python -m training.train \
+  --shards output/train-*.jsonl \
+  --validation-shards output/validation-*.jsonl \
+  --output output/candidate.pt \
+  --resume output/champion.pt \
+  --device cuda
+```
+
+Training rejects overlapping paths, incompatible schemas or engine revisions, and reused recorded
+game seeds across the two partitions. Validation metrics are weighted by position rather than by
+batch, and training saves the state with the lowest independent validation loss (including the
+resumed baseline) rather than blindly keeping the final epoch. The old position-level
+`--validation-fraction` split is rejected because it leaks positions from the same game.
+
+### Run a seat-rotated promotion gate
+
+```bash
+python -m training.evaluate \
+  --candidate-inference-url http://HOST:8766 \
+  --champion-inference-url http://HOST:8765 \
+  --players 2 \
+  --rounds 20 \
+  --minimum-games 40 \
+  --search-simulations 64
+```
+
+Every seed rotates the candidate through both seats. The Student-t confidence interval treats each
+seat-rotated seed group, rather than each correlated game, as one independent observation.
 
 ## Repo Layout
 

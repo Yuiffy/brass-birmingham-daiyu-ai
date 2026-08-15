@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from .data import FeatureSchema
-from .inference import CheckpointEvaluator, PolicyValuePrediction
+from .evaluator import PolicyValueEvaluator, PolicyValuePredictionLike
+from .schema import FeatureSchema
 
 BATCHED_NEURAL_PUCT_METHOD = "determinized_batched_neural_puct"
 
 
 def run_batched_neural_puct(
     game: Any,
-    evaluator: CheckpointEvaluator,
+    evaluator: PolicyValueEvaluator,
     schema: FeatureSchema,
-    root_prediction: PolicyValuePrediction,
+    root_prediction: PolicyValuePredictionLike,
     *,
     simulations: int,
     search_seed: int,
@@ -36,7 +36,11 @@ def run_batched_neural_puct(
     while not search.is_complete():
         raw_batch = search.next_inference_batch(inference_batch_size)
         positions = raw_batch.get("positions") if isinstance(raw_batch, dict) else None
-        if not isinstance(positions, list) or not positions:
+        if not isinstance(positions, list):
+            raise RuntimeError("neural search returned an invalid leaf batch")
+        if not positions:
+            if raw_batch.get("is_complete") is True and search.is_complete():
+                break
             raise RuntimeError("neural search returned an empty incomplete leaf batch")
         request_ids: list[int] = []
         states: list[dict] = []

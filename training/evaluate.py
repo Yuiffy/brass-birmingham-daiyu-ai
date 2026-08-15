@@ -9,11 +9,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
-import torch
-
-from .data import FeatureSchema
-from .inference import CheckpointEvaluator
+from .evaluator import PolicyValueEvaluator
 from .neural_search import BATCHED_NEURAL_PUCT_METHOD, run_batched_neural_puct
+from .schema import FeatureSchema
 
 ROOT_PUCT_METHOD = "determinized_root_puct_policy_random_rollout"
 SEARCH_SEED_STREAM = 0x6576_616C_5F73_6561
@@ -73,6 +71,7 @@ class MatchResult:
 @dataclass(frozen=True)
 class GateSummary:
     games: int
+    independent_seed_groups: int
     candidate_mean_shared_win: float
     candidate_mean_score_delta: float
     score_delta_standard_error: float | None
@@ -84,21 +83,33 @@ class GateSummary:
     promote: bool
 
 
-class CheckpointPolicy:
+class EvaluationPolicy:
     def __init__(
         self,
-        checkpoint_path: str | Path,
+        evaluator: PolicyValueEvaluator,
         schema: FeatureSchema,
-        device: torch.device,
+        source: str,
+        source_kind: str,
     ) -> None:
-        self.path = str(Path(checkpoint_path).resolve())
-        self.evaluator = CheckpointEvaluator(checkpoint_path, device)
-        schema.assert_compatible(self.evaluator.schema, self.path)
+        evaluator.schema.assert_compatible(schema, source)
+        self.evaluator = evaluator
         self.schema = schema
-        self.device = device
+        self.source = source
+        self.source_kind = source_kind
+        self.model_id = evaluator.model_id
+        self.checkpoint_step = evaluator.checkpoint_step
 
     def select_action(self, state_record: dict, legal_record: dict) -> int:
-        return self.evaluator.select_action(state_record, legal_record)
+        prediction = self.evaluator.predict(state_record, legal_record, self.schema)
+        expected_keys = tuple(
+            action.get("key") for action in legal_record.get("actions", [])
+        )
+        if prediction.action_keys != expected_keys:
+            raise RuntimeError("model changed the stable legal-action order")
+        return max(
+            range(len(prediction.policy_probabilities)),
+            key=prediction.policy_probabilities.__getitem__,
+        )
 
     def select_action_with_search(
         self,
@@ -158,8 +169,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run seat-rotated candidate-vs-champion Fast Brass evaluation games."
     )
-    parser.add_argument("--candidate", required=True)
-    parser.add_argument("--champion", required=True)
+    candidate_source = parser.add_mutually_exclusive_group(required=True)
+    candidate_source.add_argument(
+        "--candidate", metavar="CHECKPOINT", help="Candidate checkpoint path"
+    )
+    candidate_source.add_argument(
+        "--candidate-inference-url",
+        help="Candidate HTTP inference service",
+    )
+    champion_source = parser.add_mutually_exclusive_group(required=True)
+    champion_source.add_argument(
+        "--champion", metavar="CHECKPOINT", help="Champion checkpoint path"
+    )
+    champion_source.add_argument(
+        "--champion-inference-url",
+        help="Champion HTTP inference service",
+    )
     parser.add_argument("--players", type=int, default=2, choices=(2, 3, 4))
     parser.add_argument(
         "--rounds",
@@ -169,6 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--seed", type=int, default=20260815)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--inference-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--max-actions", type=int, default=256)
     parser.add_argument("--minimum-games", type=int, default=40)
     parser.add_argument("--promotion-margin", type=float, default=0.0)
@@ -191,6 +217,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
+    candidate_checkpoint = getattr(args, "candidate", None)
+    candidate_inference_url = getattr(args, "candidate_inference_url", None)
+    champion_checkpoint = getattr(args, "champion", None)
+    champion_inference_url = getattr(args, "champion_inference_url", None)
+    _validate_model_source(
+        "candidate", candidate_checkpoint, candidate_inference_url
+    )
+    _validate_model_source(
+        "champion", champion_checkpoint, champion_inference_url
+    )
     if args.rounds <= 0:
         raise ValueError("rounds must be positive")
     if args.max_actions <= 0:
@@ -207,6 +243,15 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("search-determinizations must be between 1 and 64")
     if not 1 <= args.inference_batch_size <= 256:
         raise ValueError("inference-batch-size must be between 1 and 256")
+    inference_timeout = float(
+        getattr(args, "inference_timeout_seconds", 120.0)
+    )
+    if (
+        not math.isfinite(inference_timeout)
+        or inference_timeout <= 0.0
+        or inference_timeout > 3600.0
+    ):
+        raise ValueError("inference-timeout-seconds must be between 0 and 3600")
 
     try:
         import fast_brass
@@ -216,10 +261,24 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         ) from error
 
     probe = fast_brass.BrassRLGame(args.players, args.seed)
-    schema = FeatureSchema.from_schema_dict(probe.get_training_feature_schema())
-    device = _resolve_device(args.device)
-    candidate = CheckpointPolicy(args.candidate, schema, device)
-    champion = CheckpointPolicy(args.champion, schema, device)
+    raw_schema = probe.get_training_feature_schema()
+    schema = FeatureSchema.from_schema_dict(raw_schema)
+    candidate = _build_evaluation_policy(
+        checkpoint=candidate_checkpoint,
+        inference_url=candidate_inference_url,
+        raw_schema=raw_schema,
+        schema=schema,
+        device=args.device,
+        timeout_seconds=inference_timeout,
+    )
+    champion = _build_evaluation_policy(
+        checkpoint=champion_checkpoint,
+        inference_url=champion_inference_url,
+        raw_schema=raw_schema,
+        schema=schema,
+        device=args.device,
+        timeout_seconds=inference_timeout,
+    )
 
     results: list[MatchResult] = []
     for round_index in range(args.rounds):
@@ -257,8 +316,14 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
 
     summary = summarize_gate(results, args.promotion_margin, args.minimum_games)
     return {
-        "candidate": candidate.path,
-        "champion": champion.path,
+        "candidate": candidate.source,
+        "champion": champion.source,
+        "candidate_source_kind": candidate.source_kind,
+        "champion_source_kind": champion.source_kind,
+        "candidate_model_id": candidate.model_id,
+        "champion_model_id": champion.model_id,
+        "candidate_checkpoint_step": candidate.checkpoint_step,
+        "champion_checkpoint_step": champion.checkpoint_step,
         "players": args.players,
         "rounds": args.rounds,
         "base_seed": args.seed,
@@ -278,6 +343,7 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
             if args.search_simulations > 0 and args.players == 2
             else None
         ),
+        "gate_confidence_unit": "seat_rotated_seed_group",
         "summary": asdict(summary),
         "games": [asdict(result) for result in results],
     }
@@ -285,7 +351,7 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
 
 def play_match(
     engine_module: Any,
-    policies: Sequence[CheckpointPolicy],
+    policies: Sequence[EvaluationPolicy],
     candidate_seat: int,
     round_index: int,
     game_seed: int,
@@ -420,10 +486,20 @@ def summarize_gate(
     if not results:
         raise ValueError("at least one match result is required")
     deltas = [result.candidate_score_delta for result in results]
-    mean_delta = statistics.fmean(deltas)
-    if len(deltas) >= 2:
-        standard_error = statistics.stdev(deltas) / math.sqrt(len(deltas))
-        degrees_of_freedom = len(deltas) - 1
+    grouped_deltas: dict[tuple[int, int], list[float]] = {}
+    for result in results:
+        grouped_deltas.setdefault(
+            (result.round_index, result.game_seed), []
+        ).append(result.candidate_score_delta)
+    seed_group_means = [
+        statistics.fmean(group) for group in grouped_deltas.values()
+    ]
+    mean_delta = statistics.fmean(seed_group_means)
+    if len(seed_group_means) >= 2:
+        standard_error = statistics.stdev(seed_group_means) / math.sqrt(
+            len(seed_group_means)
+        )
+        degrees_of_freedom = len(seed_group_means) - 1
         critical = _student_t_critical_95(degrees_of_freedom)
         lower_bound = mean_delta - critical * standard_error
     else:
@@ -436,6 +512,7 @@ def summarize_gate(
     )
     return GateSummary(
         games=len(results),
+        independent_seed_groups=len(seed_group_means),
         candidate_mean_shared_win=statistics.fmean(
             result.candidate_shared_win for result in results
         ),
@@ -469,13 +546,43 @@ def _resolve_shortfall(game: Any) -> None:
     )
 
 
-def _resolve_device(value: str) -> torch.device:
-    if value == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device(value)
-    if device.type == "cuda" and not torch.cuda.is_available():
-        raise ValueError("CUDA was requested but is unavailable")
-    return device
+def _validate_model_source(
+    name: str, checkpoint: str | None, inference_url: str | None
+) -> None:
+    if (checkpoint is None) == (inference_url is None):
+        raise ValueError(
+            f"exactly one of --{name} or --{name}-inference-url is required"
+        )
+
+
+def _build_evaluation_policy(
+    *,
+    checkpoint: str | None,
+    inference_url: str | None,
+    raw_schema: dict,
+    schema: FeatureSchema,
+    device: str,
+    timeout_seconds: float,
+) -> EvaluationPolicy:
+    if inference_url is not None:
+        from .remote_inference import RemoteInferenceEvaluator
+
+        evaluator: PolicyValueEvaluator = RemoteInferenceEvaluator(
+            inference_url,
+            raw_schema,
+            timeout_seconds=timeout_seconds,
+        )
+        source = evaluator.base_url
+        source_kind = "remote_inference"
+    else:
+        if checkpoint is None:
+            raise RuntimeError("checkpoint model source is missing")
+        from .inference import CheckpointEvaluator
+
+        evaluator = CheckpointEvaluator(checkpoint, device)
+        source = str(Path(checkpoint).resolve())
+        source_kind = "checkpoint"
+    return EvaluationPolicy(evaluator, schema, source, source_kind)
 
 
 def _student_t_critical_95(degrees_of_freedom: int) -> float:

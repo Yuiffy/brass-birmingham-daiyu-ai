@@ -358,6 +358,20 @@ class ModelSelfPlayTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
 
+    def test_config_requires_exactly_one_model_source(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            ModelSelfPlayConfig(output=self.root / "missing.jsonl").validate()
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            ModelSelfPlayConfig(
+                output=self.root / "both.jsonl",
+                checkpoint=self.root / "model.pt",
+                inference_url="http://inference.test",
+            ).validate()
+        ModelSelfPlayConfig(
+            output=self.root / "remote.jsonl",
+            inference_url="http://inference.test",
+        ).validate()
+
     def test_export_is_dataset_compatible_and_keeps_model_search_evidence(self) -> None:
         output = self.root / "model-self-play.jsonl"
         config = ModelSelfPlayConfig(

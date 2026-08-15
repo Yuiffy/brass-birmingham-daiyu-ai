@@ -1,8 +1,6 @@
 """Policy/value training tools for Fast Brass self-play shards."""
 
-from .checkpoint import load_model_checkpoint, save_checkpoint
-from .data import FeatureSchema, SelfPlayDataset, TrainingBatch, collate_positions
-from .model import BrassPolicyValueNet, ModelConfig, compute_losses
+from .schema import FeatureSchema
 
 __all__ = [
     "BrassPolicyValueNet",
@@ -15,3 +13,19 @@ __all__ = [
     "load_model_checkpoint",
     "save_checkpoint",
 ]
+
+
+def __getattr__(name: str):
+    if name in {"SelfPlayDataset", "TrainingBatch", "collate_positions"}:
+        from . import data
+
+        return getattr(data, name)
+    if name in {"load_model_checkpoint", "save_checkpoint"}:
+        from . import checkpoint
+
+        return getattr(checkpoint, name)
+    if name in {"BrassPolicyValueNet", "ModelConfig", "compute_losses"}:
+        from . import model
+
+        return getattr(model, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

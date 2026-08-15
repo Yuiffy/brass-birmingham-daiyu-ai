@@ -8,8 +8,9 @@ from pathlib import Path
 import torch
 
 from .checkpoint import load_model_checkpoint
-from .data import FeatureSchema, TrainingBatch
+from .data import TrainingBatch
 from .model import segmented_policy_probabilities
+from .schema import FeatureSchema
 
 
 @dataclass(frozen=True)

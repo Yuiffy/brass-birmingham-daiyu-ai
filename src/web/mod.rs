@@ -517,6 +517,9 @@ async fn run_model_guided_search(
     while !search.is_complete() {
         let leaves = search.next_inference_batch(WEB_NEURAL_BATCH_SIZE)?;
         if leaves.is_empty() {
+            if search.is_complete() {
+                break;
+            }
             return Err("neural search returned an empty incomplete leaf batch".to_string());
         }
         let evaluations = client.evaluate_leaf_batch(&leaves, &model_id).await?;

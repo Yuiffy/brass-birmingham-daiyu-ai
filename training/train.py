@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import random
 from collections import defaultdict
@@ -8,7 +9,7 @@ from pathlib import Path
 
 import torch
 from torch.nn.utils import clip_grad_norm_
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Dataset
 
 from .checkpoint import load_model_checkpoint, save_checkpoint
 from .data import SelfPlayDataset, TrainingBatch, collate_positions
@@ -27,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--shards", nargs="+", required=True, help="Self-play JSONL shards"
     )
+    parser.add_argument(
+        "--validation-shards",
+        nargs="+",
+        help="Independent self-play JSONL shards used only for validation",
+    )
     parser.add_argument("--output", required=True, help="Destination checkpoint")
     parser.add_argument("--resume", help="Checkpoint to resume")
     parser.add_argument("--overwrite", action="store_true")
@@ -40,7 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gradient-clip", type=float, default=5.0)
     parser.add_argument("--shared-win-weight", type=float, default=1.0)
     parser.add_argument("--vp-margin-weight", type=float, default=0.25)
-    parser.add_argument("--validation-fraction", type=float, default=0.05)
+    parser.add_argument(
+        "--validation-fraction",
+        type=float,
+        default=0.0,
+        help="Deprecated; use independent --validation-shards (must remain zero)",
+    )
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=20260815)
     parser.add_argument("--max-steps", type=int, default=0, help="0 means unlimited")
@@ -56,14 +67,27 @@ def train(args: argparse.Namespace) -> None:
     _validate_args(args)
     _seed_everything(args.seed)
     device = _resolve_device(args.device)
-    dataset = SelfPlayDataset(args.shards)
-    assert dataset.schema is not None
-    train_indices, validation_indices = _split_indices(
-        len(dataset), args.validation_fraction, args.seed
+    dataset, validation_dataset = _load_datasets(
+        args.shards, args.validation_shards
     )
+    try:
+        _train_loaded_datasets(args, device, dataset, validation_dataset)
+    finally:
+        dataset.close()
+        if validation_dataset is not None:
+            validation_dataset.close()
+
+
+def _train_loaded_datasets(
+    args: argparse.Namespace,
+    device: torch.device,
+    dataset: SelfPlayDataset,
+    validation_dataset: SelfPlayDataset | None,
+) -> None:
+    assert dataset.schema is not None
     loader_generator = torch.Generator().manual_seed(args.seed ^ 0x5A17)
     train_loader = _make_loader(
-        Subset(dataset, train_indices),
+        dataset,
         args,
         shuffle=True,
         generator=loader_generator,
@@ -71,13 +95,13 @@ def train(args: argparse.Namespace) -> None:
     )
     validation_loader = (
         _make_loader(
-            Subset(dataset, validation_indices),
+            validation_dataset,
             args,
             shuffle=False,
             generator=None,
             device=device,
         )
-        if validation_indices
+        if validation_dataset is not None
         else None
     )
 
@@ -117,8 +141,10 @@ def train(args: argparse.Namespace) -> None:
                 "event": "training_start",
                 "device": str(device),
                 "positions": len(dataset),
-                "training_positions": len(train_indices),
-                "validation_positions": len(validation_indices),
+                "training_positions": len(dataset),
+                "validation_positions": (
+                    len(validation_dataset) if validation_dataset is not None else 0
+                ),
                 "feature_version": dataset.schema.version,
                 "state_dim": dataset.schema.state_dim,
                 "action_dim": dataset.schema.action_dim,
@@ -132,6 +158,42 @@ def train(args: argparse.Namespace) -> None:
         flush=True,
     )
 
+    initial_validation_metrics = (
+        _evaluate(
+            model,
+            validation_loader,
+            device,
+            args.shared_win_weight,
+            args.vp_margin_weight,
+        )
+        if validation_loader is not None
+        else {}
+    )
+    if initial_validation_metrics:
+        print(
+            json.dumps(
+                {
+                    "event": "validation_baseline",
+                    "global_step": global_step,
+                    "validation": initial_validation_metrics,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+    best_model_state = (
+        copy.deepcopy(model.state_dict()) if initial_validation_metrics else None
+    )
+    best_optimizer_state = (
+        copy.deepcopy(optimizer.state_dict())
+        if initial_validation_metrics
+        else None
+    )
+    best_validation_metrics = dict(initial_validation_metrics)
+    best_global_step = global_step
+    best_epoch = -1
+    last_validation_metrics = dict(initial_validation_metrics)
+
     last_epoch = -1
     stop = False
     for epoch in range(args.epochs):
@@ -139,7 +201,9 @@ def train(args: argparse.Namespace) -> None:
         model.train()
         aggregate: defaultdict[str, float] = defaultdict(float)
         batches = 0
+        training_positions = 0
         for batch in train_loader:
+            batch_positions = int(batch.states.shape[0])
             batch = batch.to(device, non_blocking=device.type == "cuda")
             optimizer.zero_grad(set_to_none=True)
             output = model(batch)
@@ -155,10 +219,13 @@ def train(args: argparse.Namespace) -> None:
             optimizer.step()
             global_step += 1
             batches += 1
+            training_positions += batch_positions
             metrics = losses.detached_metrics()
             metrics["gradient_norm"] = float(gradient_norm.detach().cpu())
             for name, value in metrics.items():
-                aggregate[name] += value
+                aggregate[name] += value * (
+                    1 if name == "gradient_norm" else batch_positions
+                )
 
             if global_step % args.log_every == 0:
                 print(
@@ -178,7 +245,9 @@ def train(args: argparse.Namespace) -> None:
                 break
 
         epoch_metrics = {
-            name: value / max(1, batches) for name, value in aggregate.items()
+            name: value
+            / max(1, batches if name == "gradient_norm" else training_positions)
+            for name, value in aggregate.items()
         }
         validation_metrics = (
             _evaluate(
@@ -191,6 +260,16 @@ def train(args: argparse.Namespace) -> None:
             if validation_loader is not None
             else {}
         )
+        last_validation_metrics = validation_metrics
+        if validation_metrics and (
+            not best_validation_metrics
+            or validation_metrics["loss"] < best_validation_metrics["loss"]
+        ):
+            best_model_state = copy.deepcopy(model.state_dict())
+            best_optimizer_state = copy.deepcopy(optimizer.state_dict())
+            best_validation_metrics = dict(validation_metrics)
+            best_global_step = global_step
+            best_epoch = epoch
         print(
             json.dumps(
                 {
@@ -207,6 +286,12 @@ def train(args: argparse.Namespace) -> None:
         if stop:
             break
 
+    last_global_step = global_step
+    if best_model_state is not None and best_optimizer_state is not None:
+        model.load_state_dict(best_model_state)
+        optimizer.load_state_dict(best_optimizer_state)
+        global_step = best_global_step
+
     save_checkpoint(
         args.output,
         model,
@@ -214,13 +299,29 @@ def train(args: argparse.Namespace) -> None:
         optimizer=optimizer,
         training_metadata={
             "global_step": global_step,
-            "completed_epoch": last_epoch,
+            "completed_epoch": best_epoch if best_model_state is not None else last_epoch,
+            "last_global_step": last_global_step,
+            "last_completed_epoch": last_epoch,
+            "selected_epoch": best_epoch if best_model_state is not None else last_epoch,
             "seed": args.seed,
             "positions": len(dataset),
-            "training_positions": len(train_indices),
-            "validation_positions": len(validation_indices),
+            "training_positions": len(dataset),
+            "validation_positions": (
+                len(validation_dataset) if validation_dataset is not None else 0
+            ),
             "shards": [str(Path(path).resolve()) for path in args.shards],
             "engine_revisions": sorted(dataset.engine_revisions),
+            "validation_shards": [
+                str(Path(path).resolve()) for path in (args.validation_shards or [])
+            ],
+            "validation_engine_revisions": (
+                sorted(validation_dataset.engine_revisions)
+                if validation_dataset is not None
+                else []
+            ),
+            "initial_validation_metrics": initial_validation_metrics,
+            "selected_validation_metrics": best_validation_metrics,
+            "last_validation_metrics": last_validation_metrics,
         },
         overwrite=args.overwrite,
     )
@@ -230,12 +331,15 @@ def train(args: argparse.Namespace) -> None:
                 "event": "checkpoint_saved",
                 "path": str(Path(args.output).resolve()),
                 "global_step": global_step,
+                "selected_epoch": (
+                    best_epoch if best_model_state is not None else last_epoch
+                ),
+                "selected_validation": best_validation_metrics,
             },
             sort_keys=True,
         ),
         flush=True,
     )
-    dataset.close()
 
 
 @torch.no_grad()
@@ -248,8 +352,9 @@ def _evaluate(
 ) -> dict[str, float]:
     model.eval()
     aggregate: defaultdict[str, float] = defaultdict(float)
-    batches = 0
+    positions = 0
     for batch in loader:
+        batch_positions = int(batch.states.shape[0])
         batch = batch.to(device, non_blocking=device.type == "cuda")
         losses = compute_losses(
             model(batch),
@@ -259,13 +364,13 @@ def _evaluate(
             victory_point_margin_weight=vp_margin_weight,
         )
         for name, value in losses.detached_metrics().items():
-            aggregate[name] += value
-        batches += 1
-    return {name: value / max(1, batches) for name, value in aggregate.items()}
+            aggregate[name] += value * batch_positions
+        positions += batch_positions
+    return {name: value / max(1, positions) for name, value in aggregate.items()}
 
 
 def _make_loader(
-    dataset: Subset,
+    dataset: Dataset,
     args: argparse.Namespace,
     shuffle: bool,
     generator: torch.Generator | None,
@@ -283,17 +388,45 @@ def _make_loader(
     )
 
 
-def _split_indices(
-    length: int, validation_fraction: float, seed: int
-) -> tuple[list[int], list[int]]:
-    generator = torch.Generator().manual_seed(seed ^ 0x71D4)
-    indices = torch.randperm(length, generator=generator).tolist()
-    validation_count = int(round(length * validation_fraction))
-    if length > 1 and validation_fraction > 0.0:
-        validation_count = min(length - 1, max(1, validation_count))
-    else:
-        validation_count = 0
-    return indices[validation_count:], indices[:validation_count]
+def _load_datasets(
+    shard_paths: list[str] | tuple[str, ...],
+    validation_shard_paths: list[str] | tuple[str, ...] | None,
+) -> tuple[SelfPlayDataset, SelfPlayDataset | None]:
+    training_paths = tuple(Path(path).resolve() for path in shard_paths)
+    validation_paths = tuple(
+        Path(path).resolve() for path in (validation_shard_paths or ())
+    )
+    overlap = set(training_paths) & set(validation_paths)
+    if overlap:
+        paths = ", ".join(str(path) for path in sorted(overlap))
+        raise ValueError(f"training and validation shards overlap: {paths}")
+
+    training_dataset = SelfPlayDataset(training_paths)
+    if not validation_paths:
+        return training_dataset, None
+    assert training_dataset.schema is not None
+    try:
+        validation_dataset = SelfPlayDataset(
+            validation_paths, expected_schema=training_dataset.schema
+        )
+        if training_dataset.engine_revisions != validation_dataset.engine_revisions:
+            raise ValueError(
+                "training and validation engine revisions differ: "
+                f"{sorted(training_dataset.engine_revisions)} != "
+                f"{sorted(validation_dataset.engine_revisions)}"
+            )
+        repeated_seeds = training_dataset.game_seeds & validation_dataset.game_seeds
+        if repeated_seeds:
+            preview = ", ".join(str(seed) for seed in sorted(repeated_seeds)[:8])
+            raise ValueError(
+                "training and validation shards reuse game seeds: " + preview
+            )
+    except Exception:
+        training_dataset.close()
+        if "validation_dataset" in locals():
+            validation_dataset.close()
+        raise
+    return training_dataset, validation_dataset
 
 
 def _seed_everything(seed: int) -> None:
@@ -324,8 +457,11 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise ValueError("weight-decay must be non-negative")
     if args.gradient_clip <= 0.0:
         raise ValueError("gradient-clip must be positive")
-    if not 0.0 <= args.validation_fraction < 1.0:
-        raise ValueError("validation-fraction must be in [0, 1)")
+    if args.validation_fraction != 0.0:
+        raise ValueError(
+            "validation-fraction leaks positions from the same game; "
+            "use independent --validation-shards"
+        )
     if args.num_workers < 0:
         raise ValueError("num-workers must be non-negative")
     if args.max_steps < 0:

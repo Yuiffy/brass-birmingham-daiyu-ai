@@ -710,7 +710,8 @@ fn risk_sentence(candidate: &RootActionEstimate, report: &RootSearchReport) -> S
 }
 
 fn format_percent(value: f64) -> String {
-    format!("{:.1}%", value * 100.0)
+    let rounded_tenths = (value * 1000.0).round();
+    format!("{:.1}%", rounded_tenths / 10.0)
 }
 
 fn choice_ranks_mentioned(question: &str) -> Vec<usize> {
@@ -773,6 +774,11 @@ fn action_type_label(action_type: ActionType, era: Era) -> &'static str {
 mod tests {
     use super::*;
     use crate::game::search::{search_top_actions, RootSearchConfig};
+
+    #[test]
+    fn percentages_use_the_same_half_up_rounding_as_the_browser() {
+        assert_eq!(format_percent(162.0 / 800.0), "20.3%");
+    }
 
     #[test]
     fn top_candidate_can_be_compared_with_the_second_choice_in_chinese() {

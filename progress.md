@@ -293,3 +293,75 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - `npm audit --omit=dev` reports one moderate Svelte advisory; the full development tree reports 12
   advisories (1 low, 6 moderate, 5 high). The complete automated fix requires breaking Svelte/Vite
   upgrades, so dependency migration and its UI regression pass remain an explicit follow-up.
+
+## 2026-08-15 independent validation partitions
+
+- Replaced the position-level random validation split with explicit `--validation-shards`; all
+  positions in training shards now remain training-only and all validation positions come from
+  separately generated games.
+- Training rejects overlapping shard paths, incompatible feature schemas, different engine
+  revisions, and reused game seeds across training and validation when the seed is recorded.
+- The deprecated `--validation-fraction` now defaults to zero and fails loudly when nonzero instead
+  of reporting a leaked validation metric.
+- Training and validation epoch metrics are weighted by position count, so a smaller final batch
+  cannot change checkpoint selection merely because of `batch-size`; a focused regression compares
+  uneven and single-batch validation loaders.
+- Focused training-partition and model-pipeline verification passes 14 tests.
+
+## 2026-08-15 Torch-free remote promotion evaluation
+
+- Candidate and champion evaluation sources can now independently be local checkpoints or remote
+  inference URLs. Both greedy policy play and multi-layer neural PUCT use the shared evaluator
+  protocol, and reports retain each service's model ID and checkpoint step.
+- `training.evaluate` no longer imports PyTorch at module load. The Docker development container
+  reports `torch_available=False` and imports the evaluator successfully.
+- A real two-game seat-rotated same-champion smoke used the host CUDA service from Docker at eight
+  search simulations/two determinizations. The score deltas were `+1/-1`, mean delta was zero, and
+  the gate correctly refused promotion.
+- Focused evaluation, remote-inference, neural-search, and self-play verification passes 14 tests.
+
+## 2026-08-15 iter2 independent-data cycle
+
+- Generated 20 training games (1,580 positions) and four independent validation games (316
+  positions) from champion step 242. Every decision used 256 multi-layer neural PUCT visits, four
+  hidden-information determinizations, and batches of up to 64 leaves.
+- Formal loading found 20/4 distinct game seeds with no overlap, identical schema and engine
+  revision, exact 256-visit targets, zero policy-mass error, and no `.partial` residue. Training
+  reached depth 6 across 390,036 neural leaves; 14/20 training games had nonzero VP.
+- Resumed `champion-iter1.pt` for ten epochs. Independent validation loss improved from 5.1206 to a
+  best 3.9554 at epoch 6 / step 417, and policy KL improved from 1.6879 to 0.9863. Later epochs
+  regressed, so best-validation restoration selected step 417 instead of final step 492.
+- Candidate `puct-candidate-iter2.pt` has SHA-256
+  `931B61D94A1285434A13EA471DA546E84703C5370ACDF189BB2486C0AC23EA50`.
+- Corrected promotion statistics to use the seat-rotated seed group as the independent confidence
+  unit. The 40-game / 20-seed, 64-visit gate gave the candidate 60% shared wins, mean score delta
+  `+0.20`, mean VP margin `+2.525`, standard error `0.1556`, and a 95% lower bound of `-0.1257`.
+  It did not pass the strict `lower bound > 0` gate, so champion iter1 remains deployed.
+- A transient Docker-to-host connection refusal aborted the first long gate despite both services
+  remaining healthy. Remote inference now retries bounded idempotent requests with exponential
+  backoff and retains model-ID checks; the complete rerun then finished all 40 games.
+- Five separate CUDA inference services did not scale self-play linearly because large JSON feature
+  batches and CUDA-context scheduling dominated. A shared dynamic batcher or local ABI/shared-memory
+  inference path is the next throughput improvement before substantially larger self-play runs.
+
+## 2026-08-15 end-to-end browser regression and percentage consistency
+
+- Re-ran the complete two-player browser flow at seed 424242: create game, start turn, run an
+  800-visit neural PUCT analysis, inspect Top 1/2/3, switch to Top 2, use the comparison shortcut,
+  ask a free-form Chinese Top-1-vs-Top-2 question, apply Top 1, and single-step AI playback into a
+  freshly analyzed next position.
+- The first analysis reached depth 4 with 800 neural leaves in 13 inference batches. Applying Top 1
+  spent £3, built Road 33, and advanced exactly one turn. AI single-step then applied one move,
+  incremented the observer counter to one, paused, and retained a new Top 3 for the following state.
+- Desktop 1280x720 and mobile 390x844 checks found no document-wide horizontal overflow. The mobile
+  hand remains isolated in its own horizontal scroller; the analysis controls, Top 3, metrics, and
+  apply action remain readable without overlap. Browser warnings and errors were empty.
+- Fixed a user-visible half-tie rounding mismatch where a 162/800 visit share appeared as 20.3% in
+  the Svelte panel but 20.2% in the Rust-generated explanation. Rust now rounds percentage tenths
+  explicitly, with a focused regression proving 162/800 -> 20.3%.
+- Restarted the release backend and repeated a real Top-3 analysis plus Chinese comparison question;
+  panel and explanation percentages matched. The standard web-game client produced
+  `output/web-game-rounding-regression/shot-0.png` and matching `state-0.json` with no error artifact.
+- Final reviewed regression passes 179 Rust all-target tests, 56 Rust/PyO3 tests, 30 Python
+  training/evaluation tests, Python bytecode compilation, and the Svelte production build. Remaining
+  output is limited to the existing Rust unused-item and Tailwind content-configuration warnings.

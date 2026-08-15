@@ -11,12 +11,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from .data import SELF_PLAY_FORMAT, SELF_PLAY_FORMAT_VERSION, FeatureSchema
-from .inference import (
-    CheckpointEvaluator,
-    PolicyValuePrediction,
-)
+from .evaluator import PolicyValueEvaluator, PolicyValuePredictionLike
 from .neural_search import BATCHED_NEURAL_PUCT_METHOD, run_batched_neural_puct
+from .schema import SELF_PLAY_FORMAT, SELF_PLAY_FORMAT_VERSION, FeatureSchema
 
 GAME_SEED_STREAM = 0x6761_6D65_5F73_6565
 SEARCH_SEED_STREAM = 0x7365_6172_6368_5F73
@@ -28,7 +25,9 @@ ROOT_PUCT_METHOD = "determinized_root_puct_policy_random_rollout"
 @dataclass(frozen=True)
 class ModelSelfPlayConfig:
     output: Path
-    checkpoint: Path
+    checkpoint: Path | None = None
+    inference_url: str | None = None
+    inference_timeout_seconds: float = 120.0
     games: int = 1
     num_players: int = 2
     base_seed: int = 20_260_815
@@ -41,6 +40,18 @@ class ModelSelfPlayConfig:
     engine_revision: str = "unknown"
 
     def validate(self) -> None:
+        if (self.checkpoint is None) == (self.inference_url is None):
+            raise ValueError("exactly one of checkpoint or inference_url is required")
+        if self.inference_url is not None and not self.inference_url.strip():
+            raise ValueError("inference_url must not be empty")
+        if (
+            not math.isfinite(self.inference_timeout_seconds)
+            or self.inference_timeout_seconds <= 0.0
+            or self.inference_timeout_seconds > 3600.0
+        ):
+            raise ValueError(
+                "inference_timeout_seconds must be between 0 and 3600"
+            )
         if self.games <= 0:
             raise ValueError("games must be positive")
         if self.num_players not in (2, 3, 4):
@@ -77,7 +88,9 @@ def main() -> None:
     args = build_parser().parse_args()
     config = ModelSelfPlayConfig(
         output=Path(args.output),
-        checkpoint=Path(args.checkpoint),
+        checkpoint=Path(args.checkpoint) if args.checkpoint else None,
+        inference_url=args.inference_url,
+        inference_timeout_seconds=args.inference_timeout_seconds,
         games=args.games,
         num_players=args.players,
         base_seed=args.seed,
@@ -117,7 +130,10 @@ def build_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument("--output", required=True)
-    parser.add_argument("--checkpoint", required=True)
+    model_source = parser.add_mutually_exclusive_group(required=True)
+    model_source.add_argument("--checkpoint")
+    model_source.add_argument("--inference-url")
+    parser.add_argument("--inference-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--games", type=int, default=1)
     parser.add_argument("--players", type=int, choices=(2, 3, 4), default=2)
     parser.add_argument("--simulations", type=int, default=800)
@@ -141,7 +157,7 @@ def export_model_self_play(
     config: ModelSelfPlayConfig,
     *,
     engine_module: Any | None = None,
-    evaluator: CheckpointEvaluator | None = None,
+    evaluator: PolicyValueEvaluator | None = None,
     on_game_complete: Callable[[dict], None] | None = None,
 ) -> ModelSelfPlaySummary:
     config.validate()
@@ -162,12 +178,24 @@ def export_model_self_play(
             raise RuntimeError(
                 "fast_brass Python extension is required; build/install the abi3 wheel first"
             ) from error
-    if evaluator is None:
-        evaluator = CheckpointEvaluator(config.checkpoint, config.device)
-
     probe = engine_module.BrassRLGame(config.num_players, config.base_seed)
     raw_schema = probe.get_training_feature_schema()
     schema = FeatureSchema.from_schema_dict(raw_schema)
+    if evaluator is None:
+        if config.inference_url is not None:
+            from .remote_inference import RemoteInferenceEvaluator
+
+            evaluator = RemoteInferenceEvaluator(
+                config.inference_url,
+                raw_schema,
+                timeout_seconds=config.inference_timeout_seconds,
+            )
+        else:
+            from .inference import CheckpointEvaluator
+
+            if config.checkpoint is None:
+                raise RuntimeError("checkpoint model source is missing")
+            evaluator = CheckpointEvaluator(config.checkpoint, config.device)
     evaluator.schema.assert_compatible(schema, "model-guided self-play engine")
     header = _build_header(config, raw_schema, evaluator)
 
@@ -205,7 +233,7 @@ def export_model_self_play(
 def generate_model_self_play_game(
     config: ModelSelfPlayConfig,
     engine_module: Any,
-    evaluator: CheckpointEvaluator,
+    evaluator: PolicyValueEvaluator,
     schema: FeatureSchema,
     game_index: int,
 ) -> tuple[dict, list[dict]]:
@@ -346,7 +374,7 @@ def generate_model_self_play_game(
 def _build_header(
     config: ModelSelfPlayConfig,
     raw_schema: dict,
-    evaluator: CheckpointEvaluator,
+    evaluator: PolicyValueEvaluator,
 ) -> dict:
     return {
         "record_type": "metadata",
@@ -372,7 +400,13 @@ def _build_header(
         ),
         "model_id": evaluator.model_id,
         "checkpoint_step": evaluator.checkpoint_step,
-        "checkpoint_name": config.checkpoint.name,
+        "model_source": (
+            "remote_inference" if config.inference_url is not None else "checkpoint"
+        ),
+        "checkpoint_name": (
+            config.checkpoint.name if config.checkpoint is not None else None
+        ),
+        "inference_url": config.inference_url,
         "action_selection": "deterministic_sample_from_root_visit_counts",
         "shortfall_resolution": "ascending_liquidation_value_then_location",
     }
@@ -380,7 +414,7 @@ def _build_header(
 
 def _validate_search_report(
     report: dict,
-    prediction: PolicyValuePrediction,
+    prediction: PolicyValuePredictionLike,
     legal_record: dict,
     config: ModelSelfPlayConfig,
     expected_method: str,

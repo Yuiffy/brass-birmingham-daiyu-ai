@@ -1,17 +1,84 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 
 from training.evaluate import (
+    EvaluationPolicy,
     MatchResult,
     _select_search_action,
     _student_t_critical_95,
+    build_parser,
     multiplayer_score_delta,
     summarize_gate,
 )
+from training.schema import FeatureSchema
 
 
 class EvaluationGateTests(unittest.TestCase):
+    def test_parser_accepts_independent_remote_model_sources(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "--candidate-inference-url",
+                "http://host.test:8766",
+                "--champion-inference-url",
+                "http://host.test:8765",
+            ]
+        )
+        self.assertIsNone(args.candidate)
+        self.assertIsNone(args.champion)
+        self.assertEqual(args.candidate_inference_url, "http://host.test:8766")
+        self.assertEqual(args.champion_inference_url, "http://host.test:8765")
+
+    def test_evaluation_policy_selects_greedy_action_via_common_protocol(self) -> None:
+        schema = FeatureSchema.from_schema_dict(
+            {"version": 1, "state_dim": 2, "action_dim": 4}
+        )
+        evaluator = _FakeEvaluator(schema)
+        policy = EvaluationPolicy(
+            evaluator, schema, "http://candidate.test", "remote_inference"
+        )
+
+        selected = policy.select_action(
+            {"feature_version": 1, "features": [0.0, 1.0]},
+            {
+                "feature_version": 1,
+                "actions": [
+                    {"index": 0, "key": "a", "feature_indices": [0]},
+                    {"index": 1, "key": "b", "feature_indices": [1]},
+                ],
+            },
+        )
+
+        self.assertEqual(selected, 1)
+
+    def test_evaluation_module_import_does_not_require_torch(self) -> None:
+        repository = Path(__file__).resolve().parents[2]
+        script = """
+import builtins
+original_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name == 'torch' or name.startswith('torch.'):
+        raise AssertionError('training.evaluate imported torch eagerly')
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = guarded_import
+import training.evaluate
+print('torch-free import ok')
+"""
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("torch-free import ok", completed.stdout)
+
     def test_multiplayer_score_delta_compares_candidate_to_each_champion_copy(
         self,
     ) -> None:
@@ -37,6 +104,25 @@ class EvaluationGateTests(unittest.TestCase):
             promotion_margin=0.0,
             minimum_games=8,
         )
+        self.assertFalse(summary.promote)
+
+    def test_confidence_interval_uses_seat_rotated_seed_groups(self) -> None:
+        results = [
+            _result(0, 1.0),
+            _result(1, -1.0),
+            _result(2, 1.0),
+            _result(3, -1.0),
+        ]
+
+        summary = summarize_gate(
+            results, promotion_margin=0.0, minimum_games=4
+        )
+
+        self.assertEqual(summary.games, 4)
+        self.assertEqual(summary.independent_seed_groups, 2)
+        self.assertEqual(summary.candidate_mean_score_delta, 0.0)
+        self.assertEqual(summary.score_delta_standard_error, 0.0)
+        self.assertEqual(summary.score_delta_lower_95, 0.0)
         self.assertFalse(summary.promote)
 
     def test_default_forty_game_gate_uses_student_t_not_normal_limit(self) -> None:
@@ -80,8 +166,8 @@ class EvaluationGateTests(unittest.TestCase):
 
 def _result(index: int, score_delta: float) -> MatchResult:
     return MatchResult(
-        round_index=0,
-        game_seed=123,
+        round_index=index // 2,
+        game_seed=123 + index // 2,
         candidate_seat=index % 2,
         actions=10,
         candidate_shared_win=1.0 if score_delta > 0.0 else 0.5,
@@ -92,6 +178,30 @@ def _result(index: int, score_delta: float) -> MatchResult:
         official_winners=(index % 2,),
         victory_points=(10, 9),
     )
+
+
+class _FakeEvaluator:
+    def __init__(self, schema: FeatureSchema) -> None:
+        self.schema = schema
+        self.model_id = "sha256:fake"
+        self.checkpoint_step = 9
+
+    def predict(self, state_record, legal_record, request_schema=None):
+        self.schema.assert_compatible(request_schema, "fake request")
+        return SimpleNamespace(
+            model_id=self.model_id,
+            checkpoint_step=self.checkpoint_step,
+            action_keys=tuple(action["key"] for action in legal_record["actions"]),
+            policy_probabilities=(0.25, 0.75),
+            shared_win_rate=0.5,
+            victory_point_margin=0.0,
+        )
+
+    def predict_batch(self, state_records, legal_records, request_schema=None):
+        return tuple(
+            self.predict(state, legal, request_schema)
+            for state, legal in zip(state_records, legal_records, strict=True)
+        )
 
 
 if __name__ == "__main__":

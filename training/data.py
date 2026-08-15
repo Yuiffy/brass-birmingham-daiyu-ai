@@ -9,57 +9,7 @@ from typing import BinaryIO, Iterable, Sequence
 import torch
 from torch.utils.data import Dataset
 
-SELF_PLAY_FORMAT = "fast_brass_self_play_jsonl"
-SELF_PLAY_FORMAT_VERSION = 1
-
-
-@dataclass(frozen=True)
-class FeatureSchema:
-    version: int
-    state_dim: int
-    action_dim: int
-    signature: str
-
-    @classmethod
-    def from_metadata(cls, metadata: dict) -> "FeatureSchema":
-        if metadata.get("format") != SELF_PLAY_FORMAT:
-            raise ValueError(
-                f"unsupported self-play format: {metadata.get('format')!r}"
-            )
-        if metadata.get("format_version") != SELF_PLAY_FORMAT_VERSION:
-            raise ValueError(
-                "unsupported self-play format version: "
-                f"{metadata.get('format_version')!r}"
-            )
-        raw_schema = metadata.get("feature_schema")
-        if not isinstance(raw_schema, dict):
-            raise ValueError("metadata.feature_schema must be an object")
-        return cls.from_schema_dict(raw_schema)
-
-    @classmethod
-    def from_schema_dict(cls, raw_schema: dict) -> "FeatureSchema":
-        version = _positive_int(raw_schema.get("version"), "feature_schema.version")
-        state_dim = _positive_int(
-            raw_schema.get("state_dim"), "feature_schema.state_dim"
-        )
-        action_dim = _positive_int(
-            raw_schema.get("action_dim"), "feature_schema.action_dim"
-        )
-        signature = json.dumps(raw_schema, sort_keys=True, separators=(",", ":"))
-        return cls(
-            version=version,
-            state_dim=state_dim,
-            action_dim=action_dim,
-            signature=signature,
-        )
-
-    def assert_compatible(self, other: "FeatureSchema", context: str) -> None:
-        if self != other:
-            raise ValueError(
-                f"feature schema mismatch for {context}: expected version/state/action "
-                f"{self.version}/{self.state_dim}/{self.action_dim}, got "
-                f"{other.version}/{other.state_dim}/{other.action_dim}"
-            )
+from .schema import SELF_PLAY_FORMAT, SELF_PLAY_FORMAT_VERSION, FeatureSchema
 
 
 @dataclass(frozen=True)
@@ -136,6 +86,7 @@ class SelfPlayDataset(Dataset[PositionExample]):
         self.schema = expected_schema
         self.metadata: list[dict] = []
         self.engine_revisions: set[str] = set()
+        self.game_seeds: set[int] = set()
         self.allow_mixed_engine_revisions = allow_mixed_engine_revisions
         self._positions: list[PositionLocator] = []
         self._handles: dict[Path, BinaryIO] = {}
@@ -195,7 +146,13 @@ class SelfPlayDataset(Dataset[PositionExample]):
                 elif record_type == "position":
                     self._positions.append(PositionLocator(path, offset, line_number))
                 elif record_type == "game":
-                    continue
+                    game_seed = record.get("game_seed")
+                    if game_seed is not None:
+                        self.game_seeds.add(
+                            _non_negative_int(
+                                game_seed, f"{path}:{line_number}: game_seed"
+                            )
+                        )
                 elif record_type == "metadata":
                     raise ValueError(f"{path}:{line_number}: duplicate metadata record")
                 else:
@@ -423,15 +380,6 @@ def _decode_json_line(line: bytes, path: Path, line_number: int) -> dict:
     if not isinstance(record, dict):
         raise ValueError(f"{path}:{line_number}: record must be an object")
     return record
-
-
-def _positive_int(value: object, name: str) -> int:
-    result = _non_negative_int(value, name)
-    if result == 0:
-        raise ValueError(f"{name} must be positive")
-    return result
-
-
 def _non_negative_int(value: object, name: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise ValueError(f"{name} must be a non-negative integer")
