@@ -24,6 +24,7 @@ pub const BATCHED_NEURAL_PUCT_METHOD: &str = "determinized_batched_neural_puct";
 pub const RANDOM_ROLLOUT_VALUE_SOURCE: &str = "random_terminal_rollout";
 pub const SUCCESSOR_MODEL_VALUE_SOURCE: &str = "batched_successor_model";
 pub const NEURAL_TREE_VALUE_SOURCE: &str = "batched_neural_tree_search";
+const SCORE_UTILITY_REFERENCE_VP: f64 = 140.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RootSearchConfig {
@@ -105,12 +106,15 @@ pub struct RootPolicyEvaluation {
     pub policy_probabilities: Vec<f64>,
     pub shared_win_rate: f64,
     pub victory_point_margin: f64,
+    pub actor_victory_points: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchedNeuralPuctConfig {
     pub search: RootSearchConfig,
     pub determinizations: usize,
+    pub score_utility_weight: f64,
+    pub group_card_choices: bool,
 }
 
 impl Default for BatchedNeuralPuctConfig {
@@ -118,6 +122,8 @@ impl Default for BatchedNeuralPuctConfig {
         Self {
             search: RootSearchConfig::default(),
             determinizations: 4,
+            score_utility_weight: 0.0,
+            group_card_choices: false,
         }
     }
 }
@@ -127,6 +133,11 @@ impl BatchedNeuralPuctConfig {
         self.search.validate()?;
         if !(1..=64).contains(&self.determinizations) {
             return Err("neural search determinizations must be between 1 and 64".to_string());
+        }
+        if !self.score_utility_weight.is_finite()
+            || !(0.0..=1.0).contains(&self.score_utility_weight)
+        {
+            return Err("neural score utility weight must be finite and in [0, 1]".to_string());
         }
         Ok(())
     }
@@ -151,6 +162,7 @@ pub struct NeuralLeafEvaluation {
     pub policy_probabilities: Vec<f64>,
     pub shared_win_rate: f64,
     pub victory_point_margin: f64,
+    pub actor_victory_points: f64,
 }
 
 impl RootPolicyEvaluation {
@@ -185,6 +197,9 @@ impl RootPolicyEvaluation {
         }
         if !self.victory_point_margin.is_finite() {
             return Err("policy victory_point_margin must be finite".to_string());
+        }
+        if !self.actor_victory_points.is_finite() || self.actor_victory_points < 0.0 {
+            return Err("policy actor_victory_points must be finite and non-negative".to_string());
         }
         if self
             .policy_probabilities
@@ -379,9 +394,12 @@ struct NeuralTreeNode {
     runner: GameRunner,
     actor: usize,
     actions: Vec<LegalAction>,
+    action_groups: Vec<Vec<usize>>,
     priors: Vec<f64>,
     model_root_shared_win_rate: f64,
     model_root_victory_point_margin: f64,
+    model_root_score: f64,
+    model_opponent_score: f64,
     edges: Vec<NeuralTreeEdge>,
     pending_evaluation: bool,
 }
@@ -394,6 +412,8 @@ struct NeuralTreeEdge {
     root_shared_win_sum: f64,
     root_shared_win_square_sum: f64,
     root_victory_point_margin_sum: f64,
+    root_score_sum: f64,
+    opponent_score_sum: f64,
 }
 
 impl Default for NeuralTreeEdge {
@@ -405,6 +425,8 @@ impl Default for NeuralTreeEdge {
             root_shared_win_sum: 0.0,
             root_shared_win_square_sum: 0.0,
             root_victory_point_margin_sum: 0.0,
+            root_score_sum: 0.0,
+            opponent_score_sum: 0.0,
         }
     }
 }
@@ -416,6 +438,8 @@ enum NeuralTreeChild {
     Terminal {
         root_shared_win_rate: f64,
         root_victory_point_margin: f64,
+        root_score: f64,
+        opponent_score: f64,
     },
 }
 
@@ -431,6 +455,8 @@ struct ValidatedNeuralSubmission {
     normalized_policy: Vec<f64>,
     root_shared_win_rate: f64,
     root_victory_point_margin: f64,
+    root_score: f64,
+    opponent_score: f64,
 }
 
 enum NeuralReservation {
@@ -488,6 +514,13 @@ impl BatchedNeuralPuctSearch {
                     "root legal actions changed in determinization {determinization_index}"
                 ));
             }
+            let (root_score, opponent_score) = two_player_predicted_scores(
+                &determinized,
+                root_player,
+                root_player,
+                root_policy.actor_victory_points,
+                root_policy.victory_point_margin,
+            )?;
             trees.push(NeuralTree {
                 nodes: vec![NeuralTreeNode::expanded(
                     determinized,
@@ -496,6 +529,9 @@ impl BatchedNeuralPuctSearch {
                     normalized_root_policy.clone(),
                     root_policy.shared_win_rate,
                     root_policy.victory_point_margin,
+                    root_score,
+                    opponent_score,
+                    config.group_card_choices,
                 )],
             });
         }
@@ -542,22 +578,36 @@ impl BatchedNeuralPuctSearch {
         &mut self,
         max_batch_size: usize,
     ) -> Result<Vec<NeuralLeafRequest>, String> {
+        self.next_inference_batch_until(max_batch_size, self.config.search.simulations)
+    }
+
+    pub fn next_inference_batch_until(
+        &mut self,
+        max_batch_size: usize,
+        target_simulations: u64,
+    ) -> Result<Vec<NeuralLeafRequest>, String> {
         if max_batch_size == 0 || max_batch_size > 256 {
             return Err("neural inference batch size must be between 1 and 256".to_string());
+        }
+        if target_simulations == 0 || target_simulations > self.config.search.simulations {
+            return Err(format!(
+                "target simulations must be between 1 and {}",
+                self.config.search.simulations
+            ));
         }
         if !self.pending.is_empty() {
             return Err(
                 "submit the pending neural inference batch before requesting another".to_string(),
             );
         }
-        if self.is_complete() {
+        if self.completed_simulations >= target_simulations {
             return Ok(Vec::new());
         }
 
         let mut requests = Vec::with_capacity(max_batch_size);
         let mut consecutive_unavailable = 0usize;
         while requests.len() < max_batch_size
-            && self.completed_simulations + (requests.len() as u64) < self.config.search.simulations
+            && self.completed_simulations + (requests.len() as u64) < target_simulations
         {
             let tree_index = self.next_tree_index;
             self.next_tree_index = (self.next_tree_index + 1) % self.trees.len();
@@ -582,7 +632,7 @@ impl BatchedNeuralPuctSearch {
             }
         }
 
-        if requests.is_empty() && !self.is_complete() {
+        if requests.is_empty() && self.completed_simulations < target_simulations {
             return Err("neural search could not reserve an evaluable leaf".to_string());
         }
         Ok(requests)
@@ -638,6 +688,7 @@ impl BatchedNeuralPuctSearch {
                 policy_probabilities: evaluation.policy_probabilities,
                 shared_win_rate: evaluation.shared_win_rate,
                 victory_point_margin: evaluation.victory_point_margin,
+                actor_victory_points: evaluation.actor_victory_points,
             };
             let normalized_policy = policy.normalized_probabilities(&node.actions)?;
             let (root_shared_win_rate, root_victory_point_margin) = to_root_perspective(
@@ -646,11 +697,20 @@ impl BatchedNeuralPuctSearch {
                 policy.shared_win_rate,
                 policy.victory_point_margin,
             )?;
+            let (root_score, opponent_score) = two_player_predicted_scores(
+                &node.runner,
+                self.root_player,
+                node.actor,
+                policy.actor_victory_points,
+                policy.victory_point_margin,
+            )?;
             validated.push(ValidatedNeuralSubmission {
                 request_id: evaluation.request_id,
                 normalized_policy,
                 root_shared_win_rate,
                 root_victory_point_margin,
+                root_score,
+                opponent_score,
             });
         }
         validated.sort_by_key(|submission| submission.request_id);
@@ -666,12 +726,16 @@ impl BatchedNeuralPuctSearch {
             node.edges = vec![NeuralTreeEdge::default(); node.actions.len()];
             node.model_root_shared_win_rate = submission.root_shared_win_rate;
             node.model_root_victory_point_margin = submission.root_victory_point_margin;
+            node.model_root_score = submission.root_score;
+            node.model_opponent_score = submission.opponent_score;
             node.pending_evaluation = false;
             backup_neural_path(
                 tree,
                 &pending.path,
                 submission.root_shared_win_rate,
                 submission.root_victory_point_margin,
+                submission.root_score,
+                submission.opponent_score,
                 true,
             )?;
             self.completed_simulations += 1;
@@ -683,14 +747,19 @@ impl BatchedNeuralPuctSearch {
     }
 
     pub fn finish_report(&self) -> Result<RootSearchReport, String> {
-        if !self.pending.is_empty() {
-            return Err("cannot finish neural search with pending inference leaves".to_string());
-        }
-        if self.completed_simulations != self.config.search.simulations {
+        let report = self.report_at_current_progress()?;
+        if report.completed_simulations != self.config.search.simulations {
             return Err(format!(
                 "neural search completed {} of {} requested simulations",
-                self.completed_simulations, self.config.search.simulations
+                report.completed_simulations, self.config.search.simulations
             ));
+        }
+        Ok(report)
+    }
+
+    pub fn report_at_current_progress(&self) -> Result<RootSearchReport, String> {
+        if !self.pending.is_empty() {
+            return Err("cannot finish neural search with pending inference leaves".to_string());
         }
 
         let mut stats = vec![CandidateStats::default(); self.root_actions.len()];
@@ -742,6 +811,7 @@ impl BatchedNeuralPuctSearch {
         });
 
         let mut rng = StdRng::seed_from_u64(self.config.search.seed ^ 0x7265_706f_7274_5f72);
+        let visit_denominator = self.completed_simulations.max(1) as f64;
         let mut recommendations = Vec::new();
         for (rank_index, action_index) in ranked_indices
             .into_iter()
@@ -769,7 +839,7 @@ impl BatchedNeuralPuctSearch {
                 action_key: self.root_actions[action_index].key(),
                 action: self.root_actions[action_index].clone(),
                 visits: candidate.visits,
-                visit_share: candidate.visits as f64 / self.completed_simulations as f64,
+                visit_share: candidate.visits as f64 / visit_denominator,
                 value_source: NEURAL_TREE_VALUE_SOURCE.to_string(),
                 value_sample_count: candidate.visits,
                 estimated_shared_win_rate: mean_shared_win(candidate),
@@ -830,6 +900,7 @@ impl BatchedNeuralPuctSearch {
                     node_index,
                     self.root_player,
                     self.config.search.exploration_constant,
+                    self.config.score_utility_weight,
                 )
             };
             let Some(edge_index) = edge_index else {
@@ -846,12 +917,16 @@ impl BatchedNeuralPuctSearch {
                 NeuralTreeChild::Terminal {
                     root_shared_win_rate,
                     root_victory_point_margin,
+                    root_score,
+                    opponent_score,
                 } => {
                     backup_neural_path(
                         &mut self.trees[tree_index],
                         &path,
                         root_shared_win_rate,
                         root_victory_point_margin,
+                        root_score,
+                        opponent_score,
                         false,
                     )?;
                     self.completed_simulations += 1;
@@ -875,16 +950,23 @@ impl BatchedNeuralPuctSearch {
                         let outcome = evaluate_finished_game(&successor, self.root_player)?;
                         let root_shared_win_rate = outcome.shared_win_credit;
                         let root_victory_point_margin = outcome.victory_point_margin as f64;
+                        let root_score = outcome.final_victory_points[self.root_player] as f64;
+                        let opponent_score =
+                            outcome.final_victory_points[1 - self.root_player] as f64;
                         self.trees[tree_index].nodes[node_index].edges[edge_index].child =
                             NeuralTreeChild::Terminal {
                                 root_shared_win_rate,
                                 root_victory_point_margin,
+                                root_score,
+                                opponent_score,
                             };
                         backup_neural_path(
                             &mut self.trees[tree_index],
                             &path,
                             root_shared_win_rate,
                             root_victory_point_margin,
+                            root_score,
+                            opponent_score,
                             false,
                         )?;
                         self.completed_simulations += 1;
@@ -909,9 +991,12 @@ impl BatchedNeuralPuctSearch {
                     let request_id = self.next_request_id;
                     self.next_request_id += 1;
                     let child_index = self.trees[tree_index].nodes.len();
-                    self.trees[tree_index]
-                        .nodes
-                        .push(NeuralTreeNode::pending(successor, actor, actions));
+                    self.trees[tree_index].nodes.push(NeuralTreeNode::pending(
+                        successor,
+                        actor,
+                        actions,
+                        self.config.group_card_choices,
+                    ));
                     self.trees[tree_index].nodes[node_index].edges[edge_index].child =
                         NeuralTreeChild::Node(child_index);
                     add_virtual_visits(&mut self.trees[tree_index], &path)?;
@@ -945,29 +1030,45 @@ impl NeuralTreeNode {
         priors: Vec<f64>,
         model_root_shared_win_rate: f64,
         model_root_victory_point_margin: f64,
+        model_root_score: f64,
+        model_opponent_score: f64,
+        group_card_choices: bool,
     ) -> Self {
         debug_assert_eq!(actions.len(), priors.len());
         let edge_count = actions.len();
+        let action_groups = build_neural_action_groups(&actions, group_card_choices);
         Self {
             runner,
             actor,
             actions,
+            action_groups,
             priors,
             model_root_shared_win_rate,
             model_root_victory_point_margin,
+            model_root_score,
+            model_opponent_score,
             edges: vec![NeuralTreeEdge::default(); edge_count],
             pending_evaluation: false,
         }
     }
 
-    fn pending(runner: GameRunner, actor: usize, actions: Vec<LegalAction>) -> Self {
+    fn pending(
+        runner: GameRunner,
+        actor: usize,
+        actions: Vec<LegalAction>,
+        group_card_choices: bool,
+    ) -> Self {
+        let action_groups = build_neural_action_groups(&actions, group_card_choices);
         Self {
             runner,
             actor,
             actions,
+            action_groups,
             priors: Vec::new(),
             model_root_shared_win_rate: 0.0,
             model_root_victory_point_margin: 0.0,
+            model_root_score: 0.0,
+            model_opponent_score: 0.0,
             edges: Vec::new(),
             pending_evaluation: true,
         }
@@ -979,6 +1080,7 @@ fn select_neural_edge(
     node_index: usize,
     root_player: usize,
     exploration_constant: f64,
+    score_utility_weight: f64,
 ) -> Option<usize> {
     let node = tree.nodes.get(node_index)?;
     if node.pending_evaluation || node.actions.len() != node.edges.len() {
@@ -991,23 +1093,146 @@ fn select_neural_edge(
         .sum::<u64>();
     let sqrt_total = (total_visits + 1) as f64;
     let sqrt_total = sqrt_total.sqrt();
+    let mut best_group: Option<(usize, f64)> = None;
+    for (group_index, members) in node.action_groups.iter().enumerate() {
+        let available = members.iter().any(|&edge_index| {
+            !matches!(
+                node.edges[edge_index].child,
+                NeuralTreeChild::Node(child) if tree.nodes[child].pending_evaluation
+            )
+        });
+        if !available {
+            continue;
+        }
+        let group_visits = members
+            .iter()
+            .map(|&edge_index| node.edges[edge_index].visits)
+            .sum::<u64>();
+        let group_virtual_visits = members
+            .iter()
+            .map(|&edge_index| node.edges[edge_index].virtual_visits)
+            .sum::<u64>();
+        let group_prior = members
+            .iter()
+            .map(|&edge_index| node.priors[edge_index])
+            .sum::<f64>();
+        let (root_win_value, root_score, opponent_score, root_margin) = if group_visits == 0 {
+            (
+                node.model_root_shared_win_rate,
+                node.model_root_score,
+                node.model_opponent_score,
+                node.model_root_victory_point_margin,
+            )
+        } else {
+            let root_win_sum = members
+                .iter()
+                .map(|&edge_index| node.edges[edge_index].root_shared_win_sum)
+                .sum::<f64>();
+            let root_score_sum = members
+                .iter()
+                .map(|&edge_index| node.edges[edge_index].root_score_sum)
+                .sum::<f64>();
+            let opponent_score_sum = members
+                .iter()
+                .map(|&edge_index| node.edges[edge_index].opponent_score_sum)
+                .sum::<f64>();
+            let root_margin_sum = members
+                .iter()
+                .map(|&edge_index| node.edges[edge_index].root_victory_point_margin_sum)
+                .sum::<f64>();
+            (
+                root_win_sum / group_visits as f64,
+                root_score_sum / group_visits as f64,
+                opponent_score_sum / group_visits as f64,
+                root_margin_sum / group_visits as f64,
+            )
+        };
+        let actor_value = actor_utility_from_root_values(
+            node,
+            root_player,
+            root_win_value,
+            root_score,
+            opponent_score,
+            root_margin,
+            score_utility_weight,
+        );
+        let exploration = exploration_constant * group_prior * sqrt_total
+            / (1.0 + group_visits as f64 + group_virtual_visits as f64);
+        let score = actor_value + exploration;
+        if best_group.is_none_or(|(_, best_score)| score > best_score) {
+            best_group = Some((group_index, score));
+        }
+    }
+
+    let (group_index, _) = best_group?;
+    select_neural_edge_within_group(
+        tree,
+        node,
+        &node.action_groups[group_index],
+        root_player,
+        exploration_constant,
+        score_utility_weight,
+    )
+}
+
+fn select_neural_edge_within_group(
+    tree: &NeuralTree,
+    node: &NeuralTreeNode,
+    members: &[usize],
+    root_player: usize,
+    exploration_constant: f64,
+    score_utility_weight: f64,
+) -> Option<usize> {
+    let group_visits = members
+        .iter()
+        .map(|&edge_index| {
+            let edge = &node.edges[edge_index];
+            edge.visits + edge.virtual_visits
+        })
+        .sum::<u64>();
+    let sqrt_group_visits = ((group_visits + 1) as f64).sqrt();
+    let group_prior = members
+        .iter()
+        .map(|&edge_index| node.priors[edge_index])
+        .sum::<f64>();
+    let fallback_prior = 1.0 / members.len().max(1) as f64;
     let mut best: Option<(usize, f64)> = None;
-    for (edge_index, edge) in node.edges.iter().enumerate() {
+    for &edge_index in members {
+        let edge = &node.edges[edge_index];
         if matches!(edge.child, NeuralTreeChild::Node(child) if tree.nodes[child].pending_evaluation)
         {
             continue;
         }
-        let root_value = if edge.visits == 0 {
-            node.model_root_shared_win_rate
+        let (root_win_value, root_score, opponent_score, root_margin) = if edge.visits == 0 {
+            (
+                node.model_root_shared_win_rate,
+                node.model_root_score,
+                node.model_opponent_score,
+                node.model_root_victory_point_margin,
+            )
         } else {
-            edge.root_shared_win_sum / edge.visits as f64
+            (
+                edge.root_shared_win_sum / edge.visits as f64,
+                edge.root_score_sum / edge.visits as f64,
+                edge.opponent_score_sum / edge.visits as f64,
+                edge.root_victory_point_margin_sum / edge.visits as f64,
+            )
         };
-        let actor_value = if node.actor == root_player {
-            root_value
+        let actor_value = actor_utility_from_root_values(
+            node,
+            root_player,
+            root_win_value,
+            root_score,
+            opponent_score,
+            root_margin,
+            score_utility_weight,
+        );
+        let conditional_prior = if group_prior > 0.0 {
+            node.priors[edge_index] / group_prior
         } else {
-            1.0 - root_value
+            fallback_prior
         };
-        let exploration = exploration_constant * node.priors[edge_index] * sqrt_total
+        let exploration = exploration_constant * conditional_prior * sqrt_group_visits
             / (1.0 + edge.visits as f64 + edge.virtual_visits as f64);
         let score = actor_value + exploration;
         if best.is_none_or(|(_, best_score)| score > best_score) {
@@ -1015,6 +1240,71 @@ fn select_neural_edge(
         }
     }
     best.map(|(edge_index, _)| edge_index)
+}
+
+fn actor_utility_from_root_values(
+    node: &NeuralTreeNode,
+    root_player: usize,
+    root_win_value: f64,
+    root_score: f64,
+    opponent_score: f64,
+    root_victory_point_margin: f64,
+    score_utility_weight: f64,
+) -> f64 {
+    if node.actor == root_player {
+        combined_actor_utility(
+            root_win_value,
+            root_score,
+            root_victory_point_margin,
+            score_utility_weight,
+        )
+    } else {
+        combined_actor_utility(
+            1.0 - root_win_value,
+            opponent_score,
+            -root_victory_point_margin,
+            score_utility_weight,
+        )
+    }
+}
+
+fn build_neural_action_groups(
+    actions: &[LegalAction],
+    group_card_choices: bool,
+) -> Vec<Vec<usize>> {
+    if !group_card_choices {
+        return (0..actions.len()).map(|index| vec![index]).collect();
+    }
+
+    let mut group_indices = HashMap::new();
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    for (action_index, action) in actions.iter().enumerate() {
+        let key = action.card_invariant_key();
+        let group_index = match group_indices.get(&key) {
+            Some(&group_index) => group_index,
+            None => {
+                let group_index = groups.len();
+                group_indices.insert(key, group_index);
+                groups.push(Vec::new());
+                group_index
+            }
+        };
+        groups[group_index].push(action_index);
+    }
+    groups
+}
+
+fn combined_actor_utility(
+    shared_win_value: f64,
+    actor_score: f64,
+    victory_point_margin: f64,
+    score_utility_weight: f64,
+) -> f64 {
+    let absolute_score_quality = (actor_score / SCORE_UTILITY_REFERENCE_VP).clamp(0.0, 1.0);
+    let margin_quality =
+        (0.5 + victory_point_margin / (2.0 * SCORE_UTILITY_REFERENCE_VP)).clamp(0.0, 1.0);
+    let score_quality = 0.5 * (absolute_score_quality + margin_quality);
+    (1.0 - score_utility_weight) * shared_win_value + score_utility_weight * score_quality
 }
 
 fn add_virtual_visits(tree: &mut NeuralTree, path: &[(usize, usize)]) -> Result<(), String> {
@@ -1034,6 +1324,8 @@ fn backup_neural_path(
     path: &[(usize, usize)],
     root_shared_win_rate: f64,
     root_victory_point_margin: f64,
+    root_score: f64,
+    opponent_score: f64,
     remove_virtual_visit: bool,
 ) -> Result<(), String> {
     for &(node_index, edge_index) in path {
@@ -1052,6 +1344,8 @@ fn backup_neural_path(
         edge.root_shared_win_sum += root_shared_win_rate;
         edge.root_shared_win_square_sum += root_shared_win_rate * root_shared_win_rate;
         edge.root_victory_point_margin_sum += root_victory_point_margin;
+        edge.root_score_sum += root_score;
+        edge.opponent_score_sum += opponent_score;
     }
     Ok(())
 }
@@ -2048,6 +2342,52 @@ fn potential_era_victory_points(runner: &GameRunner) -> Vec<u16> {
     potential_vps
 }
 
+fn two_player_score_progress(
+    runner: &GameRunner,
+    root_player: usize,
+) -> Result<(f64, f64), String> {
+    let state = &runner.framework.board.state;
+    if state.players.len() != 2 || root_player >= 2 {
+        return Err("score progress requires a valid two-player root".to_string());
+    }
+    let potential = potential_era_victory_points(runner);
+    let score = |player_idx: usize| {
+        f64::from(state.players[player_idx].victory_points) + f64::from(potential[player_idx])
+    };
+    Ok((score(root_player), score(1 - root_player)))
+}
+
+fn two_player_predicted_scores(
+    runner: &GameRunner,
+    root_player: usize,
+    evaluation_player: usize,
+    actor_victory_points: f64,
+    actor_victory_point_margin: f64,
+) -> Result<(f64, f64), String> {
+    if !actor_victory_points.is_finite() || actor_victory_points < 0.0 {
+        return Err("predicted actor victory points must be finite and non-negative".to_string());
+    }
+    if !actor_victory_point_margin.is_finite() {
+        return Err("predicted victory-point margin must be finite".to_string());
+    }
+    if evaluation_player >= 2 {
+        return Err("predicted score requires a valid evaluation player".to_string());
+    }
+
+    let actor_score = actor_victory_points;
+    let other_score = (actor_victory_points - actor_victory_point_margin).max(0.0);
+    let (predicted_root, predicted_opponent) = if evaluation_player == root_player {
+        (actor_score, other_score)
+    } else {
+        (other_score, actor_score)
+    };
+    let (secured_root, secured_opponent) = two_player_score_progress(runner, root_player)?;
+    Ok((
+        predicted_root.max(secured_root),
+        predicted_opponent.max(secured_opponent),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2055,6 +2395,23 @@ mod tests {
     #[test]
     fn standard_error_is_zero_for_constant_fractional_ties() {
         assert_eq!(sample_standard_error(1.5, 0.75, 3), Some(0.0));
+    }
+
+    #[test]
+    fn score_utility_distinguishes_low_and_high_scoring_ties() {
+        assert_eq!(combined_actor_utility(0.5, 0.0, 0.0, 0.0), 0.5);
+        assert!(
+            combined_actor_utility(0.5, 140.0, 0.0, 0.2)
+                > combined_actor_utility(0.5, 0.0, 0.0, 0.2)
+        );
+        assert!(
+            combined_actor_utility(0.5, 50.0, 40.0, 0.2)
+                > combined_actor_utility(0.5, 50.0, -40.0, 0.2)
+        );
+        assert!(
+            combined_actor_utility(1.0, 10.0, 10.0, 0.2)
+                > combined_actor_utility(0.0, 140.0, -10.0, 0.2)
+        );
     }
 
     #[test]

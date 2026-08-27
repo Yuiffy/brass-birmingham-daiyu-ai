@@ -142,13 +142,20 @@ On your turn:
    `为什么一选比二选好？`.
 5. Click `采用此步` if you want the AI to play that recommendation for you.
 
-On the AI's turn, the interface opens `AI 分析` automatically. Use the controls under `AI 对局`:
+On the AI's turn, the interface opens `AI 分析` and starts the AI automatically. Use the controls under `AI 对局` when you want to intervene:
 
-- Play runs the complete AI turn and pauses as soon as control returns to your seat.
+- Play resumes the complete AI turn and pauses as soon as control returns to your seat.
 - Pause keeps the current Top 3 visible so you can ask a question before the move is applied.
 - Step analyzes without moving when no report exists; press it again to apply the current first
   choice exactly once.
 - Stop clears the playback session.
+
+Saved games also have a history icon in `Join Game`. Open it to enter `棋谱回放`, where you can
+move through every recorded position with the timeline, previous/next controls, or the slider.
+Each position keeps the board state, the applied action and its selections, and any AI analysis
+that was available at that moment, including the first, second, and third recommendations. New
+games record these snapshots automatically as actions are analyzed or applied. Saves created
+before replay recording was added may not contain snapshots and will show an empty-history notice.
 
 Use `AI 观战` to let the AI control both seats, or `全部手动` to operate every seat yourself.
 Search visit share, backed-up model value, and policy prior are separate estimates; the displayed
@@ -216,6 +223,8 @@ python -m training.train \
   --validation-shards output/validation-*.jsonl \
   --output output/candidate.pt \
   --resume output/champion.pt \
+  --early-stopping-patience 3 \
+  --early-stopping-min-delta 0.001 \
   --device cuda
 ```
 
@@ -224,6 +233,10 @@ game seeds across the two partitions. Validation metrics are weighted by positio
 batch, and training saves the state with the lowest independent validation loss (including the
 resumed baseline) rather than blindly keeping the final epoch. The old position-level
 `--validation-fraction` split is rejected because it leaks positions from the same game.
+Early stopping is opt-in, requires independent validation shards, and records its stop reason and
+patience state in checkpoint metadata. See
+[`docs/training-methodology.md`](docs/training-methodology.md) for the staged compute funnel,
+promotion standards, top-human evidence requirements, and the reusable cross-game method.
 
 ### Run a seat-rotated promotion gate
 

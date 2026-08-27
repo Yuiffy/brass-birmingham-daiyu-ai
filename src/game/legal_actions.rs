@@ -27,6 +27,19 @@ impl LegalAction {
         format!("{root}|{choices}")
     }
 
+    /// Strategic action identity with discard-card choices removed.
+    pub fn card_invariant_key(&self) -> String {
+        let root = action_type_key(self.root);
+        let choices = self
+            .choices
+            .iter()
+            .filter(|choice| !matches!(choice, ActionChoice::Card(_)))
+            .map(action_choice_key)
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("{root}|{choices}")
+    }
+
     /// Replays this action against `runner` and advances to the next decision point.
     /// The runner is restored exactly if the action is stale or cannot be committed.
     pub fn apply(&self, runner: &mut GameRunner) -> Result<(), String> {

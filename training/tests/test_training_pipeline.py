@@ -7,7 +7,11 @@ from pathlib import Path
 
 import torch
 
-from training.checkpoint import load_model_checkpoint, save_checkpoint
+from training.checkpoint import (
+    LEGACY_ACTOR_VP_HEAD_MARKER,
+    load_model_checkpoint,
+    save_checkpoint,
+)
 from training.data import SelfPlayDataset, collate_positions
 from training.inference import (
     BatchValuePrediction,
@@ -15,7 +19,13 @@ from training.inference import (
     aggregate_two_player_successor_values,
     build_value_state_batch,
 )
-from training.model import BrassPolicyValueNet, ModelConfig, compute_losses
+from training.model import (
+    BrassPolicyValueNet,
+    ModelConfig,
+    compute_losses,
+    expand_with_policy_adapter,
+    fuse_policy_and_value_models,
+)
 
 
 class TrainingPipelineTests(unittest.TestCase):
@@ -38,8 +48,32 @@ class TrainingPipelineTests(unittest.TestCase):
         self.assertEqual(batch.action_counts.tolist(), [2, 3])
         self.assertEqual(batch.action_feature_offsets.tolist(), [0, 2, 5, 7, 9, 12])
         self.assertEqual(tuple(batch.policy_targets.shape), (5,))
+        self.assertEqual(batch.actor_victory_points_targets.tolist(), [40.0, 80.0])
         self.assertTrue(
             torch.allclose(batch.policy_targets[:2], torch.tensor([0.75, 0.25]))
+        )
+        dataset.close()
+
+    def test_dataset_keeps_strategy_behavior_target_separate_from_search_visits(self) -> None:
+        records = [
+            json.loads(line)
+            for line in self.shard.read_text(encoding="utf-8").splitlines()
+        ]
+        position = next(record for record in records if record.get("record_type") == "position")
+        actions = position["legal_actions"]
+        actions[0]["policy_target"] = 0.9
+        actions[1]["policy_target"] = 0.1
+        for action in actions:
+            action["search_policy_target"] = action["visits"] / 4.0
+        guided_shard = self.root / "guided-targets.jsonl"
+        guided_shard.write_text(
+            "\n".join(json.dumps(record) for record in records) + "\n",
+            encoding="utf-8",
+        )
+
+        dataset = SelfPlayDataset([guided_shard])
+        self.assertTrue(
+            torch.allclose(dataset[0].policy_target, torch.tensor([0.9, 0.1]))
         )
         dataset.close()
 
@@ -54,12 +88,19 @@ class TrainingPipelineTests(unittest.TestCase):
             action_embedding_dim=8,
             trunk_dim=12,
             vp_margin_scale=20.0,
+            actor_vp_scale=100.0,
         )
         model = BrassPolicyValueNet(config)
         output = model(batch)
         self.assertEqual(tuple(output.policy_logits.shape), (5,))
         self.assertEqual(tuple(output.shared_win_logits.shape), (2,))
-        losses = compute_losses(output, batch, vp_margin_scale=config.vp_margin_scale)
+        self.assertEqual(tuple(output.actor_victory_points_normalized.shape), (2,))
+        losses = compute_losses(
+            output,
+            batch,
+            vp_margin_scale=config.vp_margin_scale,
+            actor_vp_scale=config.actor_vp_scale,
+        )
         self.assertTrue(torch.isfinite(losses.total).item())
         losses.total.backward()
         self.assertTrue(
@@ -91,7 +132,146 @@ class TrainingPipelineTests(unittest.TestCase):
         self.assertTrue(
             torch.equal(expected.shared_win_logits, actual.shared_win_logits)
         )
+        self.assertTrue(
+            torch.equal(
+                expected.actor_victory_points_normalized,
+                actual.actor_victory_points_normalized,
+            )
+        )
         self.assertEqual(payload["metadata"]["training"]["global_step"], 7)
+        dataset.close()
+
+    def test_zero_initialized_policy_adapter_preserves_base_values(self) -> None:
+        torch.manual_seed(124)
+        dataset = SelfPlayDataset([self.shard])
+        batch = collate_positions([dataset[0], dataset[1]])
+        base = BrassPolicyValueNet(
+            ModelConfig(
+                state_dim=4,
+                action_dim=10,
+                state_hidden_dim=16,
+                action_embedding_dim=8,
+                trunk_dim=12,
+            )
+        )
+        expanded = expand_with_policy_adapter(base, policy_adapter_dim=16)
+        base.eval()
+        expanded.eval()
+        with torch.no_grad():
+            baseline = base(batch)
+            initial = expanded(batch)
+        self.assertTrue(torch.equal(baseline.policy_logits, initial.policy_logits))
+        self.assertTrue(
+            torch.equal(baseline.shared_win_logits, initial.shared_win_logits)
+        )
+        self.assertTrue(
+            torch.equal(
+                baseline.victory_point_margin_normalized,
+                initial.victory_point_margin_normalized,
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                baseline.actor_victory_points_normalized,
+                initial.actor_victory_points_normalized,
+            )
+        )
+
+        for name, parameter in expanded.named_parameters():
+            parameter.requires_grad_(name.startswith("policy_adapter_"))
+        optimizer = torch.optim.AdamW(
+            [parameter for parameter in expanded.parameters() if parameter.requires_grad],
+            lr=1e-2,
+        )
+        expanded.train()
+        optimizer.zero_grad(set_to_none=True)
+        losses = compute_losses(
+            expanded(batch),
+            batch,
+            vp_margin_scale=expanded.config.vp_margin_scale,
+            actor_vp_scale=expanded.config.actor_vp_scale,
+        )
+        losses.total.backward()
+        optimizer.step()
+        expanded.eval()
+        with torch.no_grad():
+            trained = expanded(batch)
+        self.assertFalse(torch.equal(initial.policy_logits, trained.policy_logits))
+        self.assertTrue(
+            torch.equal(initial.shared_win_logits, trained.shared_win_logits)
+        )
+        self.assertTrue(
+            torch.equal(
+                initial.victory_point_margin_normalized,
+                trained.victory_point_margin_normalized,
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                initial.actor_victory_points_normalized,
+                trained.actor_victory_points_normalized,
+            )
+        )
+        dataset.close()
+
+    def test_fused_model_preserves_policy_and_value_experts(self) -> None:
+        dataset = SelfPlayDataset([self.shard])
+        batch = collate_positions([dataset[0], dataset[1]])
+        config = ModelConfig(
+            state_dim=4,
+            action_dim=10,
+            state_hidden_dim=16,
+            action_embedding_dim=8,
+            trunk_dim=12,
+        )
+        torch.manual_seed(125)
+        policy_model = BrassPolicyValueNet(config).eval()
+        torch.manual_seed(126)
+        value_model = BrassPolicyValueNet(config).eval()
+
+        fused = fuse_policy_and_value_models(policy_model, value_model).eval()
+        with torch.no_grad():
+            policy_output = policy_model(batch)
+            value_output = value_model(batch)
+            fused_output = fused(batch)
+        self.assertTrue(fused.config.separate_value_encoder)
+        self.assertTrue(
+            torch.equal(policy_output.policy_logits, fused_output.policy_logits)
+        )
+        self.assertTrue(
+            torch.equal(
+                value_output.shared_win_logits, fused_output.shared_win_logits
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                value_output.victory_point_margin_normalized,
+                fused_output.victory_point_margin_normalized,
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                value_output.actor_victory_points_normalized,
+                fused_output.actor_victory_points_normalized,
+            )
+        )
+
+        checkpoint = self.root / "fused.pt"
+        save_checkpoint(checkpoint, fused, dataset.schema)
+        restored, _ = load_model_checkpoint(
+            checkpoint, expected_schema=dataset.schema
+        )
+        restored.eval()
+        with torch.no_grad():
+            restored_output = restored(batch)
+        self.assertTrue(
+            torch.equal(fused_output.policy_logits, restored_output.policy_logits)
+        )
+        self.assertTrue(
+            torch.equal(
+                fused_output.shared_win_logits, restored_output.shared_win_logits
+            )
+        )
         dataset.close()
 
     def test_checkpoint_rejects_feature_schema_mismatch(self) -> None:
@@ -106,6 +286,34 @@ class TrainingPipelineTests(unittest.TestCase):
             load_model_checkpoint(checkpoint, expected_schema=altered_dataset.schema)
         dataset.close()
         altered_dataset.close()
+
+    def test_legacy_checkpoint_initializes_actor_vp_head_deterministically(self) -> None:
+        dataset = SelfPlayDataset([self.shard])
+        model = BrassPolicyValueNet(ModelConfig(state_dim=4, action_dim=10))
+        current = self.root / "current.pt"
+        save_checkpoint(current, model, dataset.schema)
+        payload = torch.load(current, map_location="cpu", weights_only=True)
+        payload["model_state_dict"] = {
+            key: value
+            for key, value in payload["model_state_dict"].items()
+            if not key.startswith("actor_victory_points_head.")
+        }
+        payload["metadata"]["model_config"].pop("actor_vp_scale")
+        legacy = self.root / "legacy.pt"
+        torch.save(payload, legacy)
+
+        first, first_payload = load_model_checkpoint(legacy)
+        second, second_payload = load_model_checkpoint(legacy)
+        first_head = first.actor_victory_points_head.state_dict()
+        second_head = second.actor_victory_points_head.state_dict()
+        self.assertTrue(first_payload[LEGACY_ACTOR_VP_HEAD_MARKER])
+        self.assertTrue(second_payload[LEGACY_ACTOR_VP_HEAD_MARKER])
+        self.assertTrue(
+            all(torch.equal(first_head[key], second_head[key]) for key in first_head)
+        )
+        self.assertGreater(first_head["0.weight"].abs().sum().item(), 0.0)
+        self.assertGreater(first_head["2.weight"].abs().sum().item(), 0.0)
+        dataset.close()
 
     def test_checkpoint_evaluator_returns_stable_keyed_policy_and_values(self) -> None:
         torch.manual_seed(321)
@@ -152,6 +360,7 @@ class TrainingPipelineTests(unittest.TestCase):
         )
         self.assertTrue(0.0 <= prediction.shared_win_rate <= 1.0)
         self.assertTrue(torch.isfinite(torch.tensor(prediction.victory_point_margin)))
+        self.assertGreaterEqual(prediction.actor_victory_points, 0.0)
         self.assertIn(evaluator.select_action(state, legal), (0, 1))
 
         reordered = {**legal, "actions": list(reversed(legal["actions"]))}
@@ -184,10 +393,13 @@ class TrainingPipelineTests(unittest.TestCase):
         prediction = evaluator.predict_values(states, dataset.schema)
         dense = build_value_state_batch(states, dataset.schema)
         with torch.inference_mode():
-            expected_win_logits, expected_margins = model.forward_values(dense)
+            expected_win_logits, expected_margins, expected_actor_vps = (
+                model.forward_values(dense)
+            )
 
         self.assertEqual(len(prediction.shared_win_rates), 2)
         self.assertEqual(len(prediction.victory_point_margins), 2)
+        self.assertEqual(len(prediction.actor_victory_points), 2)
         self.assertTrue(
             torch.allclose(
                 torch.tensor(prediction.shared_win_rates),
@@ -198,6 +410,12 @@ class TrainingPipelineTests(unittest.TestCase):
             torch.allclose(
                 torch.tensor(prediction.victory_point_margins),
                 expected_margins * model.config.vp_margin_scale,
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                torch.tensor(prediction.actor_victory_points),
+                (expected_actor_vps * model.config.actor_vp_scale).clamp_min(0.0),
             )
         )
         with self.assertRaisesRegex(ValueError, "non-empty states"):
@@ -316,6 +534,7 @@ class TrainingPipelineTests(unittest.TestCase):
             checkpoint_step=12,
             shared_win_rates=(0.2, 0.7),
             victory_point_margins=(2.0, 4.0),
+            actor_victory_points=(40.0, 60.0),
         )
 
         values = aggregate_two_player_successor_values(batch, prediction)
@@ -351,6 +570,7 @@ def _write_synthetic_shard(path: Path, feature_version: int = 1) -> None:
             "record_type": "game",
             "format_version": 1,
             "game_index": 0,
+            "victory_points": [40, 80],
         },
         _position(
             feature_version,
@@ -390,6 +610,7 @@ def _position(
         "feature_version": feature_version,
         "game_index": 0,
         "position_index": position_index,
+        "actor": position_index,
         "state_features": state,
         "legal_actions": [
             {

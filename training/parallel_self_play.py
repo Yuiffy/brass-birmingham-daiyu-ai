@@ -16,6 +16,7 @@ from .model_self_play import (
     detect_engine_revision,
     export_model_self_play,
 )
+from .strategy_prior import STRATEGY_PRIOR_VERSION, SUPPORTED_STRATEGY_PRIOR_VERSIONS
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,11 @@ class ParallelSelfPlayConfig:
     max_game_actions: int = 256
     device: str = "auto"
     engine_revision: str = "unknown"
+    strategy_prior_strength: float = 0.0
+    strategy_prior_version: str = STRATEGY_PRIOR_VERSION
+    group_card_choices: bool = False
+    selection_temperature: float = 1.0
+    score_utility_weight: float = 0.0
 
     def validate(self) -> None:
         if self.workers <= 0 or self.workers > 64:
@@ -103,6 +109,11 @@ def main() -> None:
         max_game_actions=args.max_game_actions,
         device=args.device,
         engine_revision=args.engine_revision or detect_engine_revision(),
+        strategy_prior_strength=args.strategy_prior_strength,
+        strategy_prior_version=args.strategy_prior_version,
+        group_card_choices=args.group_card_choices,
+        selection_temperature=args.selection_temperature,
+        score_utility_weight=args.score_utility_weight,
     )
     summary = export_parallel_self_play(config)
     print(json.dumps(asdict(summary), sort_keys=True))
@@ -137,6 +148,34 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-game-actions", type=int, default=256)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--engine-revision")
+    parser.add_argument(
+        "--strategy-prior-strength",
+        type=float,
+        default=0.0,
+        help="Blend the human-strategy prior into root PUCT (0 disables it)",
+    )
+    parser.add_argument(
+        "--strategy-prior-version",
+        choices=SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+        default=STRATEGY_PRIOR_VERSION,
+    )
+    parser.add_argument(
+        "--group-card-choices",
+        action="store_true",
+        help="Normalize search priors across card-equivalent action intents",
+    )
+    parser.add_argument(
+        "--selection-temperature",
+        type=float,
+        default=1.0,
+        help="Visit-count action-selection temperature (0 selects stable argmax)",
+    )
+    parser.add_argument(
+        "--score-utility-weight",
+        type=float,
+        default=0.0,
+        help="Blend secured-score progress into neural PUCT exploitation",
+    )
     return parser
 
 
@@ -303,6 +342,11 @@ def _to_model_config(
         max_game_actions=config.max_game_actions,
         device=config.device,
         engine_revision=config.engine_revision,
+        strategy_prior_strength=config.strategy_prior_strength,
+        strategy_prior_version=config.strategy_prior_version,
+        group_card_choices=config.group_card_choices,
+        selection_temperature=config.selection_temperature,
+        score_utility_weight=config.score_utility_weight,
     )
 
 

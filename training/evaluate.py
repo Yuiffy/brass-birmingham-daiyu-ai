@@ -12,6 +12,12 @@ from typing import Any, Sequence
 from .evaluator import PolicyValueEvaluator
 from .neural_search import BATCHED_NEURAL_PUCT_METHOD, run_batched_neural_puct
 from .schema import FeatureSchema
+from .strategy_prior import (
+    STRATEGY_PRIOR_VERSION,
+    SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+    blend_policy_with_strategy,
+    build_strategy_prior,
+)
 
 ROOT_PUCT_METHOD = "determinized_root_puct_policy_random_rollout"
 SEARCH_SEED_STREAM = 0x6576_616C_5F73_6561
@@ -90,6 +96,8 @@ class EvaluationPolicy:
         schema: FeatureSchema,
         source: str,
         source_kind: str,
+        strategy_prior_strength: float = 0.0,
+        strategy_prior_version: str = STRATEGY_PRIOR_VERSION,
     ) -> None:
         evaluator.schema.assert_compatible(schema, source)
         self.evaluator = evaluator
@@ -98,22 +106,30 @@ class EvaluationPolicy:
         self.source_kind = source_kind
         self.model_id = evaluator.model_id
         self.checkpoint_step = evaluator.checkpoint_step
+        self.strategy_prior_strength = strategy_prior_strength
+        self.strategy_prior_version = strategy_prior_version
 
-    def select_action(self, state_record: dict, legal_record: dict) -> int:
+    def select_action(
+        self, observation: dict, state_record: dict, legal_record: dict
+    ) -> int:
         prediction = self.evaluator.predict(state_record, legal_record, self.schema)
         expected_keys = tuple(
             action.get("key") for action in legal_record.get("actions", [])
         )
         if prediction.action_keys != expected_keys:
             raise RuntimeError("model changed the stable legal-action order")
+        probabilities = self._root_policy_probabilities(
+            observation, legal_record, prediction.policy_probabilities
+        )
         return max(
-            range(len(prediction.policy_probabilities)),
-            key=prediction.policy_probabilities.__getitem__,
+            range(len(probabilities)),
+            key=probabilities.__getitem__,
         )
 
     def select_action_with_search(
         self,
         game: Any,
+        observation: dict,
         state_record: dict,
         legal_record: dict,
         num_players: int,
@@ -126,6 +142,9 @@ class EvaluationPolicy:
         prediction = self.evaluator.predict(
             state_record, legal_record, self.schema
         )
+        root_policy_probabilities = self._root_policy_probabilities(
+            observation, legal_record, prediction.policy_probabilities
+        )
         if num_players == 2:
             report = run_batched_neural_puct(
                 game,
@@ -137,11 +156,12 @@ class EvaluationPolicy:
                 exploration_constant=exploration_constant,
                 determinizations=search_determinizations,
                 inference_batch_size=inference_batch_size,
+                root_policy_probabilities=root_policy_probabilities,
             )
             expected_method = BATCHED_NEURAL_PUCT_METHOD
         else:
             report = game.search_legal_actions_with_policy(
-                list(prediction.policy_probabilities),
+                list(root_policy_probabilities),
                 prediction.model_id,
                 prediction.shared_win_rate,
                 prediction.victory_point_margin,
@@ -156,6 +176,26 @@ class EvaluationPolicy:
             prediction.model_id,
             expected_method,
             simulations,
+        )
+
+    def _root_policy_probabilities(
+        self,
+        observation: dict,
+        legal_record: dict,
+        model_probabilities: tuple[float, ...],
+    ) -> tuple[float, ...]:
+        if self.strategy_prior_strength <= 0.0:
+            return model_probabilities
+        prior = build_strategy_prior(
+            observation,
+            legal_record,
+            version=self.strategy_prior_version,
+        )
+        return blend_policy_with_strategy(
+            model_probabilities,
+            prior.probabilities,
+            self.strategy_prior_strength,
+            guarded_actions=prior.guarded_actions,
         )
 
 
@@ -213,6 +253,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=4,
     )
     parser.add_argument("--inference-batch-size", type=int, default=32)
+    parser.add_argument(
+        "--candidate-strategy-prior-strength", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--candidate-strategy-prior-version",
+        choices=SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+        default=STRATEGY_PRIOR_VERSION,
+    )
+    parser.add_argument(
+        "--champion-strategy-prior-strength", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--champion-strategy-prior-version",
+        choices=SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+        default=STRATEGY_PRIOR_VERSION,
+    )
     return parser
 
 
@@ -243,6 +299,15 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("search-determinizations must be between 1 and 64")
     if not 1 <= args.inference_batch_size <= 256:
         raise ValueError("inference-batch-size must be between 1 and 256")
+    for name in (
+        "candidate_strategy_prior_strength",
+        "champion_strategy_prior_strength",
+    ):
+        strength = float(getattr(args, name))
+        if not math.isfinite(strength) or not 0.0 <= strength <= 1.0:
+            raise ValueError(
+                f"{name.replace('_', '-')} must be between 0 and 1"
+            )
     inference_timeout = float(
         getattr(args, "inference_timeout_seconds", 120.0)
     )
@@ -270,6 +335,8 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         schema=schema,
         device=args.device,
         timeout_seconds=inference_timeout,
+        strategy_prior_strength=args.candidate_strategy_prior_strength,
+        strategy_prior_version=args.candidate_strategy_prior_version,
     )
     champion = _build_evaluation_policy(
         checkpoint=champion_checkpoint,
@@ -278,6 +345,8 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         schema=schema,
         device=args.device,
         timeout_seconds=inference_timeout,
+        strategy_prior_strength=args.champion_strategy_prior_strength,
+        strategy_prior_version=args.champion_strategy_prior_version,
     )
 
     results: list[MatchResult] = []
@@ -324,6 +393,10 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         "champion_model_id": champion.model_id,
         "candidate_checkpoint_step": candidate.checkpoint_step,
         "champion_checkpoint_step": champion.checkpoint_step,
+        "candidate_strategy_prior_strength": candidate.strategy_prior_strength,
+        "candidate_strategy_prior_version": candidate.strategy_prior_version,
+        "champion_strategy_prior_strength": champion.strategy_prior_strength,
+        "champion_strategy_prior_version": champion.strategy_prior_version,
         "players": args.players,
         "rounds": args.rounds,
         "base_seed": args.seed,
@@ -369,6 +442,7 @@ def play_match(
         if game.is_done():
             break
         actor = game.current_decision_player()
+        observation = game.get_observation(actor)
         state_record = game.get_training_state()
         legal_record = game.get_legal_actions()
         if (
@@ -380,6 +454,7 @@ def play_match(
             search_seed = _decision_seed(game_seed, SEARCH_SEED_STREAM, actions)
             action_index = policies[actor].select_action_with_search(
                 game,
+                observation,
                 state_record,
                 legal_record,
                 len(policies),
@@ -390,7 +465,9 @@ def play_match(
                 search_seed,
             )
         else:
-            action_index = policies[actor].select_action(state_record, legal_record)
+            action_index = policies[actor].select_action(
+                observation, state_record, legal_record
+            )
         game.step_legal_action(action_index)
         actions += 1
         if actions > max_actions:
@@ -563,6 +640,8 @@ def _build_evaluation_policy(
     schema: FeatureSchema,
     device: str,
     timeout_seconds: float,
+    strategy_prior_strength: float = 0.0,
+    strategy_prior_version: str = STRATEGY_PRIOR_VERSION,
 ) -> EvaluationPolicy:
     if inference_url is not None:
         from .remote_inference import RemoteInferenceEvaluator
@@ -582,7 +661,14 @@ def _build_evaluation_policy(
         evaluator = CheckpointEvaluator(checkpoint, device)
         source = str(Path(checkpoint).resolve())
         source_kind = "checkpoint"
-    return EvaluationPolicy(evaluator, schema, source, source_kind)
+    return EvaluationPolicy(
+        evaluator,
+        schema,
+        source,
+        source_kind,
+        strategy_prior_strength,
+        strategy_prior_version,
+    )
 
 
 def _student_t_critical_95(degrees_of_freedom: int) -> float:

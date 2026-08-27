@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
 	import { listSavedGames, loadGame, newGame } from '$lib/api';
 	import type { SavedGameSummary } from '$lib/api';
-	import { createEventDispatcher } from 'svelte';
+	import { History, Play } from 'lucide-svelte';
 
-	const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher<{ started: void; replay: number }>();
 	let activeTab: 'new' | 'join' = 'new';
 	let numPlayers = 2;
 	let seedInput = '';
@@ -111,7 +111,12 @@
 								Round {game.round_in_phase + 1} | {game.era} | {game.num_players}p | Seed {game.seed}
 							</div>
 						</div>
-						<button class="btn join-btn" on:click={() => joinSavedGame(game.id)}>Join</button>
+						<div class="game-actions">
+							<button class="icon-btn" on:click={() => dispatch('replay', game.id)} title="查看棋谱" aria-label={`查看棋谱 ${game.id}`}>
+								<History size={15} aria-hidden="true" />
+							</button>
+							<button class="btn join-btn" on:click={() => joinSavedGame(game.id)}><Play size={13} fill="currentColor" aria-hidden="true" /> Join</button>
+						</div>
 					</div>
 				{/each}
 			{/if}
@@ -193,6 +198,19 @@
 		border: 1px solid #c8cdc9;
 		background: #fff;
 	}
+	.game-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+	.icon-btn {
+		width: 31px;
+		height: 31px;
+		display: grid;
+		place-items: center;
+		border: 1px solid #c8cdc9;
+		border-radius: 6px;
+		background: #fff;
+		color: #4e554f;
+		cursor: pointer;
+	}
+	.icon-btn:hover { border-color: #087f5b; color: #087f5b; }
 	.game-meta { min-width: 0; }
 	.game-title {
 		color: #202321;
@@ -208,5 +226,8 @@
 		padding: 8px 14px;
 		font-size: 13px;
 		white-space: nowrap;
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
 	}
 </style>

@@ -112,6 +112,31 @@ fn duplicate_card_copies_do_not_duplicate_semantic_legal_actions() {
 }
 
 #[test]
+fn card_invariant_keys_merge_only_discard_variants() {
+    let runner = GameRunner::new(2, Some(2_028_002));
+    let actions = enumerate_legal_actions(&runner).expect("enumeration should succeed");
+    let loan_actions = actions
+        .iter()
+        .filter(|action| action.root == ActionType::Loan)
+        .collect::<Vec<_>>();
+
+    assert!(loan_actions.len() > 1);
+    assert!(loan_actions
+        .windows(2)
+        .any(|pair| pair[0].key() != pair[1].key()));
+    assert!(loan_actions
+        .iter()
+        .all(|action| action.card_invariant_key() == "loan|confirm"));
+
+    let distinct_non_card_keys = actions
+        .iter()
+        .filter(|action| action.root == ActionType::BuildBuilding)
+        .map(|action| action.card_invariant_key())
+        .collect::<std::collections::HashSet<_>>();
+    assert!(distinct_non_card_keys.len() > 1);
+}
+
+#[test]
 fn sell_actions_can_stop_after_one_target_or_continue() {
     let mut runner = GameRunner::new(2, Some(2029));
     let player_idx = runner.framework.current_player;

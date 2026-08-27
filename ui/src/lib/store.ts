@@ -11,6 +11,15 @@ export const analysisReport = writable<AnalysisReport | null>(null);
 export const analysisLoading = writable(false);
 export const analysisError = writable<string | null>(null);
 export const selectedAnalysisKey = writable<string | null>(null);
+export interface AnalysisProgressState {
+	completed: number;
+	target: number;
+	stage: number;
+	totalStages: number;
+}
+export const analysisProgress = writable<AnalysisProgressState | null>(null);
+export const analysisAutoEnabled = writable(false);
+export const analysisInvalidationVersion = writable(0);
 
 export type AiPlaybackStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
 export interface AiPlaybackState {
@@ -87,7 +96,10 @@ export function viewerPlayerIndex(
 export function invalidateAnalysis() {
 	analysisReport.set(null);
 	analysisError.set(null);
+	analysisLoading.set(false);
 	selectedAnalysisKey.set(null);
+	analysisProgress.set(null);
+	analysisInvalidationVersion.update(version => version + 1);
 }
 
 export function resetAiPlayback() {

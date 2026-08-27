@@ -11,6 +11,7 @@ from .model import BrassPolicyValueNet, ModelConfig
 
 CHECKPOINT_FORMAT = "fast_brass_policy_value"
 CHECKPOINT_FORMAT_VERSION = 1
+LEGACY_ACTOR_VP_HEAD_MARKER = "legacy_actor_vp_head_initialized"
 
 
 def save_checkpoint(
@@ -80,7 +81,23 @@ def load_model_checkpoint(
     model_state = payload.get("model_state_dict")
     if not isinstance(model_state, dict):
         raise ValueError("checkpoint model_state_dict is missing")
-    model.load_state_dict(model_state, strict=True)
+    actor_vp_keys = {
+        key
+        for key in model.state_dict()
+        if key.startswith("actor_victory_points_head.")
+    }
+    missing_actor_vp_keys = actor_vp_keys - set(model_state)
+    if missing_actor_vp_keys:
+        if missing_actor_vp_keys != actor_vp_keys:
+            raise ValueError("checkpoint contains an incomplete actor VP head")
+        model.initialize_actor_victory_points_head()
+        incompatible = model.load_state_dict(model_state, strict=False)
+        if set(incompatible.missing_keys) != actor_vp_keys or incompatible.unexpected_keys:
+            raise ValueError("checkpoint model state is incompatible with the current network")
+        payload[LEGACY_ACTOR_VP_HEAD_MARKER] = True
+    else:
+        model.load_state_dict(model_state, strict=True)
+        payload[LEGACY_ACTOR_VP_HEAD_MARKER] = False
     return model, payload
 
 

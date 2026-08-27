@@ -18,8 +18,10 @@
 	} from 'lucide-svelte';
 	import {
 		aiPlayback,
+		analysisAutoEnabled,
 		analysisError,
 		analysisLoading,
+		analysisProgress,
 		analysisReport,
 		aiControlsPlayer,
 		gameState,
@@ -31,6 +33,7 @@
 	} from '$lib/store';
 	import {
 		analyzePosition,
+		analyzePositionProgressive,
 		applyAnalyzedAction,
 		endTurn,
 		explainAnalyzedAction,
@@ -42,6 +45,7 @@
 	const dispatch = createEventDispatcher();
 	export let controlMode: GameControlMode = 'human-vs-ai';
 	export let humanPlayerIndex = 0;
+	export let controlSyncing = false;
 	const budgets = [
 		{ value: 800, label: '快速' },
 		{ value: 3000, label: '标准' },
@@ -66,6 +70,9 @@
 	let loopGeneration = 0;
 	let delayTimer: ReturnType<typeof setTimeout> | null = null;
 	let finishDelay: (() => void) | null = null;
+	let controlIdentity = '';
+	let lastAutoStartKey: string | null = null;
+	let lastAutoAnalysisKey: string | null = null;
 
 	$: report = $analysisReport;
 	$: usesSuccessorValues = report?.value_source === 'batched_successor_model';
@@ -78,7 +85,31 @@
 		: false;
 	$: humanName = gs ? playerName(gs, humanPlayerIndex) : '你';
 	$: canAnalyze = phase === 'choosing_action' && !gs?.game_over && !gs?.has_pending_shortfall;
-	$: canRunAi = aiCanMove && !gs?.game_over && phase !== 'in_session';
+	$: canRunAi = !controlSyncing && aiCanMove && !gs?.game_over && phase !== 'in_session';
+	$: analysisPositionKey = gs
+		? JSON.stringify([controlMode, humanPlayerIndex, gs])
+		: null;
+	$: canAutoAnalyze = canAnalyze && !aiCanMove && !gs?.game_over;
+	$: aiPositionKey = gs
+		? [
+			controlMode,
+			humanPlayerIndex,
+			gs.seed,
+			gs.era,
+			gs.round_in_phase,
+			gs.turn_count,
+			gs.current_player,
+			gs.actions_remaining,
+			phase,
+			gs.choice_set?.kind ?? '',
+			gs.has_pending_shortfall ? 'shortfall' : 'ready'
+		].join(':')
+		: null;
+	$: if (controlIdentity !== `${controlMode}:${humanPlayerIndex}`) {
+		controlIdentity = `${controlMode}:${humanPlayerIndex}`;
+		lastAutoStartKey = null;
+		lastAutoAnalysisKey = null;
+	}
 	$: effects = selected ? immediateEffects(selected) : [];
 	$: if (selected?.action_key !== previousSelection) {
 		previousSelection = selected?.action_key ?? null;
@@ -86,6 +117,31 @@
 		continuationOpen = false;
 	}
 	$: if (!aiCanMove && $aiPlayback.status === 'running') pauseAutoplay();
+	$: if (!canAutoAnalyze) lastAutoAnalysisKey = null;
+	$: if (
+		$analysisAutoEnabled &&
+		canAutoAnalyze &&
+		!$analysisLoading &&
+		!applying &&
+		!report &&
+		analysisPositionKey &&
+		analysisPositionKey !== lastAutoAnalysisKey
+	) {
+		lastAutoAnalysisKey = analysisPositionKey;
+		exchanges = [];
+		void analyzePositionProgressive(simulations);
+	}
+	$: if (
+		canRunAi &&
+		!$analysisLoading &&
+		!applying &&
+		$aiPlayback.status !== 'running' &&
+		aiPositionKey &&
+		aiPositionKey !== lastAutoStartKey
+	) {
+		lastAutoStartKey = aiPositionKey;
+		void startAutoplay();
+	}
 
 	function stateAllowsAi(state: GameState): boolean {
 		return aiControlsPlayer(controlMode, humanPlayerIndex, state.current_player);
@@ -95,7 +151,12 @@
 		if (!canAnalyze || $analysisLoading) return;
 		pauseAutoplay();
 		exchanges = [];
-		await analyzePosition(simulations);
+		await analyzePositionProgressive(simulations);
+	}
+
+	function toggleAutoAnalysis(event: Event) {
+		lastAutoAnalysisKey = null;
+		analysisAutoEnabled.set((event.currentTarget as HTMLInputElement).checked);
 	}
 
 	function selectCandidate(candidate: AnalysisCandidate) {
@@ -289,7 +350,7 @@
 			return `${playerName} 回合`;
 		}
 		switch (status) {
-			case 'running': return `运行中 · ${moves} 手`;
+			case 'running': return `自动运行中 · ${moves} 手`;
 			case 'paused': return `已暂停 · ${moves} 手`;
 			case 'complete': return `已结束 · ${moves} 手`;
 			case 'error': return '已停止';
@@ -366,7 +427,7 @@
 		<button class="analyze-button" on:click={runAnalysis} disabled={!canAnalyze || $analysisLoading}>
 			{#if $analysisLoading}
 				<span class="spin"><LoaderCircle size={17} aria-hidden="true" /></span>
-				<span>搜索中</span>
+				<span>搜索中{#if $analysisProgress} · {$analysisProgress.completed.toLocaleString()}/{$analysisProgress.target.toLocaleString()}{/if}</span>
 			{:else if report}
 				<RefreshCw size={17} aria-hidden="true" />
 				<span>重新分析</span>
@@ -376,6 +437,10 @@
 			{/if}
 		</button>
 	</div>
+	<label class="auto-analysis-toggle">
+		<input type="checkbox" checked={$analysisAutoEnabled} on:change={toggleAutoAnalysis} />
+		<span>自动分析玩家回合</span>
+	</label>
 
 	<section class="playback-control" aria-label="AI 对局控制">
 		<div class="playback-main">
@@ -415,6 +480,16 @@
 
 	{#if $analysisError}
 		<div class="error-note">{$analysisError}</div>
+	{/if}
+
+	{#if $analysisLoading && $analysisProgress}
+		<div class="analysis-progress" aria-live="polite">
+			<div class="progress-copy">
+				<span>分阶段搜索</span>
+				<strong>{$analysisProgress.completed.toLocaleString()} / {$analysisProgress.target.toLocaleString()} · 第 {$analysisProgress.stage}/{$analysisProgress.totalStages} 阶段</strong>
+			</div>
+			<div class="progress-track"><span style={`width: ${Math.min(100, ($analysisProgress.completed / Math.max(1, $analysisProgress.target)) * 100)}%`}></span></div>
+		</div>
 	{/if}
 
 	{#if $analysisLoading && !report}
@@ -587,6 +662,8 @@
 	.analyze-button, .apply-button { border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; font-weight: 700; cursor: pointer; }
 	.analyze-button { color: #fff; background: #087f5b; }
 	.apply-button { color: #fff; background: #b54031; white-space: nowrap; }
+	.auto-analysis-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; color: #4d554f; font-size: 11px; cursor: pointer; }
+	.auto-analysis-toggle input { width: 15px; height: 15px; margin: 0; accent-color: #087f5b; cursor: pointer; }
 	.playback-control { margin-top: 12px; border-top: 1px solid #cdd2ce; border-bottom: 1px solid #cdd2ce; background: #eceeec; }
 	.playback-main { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; }
 	.playback-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -607,6 +684,11 @@
 	.availability-note, .error-note, .coverage-warning { margin-top: 12px; padding: 9px 0; border-bottom: 1px solid #d7dad7; color: #747975; font-size: 12px; }
 	.availability-note { display: flex; align-items: center; gap: 8px; }
 	.error-note, .coverage-warning { color: #9f3429; }
+	.analysis-progress { margin-top: 13px; padding: 9px 0; border-top: 1px solid #d7dad7; border-bottom: 1px solid #d7dad7; }
+	.progress-copy { display: flex; justify-content: space-between; gap: 8px; color: #737975; font-size: 10px; }
+	.progress-copy strong { color: #303632; font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+	.progress-track { height: 4px; margin-top: 7px; overflow: hidden; background: #d9dedb; }
+	.progress-track span { display: block; height: 100%; background: #087f5b; transition: width .2s ease; }
 	.analysis-skeleton { display: grid; gap: 10px; margin-top: 24px; }
 	.skeleton-line, .skeleton-row { background: #e3e6e3; animation: breathe 1.2s ease-in-out infinite; }
 	.skeleton-line { width: 70%; height: 12px; }

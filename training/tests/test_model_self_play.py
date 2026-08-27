@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
 
 from training.data import FeatureSchema, SelfPlayDataset
 from training.inference import PolicyValuePrediction
-from training.model_self_play import ModelSelfPlayConfig, export_model_self_play
+from training.model_self_play import (
+    ModelSelfPlayConfig,
+    _lifecycle_selection_weights,
+    _sample_action_index,
+    export_model_self_play,
+)
 
 SCHEMA = {
     "version": 1,
@@ -40,6 +46,7 @@ class _FakeEvaluator:
             policy_probabilities=(0.75, 0.25),
             shared_win_rate=0.6,
             victory_point_margin=4.0,
+            actor_victory_points=72.0,
         )
 
     def predict_batch(
@@ -60,6 +67,7 @@ class _FakeEvaluator:
                 ),
                 shared_win_rate=0.4,
                 victory_point_margin=-2.0,
+                actor_victory_points=55.0,
             )
             for legal in legal_records
         )
@@ -104,11 +112,14 @@ class _FakeNeuralSearch:
         shared_win_rates: list[float],
         victory_point_margins: list[float],
         model_id: str,
+        actor_victory_points: list[float],
     ) -> None:
         if request_ids != [0] or model_id != self.model_id:
             raise AssertionError("fake neural submission identity changed")
         if action_keys != [["leaf-a", "leaf-b"]]:
             raise AssertionError("fake neural action order changed")
+        if actor_victory_points != [55.0]:
+            raise AssertionError("fake neural actor-VP values changed")
         self.submitted = True
 
     def finish(self) -> dict:
@@ -209,6 +220,9 @@ class _FakeGame:
         seed: int,
         exploration_constant: float,
         determinizations: int,
+        score_utility_weight: float,
+        actor_victory_points: float,
+        group_card_choices: bool,
     ) -> _FakeNeuralSearch:
         self.last_search = {
             "probabilities": probabilities,
@@ -216,6 +230,9 @@ class _FakeGame:
             "simulations": simulations,
             "seed": seed,
             "determinizations": determinizations,
+            "score_utility_weight": score_utility_weight,
+            "actor_victory_points": actor_victory_points,
+            "group_card_choices": group_card_choices,
         }
         return _FakeNeuralSearch(simulations, model_id, probabilities)
 
@@ -377,6 +394,65 @@ class ModelSelfPlayTests(unittest.TestCase):
                 checkpoint=self.root / "model.pt",
                 game_index_offset=-1,
             ).validate()
+        with self.assertRaisesRegex(ValueError, "selection_temperature"):
+            ModelSelfPlayConfig(
+                output=self.root / "bad-temperature.jsonl",
+                checkpoint=self.root / "model.pt",
+                selection_temperature=-0.1,
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "score_utility_weight"):
+            ModelSelfPlayConfig(
+                output=self.root / "bad-score-weight.jsonl",
+                checkpoint=self.root / "model.pt",
+                score_utility_weight=1.1,
+            ).validate()
+
+    def test_zero_temperature_selects_stable_highest_visit_action(self) -> None:
+        targets = [
+            {"index": 0, "visits": 3},
+            {"index": 1, "visits": 9},
+            {"index": 2, "visits": 9},
+        ]
+        self.assertEqual(_sample_action_index(targets, 123, 0.0), 1)
+
+    def test_lifecycle_selection_aggregates_visited_card_variants(self) -> None:
+        targets = [
+            {
+                "key": "loan|c0,confirm",
+                "visits": 3,
+                "strategy_guarded": False,
+                "strategy_prior_score": 1.0,
+                "strategy_prior_probability": 0.45,
+            },
+            {
+                "key": "loan|c1,confirm",
+                "visits": 1,
+                "strategy_guarded": False,
+                "strategy_prior_score": 1.0,
+                "strategy_prior_probability": 0.05,
+            },
+            {
+                "key": "loan|c2,confirm",
+                "visits": 0,
+                "strategy_guarded": False,
+                "strategy_prior_score": 1.0,
+                "strategy_prior_probability": 0.05,
+            },
+            {
+                "key": "build|i5,c0,b36,confirm",
+                "visits": 2,
+                "strategy_guarded": False,
+                "strategy_prior_score": 0.0,
+                "strategy_prior_probability": 0.45,
+            },
+        ]
+
+        weights = _lifecycle_selection_weights(targets, 1.0)
+
+        self.assertAlmostEqual(weights[0] + weights[1], 4.0 * math.exp(2.0))
+        self.assertAlmostEqual(weights[0] / weights[1], 9.0)
+        self.assertEqual(weights[2], 0.0)
+        self.assertAlmostEqual(weights[3], 2.0)
 
     def test_game_index_offset_is_applied_to_every_game_record(self) -> None:
         output = self.root / "offset-self-play.jsonl"
@@ -387,6 +463,8 @@ class ModelSelfPlayTests(unittest.TestCase):
             game_index_offset=9,
             simulations_per_decision=4,
             engine_revision="test-engine",
+            group_card_choices=True,
+            selection_temperature=0.0,
         )
 
         export_model_self_play(
@@ -409,6 +487,8 @@ class ModelSelfPlayTests(unittest.TestCase):
             games=1,
             simulations_per_decision=4,
             engine_revision="test-engine",
+            group_card_choices=True,
+            selection_temperature=0.0,
         )
         evaluator = _FakeEvaluator()
 
@@ -429,6 +509,11 @@ class ModelSelfPlayTests(unittest.TestCase):
             records[0]["search_method"],
             "determinized_batched_neural_puct",
         )
+        self.assertEqual(
+            records[0]["card_choice_grouping_version"],
+            "card-invariant-intent-v1-max",
+        )
+        self.assertEqual(records[0]["selection_temperature"], 0.0)
         position = records[2]
         self.assertEqual(position["selected_action_index"], 0)
         self.assertEqual(position["value_target"], {"shared_win": 1.0, "victory_point_margin": 5})
@@ -450,10 +535,12 @@ class ModelSelfPlayTests(unittest.TestCase):
         )
         self.assertEqual(position["max_search_depth"], 2)
         self.assertEqual(position["inference_batches"], 1)
+        self.assertEqual(position["root_model_actor_victory_points"], 72.0)
 
         dataset = SelfPlayDataset([output])
         self.assertEqual(len(dataset), 1)
         self.assertEqual(dataset[0].policy_target.tolist(), [1.0, 0.0])
+        self.assertEqual(dataset[0].actor_victory_points_target.item(), 12.0)
         dataset.close()
 
         with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):

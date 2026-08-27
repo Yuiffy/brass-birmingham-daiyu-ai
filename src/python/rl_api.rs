@@ -287,7 +287,8 @@ impl BrassNeuralSearch {
         policy_probabilities,
         shared_win_rates,
         victory_point_margins,
-        model_id
+        model_id,
+        actor_victory_points=None
     ))]
     #[allow(clippy::too_many_arguments)]
     fn submit_inference_batch(
@@ -298,12 +299,15 @@ impl BrassNeuralSearch {
         shared_win_rates: Vec<f64>,
         victory_point_margins: Vec<f64>,
         model_id: String,
+        actor_victory_points: Option<Vec<f64>>,
     ) -> PyResult<()> {
         let batch_size = request_ids.len();
+        let actor_victory_points = actor_victory_points.unwrap_or_else(|| vec![0.0; batch_size]);
         if action_keys.len() != batch_size
             || policy_probabilities.len() != batch_size
             || shared_win_rates.len() != batch_size
             || victory_point_margins.len() != batch_size
+            || actor_victory_points.len() != batch_size
         {
             return Err(PyValueError::new_err(
                 "neural inference submission arrays must have equal lengths",
@@ -317,6 +321,7 @@ impl BrassNeuralSearch {
                 policy_probabilities: policy_probabilities[index].clone(),
                 shared_win_rate: shared_win_rates[index],
                 victory_point_margin: victory_point_margins[index],
+                actor_victory_points: actor_victory_points[index],
             })
             .collect();
         self.search
@@ -666,6 +671,7 @@ impl BrassRLGame {
             policy_probabilities,
             shared_win_rate,
             victory_point_margin,
+            actor_victory_points: 0.0,
         };
         let report = search_top_actions_with_policy(&self.runner, &config, &policy)
             .map_err(PyValueError::new_err)?;
@@ -743,6 +749,7 @@ impl BrassRLGame {
             policy_probabilities,
             shared_win_rate,
             victory_point_margin,
+            actor_victory_points: 0.0,
         };
         let action_values = RootActionValueEvaluation {
             model_id,
@@ -770,7 +777,10 @@ impl BrassRLGame {
         simulations=2000,
         seed=None,
         exploration_constant=1.5,
-        determinizations=4
+        determinizations=4,
+        score_utility_weight=0.0,
+        actor_victory_points=0.0,
+        group_card_choices=false
     ))]
     #[allow(clippy::too_many_arguments)]
     fn start_batched_neural_search(
@@ -783,6 +793,9 @@ impl BrassRLGame {
         seed: Option<u64>,
         exploration_constant: f64,
         determinizations: usize,
+        score_utility_weight: f64,
+        actor_victory_points: f64,
+        group_card_choices: bool,
     ) -> PyResult<BrassNeuralSearch> {
         if simulations == 0 || simulations > 1_000_000 {
             return Err(PyValueError::new_err(
@@ -792,6 +805,16 @@ impl BrassRLGame {
         if !exploration_constant.is_finite() || exploration_constant < 0.0 {
             return Err(PyValueError::new_err(
                 "exploration_constant must be finite and non-negative",
+            ));
+        }
+        if !score_utility_weight.is_finite() || !(0.0..=1.0).contains(&score_utility_weight) {
+            return Err(PyValueError::new_err(
+                "score_utility_weight must be finite and in [0, 1]",
+            ));
+        }
+        if !actor_victory_points.is_finite() || actor_victory_points < 0.0 {
+            return Err(PyValueError::new_err(
+                "actor_victory_points must be finite and non-negative",
             ));
         }
         let forced_advances = self.advance_to_next_decision()?;
@@ -820,6 +843,7 @@ impl BrassRLGame {
             policy_probabilities,
             shared_win_rate,
             victory_point_margin,
+            actor_victory_points,
         };
         let search = BatchedNeuralPuctSearch::new(
             &self.runner,
@@ -833,6 +857,8 @@ impl BrassRLGame {
                     ..RootSearchConfig::default()
                 },
                 determinizations,
+                score_utility_weight,
+                group_card_choices,
             },
             policy,
         )
@@ -2805,6 +2831,9 @@ mod tests {
                     Some(4_401),
                     0.0,
                     1,
+                    0.0,
+                    70.0,
+                    false,
                 )
                 .expect("deep search should start");
 
@@ -2884,6 +2913,7 @@ mod tests {
                         vec![raw_value],
                         vec![0.0],
                         "test-deep-model".to_string(),
+                        Some(vec![70.0]),
                     )
                     .expect("leaf evaluation should submit");
             }

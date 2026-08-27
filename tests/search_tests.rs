@@ -36,6 +36,7 @@ fn root_policy(runner: &GameRunner, model_id: &str) -> RootPolicyEvaluation {
         policy_probabilities: vec![1.0; actions.len()],
         shared_win_rate: 0.5,
         victory_point_margin: 0.0,
+        actor_victory_points: 40.0,
     }
 }
 
@@ -59,6 +60,7 @@ fn leaf_evaluation(
         policy_probabilities,
         shared_win_rate,
         victory_point_margin,
+        actor_victory_points: 40.0,
     }
 }
 
@@ -208,6 +210,7 @@ fn root_puct_uses_the_highest_model_prior_before_other_actions() {
         policy_probabilities: probabilities,
         shared_win_rate: 0.625,
         victory_point_margin: 4.5,
+        actor_victory_points: 40.0,
     };
     let config = RootSearchConfig {
         simulations: 1,
@@ -254,6 +257,7 @@ fn root_puct_rejects_policy_probabilities_for_reordered_actions() {
         policy_probabilities: vec![1.0; actions.len()],
         shared_win_rate: 0.5,
         victory_point_margin: 0.0,
+        actor_victory_points: 40.0,
     };
 
     let error = search_top_actions_with_policy(
@@ -317,6 +321,7 @@ fn batched_successor_values_are_converted_to_root_perspective_and_drive_puct() {
         policy_probabilities: vec![1.0; actions.len()],
         shared_win_rate: 0.5,
         victory_point_margin: 0.0,
+        actor_victory_points: 40.0,
     };
     let report = search_top_actions_with_policy_and_action_values(
         &runner,
@@ -367,6 +372,8 @@ fn batched_neural_puct_expands_beyond_one_ply_and_backs_up_root_values() {
                 ..RootSearchConfig::default()
             },
             determinizations: 1,
+            score_utility_weight: 0.0,
+            group_card_choices: false,
         },
         root_policy(&runner, model_id),
     )
@@ -426,6 +433,8 @@ fn batched_neural_puct_reserves_distinct_leaves_within_a_batch() {
                 ..RootSearchConfig::default()
             },
             determinizations: 1,
+            score_utility_weight: 0.0,
+            group_card_choices: false,
         },
         root_policy(&runner, model_id),
     )
@@ -462,6 +471,93 @@ fn batched_neural_puct_reserves_distinct_leaves_within_a_batch() {
 }
 
 #[test]
+fn batched_neural_puct_groups_card_variants_before_reserving_root_leaves() {
+    let runner = GameRunner::new(2, Some(8_106));
+    let root_player = runner.framework.current_player;
+    let model_id = "grouped-card-test-model";
+    let actions = enumerate_legal_actions(&runner).unwrap();
+    let mut group_indices = std::collections::HashMap::new();
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    for (action_index, action) in actions.iter().enumerate() {
+        let key = action.card_invariant_key();
+        let group_index = match group_indices.get(&key) {
+            Some(&group_index) => group_index,
+            None => {
+                let group_index = groups.len();
+                group_indices.insert(key, group_index);
+                groups.push(Vec::new());
+                group_index
+            }
+        };
+        groups[group_index].push(action_index);
+    }
+    let multi_card_group = groups
+        .iter()
+        .position(|members| members.len() > 1)
+        .expect("initial actions should include discard variants");
+    let mut selected_groups = vec![multi_card_group];
+    selected_groups.extend(
+        (0..groups.len())
+            .filter(|group_index| *group_index != multi_card_group)
+            .take(3),
+    );
+    assert_eq!(selected_groups.len(), 4);
+
+    let mut probabilities = vec![0.0; actions.len()];
+    for group_index in &selected_groups {
+        let members = &groups[*group_index];
+        for action_index in members {
+            probabilities[*action_index] = 0.25 / members.len() as f64;
+        }
+    }
+    let policy = RootPolicyEvaluation {
+        model_id: model_id.to_string(),
+        action_keys: actions.iter().map(|action| action.key()).collect(),
+        policy_probabilities: probabilities,
+        shared_win_rate: 0.5,
+        victory_point_margin: 0.0,
+        actor_victory_points: 40.0,
+    };
+    let mut search = BatchedNeuralPuctSearch::new(
+        &runner,
+        BatchedNeuralPuctConfig {
+            search: RootSearchConfig {
+                simulations: 4,
+                recommendation_count: 8,
+                sample_continuation_length: 0,
+                seed: 9_104,
+                ..RootSearchConfig::default()
+            },
+            determinizations: 1,
+            score_utility_weight: 0.0,
+            group_card_choices: true,
+        },
+        policy,
+    )
+    .unwrap();
+
+    let batch = search.next_inference_batch(4).unwrap();
+    assert_eq!(batch.len(), 4);
+    search
+        .submit_inference_batch(
+            batch
+                .iter()
+                .map(|request| leaf_evaluation(request, model_id, root_player, 0.5))
+                .collect(),
+        )
+        .unwrap();
+
+    let report = search.finish_report().unwrap();
+    let visited_groups = report
+        .recommendations
+        .iter()
+        .map(|recommendation| recommendation.action.card_invariant_key())
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(report.visited_action_count, 4);
+    assert_eq!(visited_groups.len(), 4);
+}
+
+#[test]
 fn batched_neural_puct_rejects_invalid_leaf_evaluation_atomically() {
     let runner = GameRunner::new(2, Some(8_105));
     let root_player = runner.framework.current_player;
@@ -476,6 +572,8 @@ fn batched_neural_puct_rejects_invalid_leaf_evaluation_atomically() {
                 ..RootSearchConfig::default()
             },
             determinizations: 1,
+            score_utility_weight: 0.0,
+            group_card_choices: false,
         },
         root_policy(&runner, model_id),
     )

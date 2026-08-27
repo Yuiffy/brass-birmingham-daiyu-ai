@@ -5,7 +5,7 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		proxy: {
-			'/api': 'http://localhost:3000'
+			'/api': process.env.FAST_BRASS_API_URL ?? 'http://localhost:3000'
 		}
 	}
 });

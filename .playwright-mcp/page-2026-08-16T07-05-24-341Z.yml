@@ -1,0 +1,75 @@
+- generic [ref=e680]:
+  - generic [ref=e686]:
+    - generic [ref=e687]: 当前手牌 · Brunel
+    - generic [ref=e688]:
+      - button "Kidderminster Kidderminster" [ref=e965]:
+        - generic [ref=e966]: Kidderminster
+        - generic [ref=e968]: Kidderminster
+      - button "Birmingham Birmingham" [ref=e969]:
+        - generic [ref=e970]: Birmingham
+        - generic [ref=e972]: Birmingham
+      - button "Wolverhampton Wolverhampton" [ref=e973]:
+        - generic [ref=e974]: Wolverhampton
+        - generic [ref=e976]: Wolverhampton
+      - button "Birmingham Birmingham" [ref=e977]:
+        - generic [ref=e978]: Birmingham
+        - generic [ref=e980]: Birmingham
+      - button "Tamworth Tamworth" [ref=e981]:
+        - generic [ref=e982]: Tamworth
+        - generic [ref=e984]: Tamworth
+      - button "Beer Beer" [ref=e985]:
+        - img "Beer" [ref=e986]
+        - generic [ref=e987]: Beer
+      - button "BurtonUponTrent BurtonUponTrent" [ref=e988]:
+        - generic [ref=e989]: BurtonUponTrent
+        - generic [ref=e991]: BurtonUponTrent
+      - button "Kidderminster Kidderminster" [ref=e992]:
+        - generic [ref=e993]: Kidderminster
+        - generic [ref=e995]: Kidderminster
+  - generic [ref=e717]:
+    - navigation "侧边栏视图" [ref=e718]:
+      - button "对局" [ref=e719] [cursor=pointer]
+      - button "AI 分析" [active] [ref=e723] [cursor=pointer]
+    - region "对局控制权" [ref=e737]:
+      - generic [ref=e743]:
+        - strong [ref=e744]: 手动操作
+        - generic [ref=e745]: Brunel
+      - generic [ref=e746]:
+        - generic [ref=e747]:
+          - generic [ref=e748]: 模式
+          - combobox "对局模式" [ref=e749]:
+            - option "人机对练"
+            - option "AI 观战"
+            - option "全部手动" [selected]
+        - generic "全部手动" [ref=e920]
+    - generic [ref=e755]:
+      - banner [ref=e756]:
+        - generic [ref=e757]:
+          - generic [ref=e758]: POSITION REVIEW
+          - heading "AI 分析" [level=2] [ref=e759]
+      - generic [ref=e762]:
+        - generic "分析深度" [ref=e763]:
+          - button "快速" [ref=e764] [cursor=pointer]
+          - button "标准" [ref=e765] [cursor=pointer]
+          - button "深入" [ref=e766] [cursor=pointer]
+        - button "分析局面" [ref=e1004] [cursor=pointer]
+      - generic [ref=e772] [cursor=pointer]:
+        - checkbox "自动分析玩家回合" [ref=e773]
+        - generic [ref=e774]: 自动分析玩家回合
+      - region "AI 对局控制" [ref=e775]:
+        - generic [ref=e776]:
+          - generic [ref=e782]:
+            - strong [ref=e783]: AI 对局
+            - generic [ref=e784]: 全部手动
+          - generic [ref=e785]:
+            - button "播放 AI 对局" [disabled] [ref=e1018]
+            - button "暂停 AI 对局" [disabled] [ref=e789]
+            - button "AI 分析或前进一步" [disabled] [ref=e793]
+            - button "停止 AI 对局" [disabled] [ref=e796]
+        - generic "播放速度" [ref=e799]:
+          - button "0.5×" [ref=e800] [cursor=pointer]
+          - button "1×" [ref=e801] [cursor=pointer]
+          - button "2×" [ref=e802] [cursor=pointer]
+      - generic [ref=e1019]:
+        - strong [ref=e1032]: 等待局面分析
+        - generic [ref=e1033]: 3,000 次模拟

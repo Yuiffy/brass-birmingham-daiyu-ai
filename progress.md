@@ -514,3 +514,236 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
   `sha256:8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f` on CUDA. It is an
   improvement over the smoke baseline only; calibration and strong-human/external evaluation are
   still required before any top-level-strength claim.
+
+## 2026-08-16 replay history
+
+- Added replay persistence events for analyzed positions and applied moves. Each recorded position
+  stores the observer-visible board state, action metadata, selections, and the saved AI Top 3
+  analysis when available.
+- Added `POST /api/replay` and a replay viewer reachable from the history icon beside each saved
+  game. The viewer supports timeline/slider navigation, previous/next position controls, board
+  snapshots, and inspection of the saved first/second/third recommendations.
+- New games record replay snapshots automatically. Pre-existing database rows remain compatible;
+  rows without the new events show an explicit no-snapshot message instead of failing to load.
+- Browser replay regression passed for test game `49` with two analyzed/applied moves and three
+  saved candidates at each position. Desktop and 390px mobile screenshots rendered the board and
+  timeline correctly; next-position navigation changed the position counter to `2/2`, mobile
+  document width stayed equal to the viewport, and browser errors were empty.
+
+## 2026-08-16 automatic staged analysis
+
+- Added an `自动分析玩家回合` toggle to the analysis inspector. When enabled, analysis starts
+  automatically at the beginning of a human-controlled `choosing_action` turn; AI-controlled turns
+  remain under the AI playback controls and do not create duplicate requests.
+- Analysis now resumes one neural PUCT tree through progress stages `100`, `400`, `800`, and the
+  configured final budget. Each completed stage refreshes Top 3 recommendations, while only the
+  final stage is persisted to replay. Revision and generation checks prevent a stale response from
+  overwriting a changed position.
+- Browser verification on port `5173` observed all four staged requests, ending at `3000/3000`, with
+  `render_game_to_text()` reporting `auto_analysis: true` and completed progress `3000`.
+- The live API was also verified at `100`, `400`, `800`, and `3000` completed simulations. The Top 3
+  ranking changed at an intermediate stage, confirming that recommendations refresh during search.
+
+## 2026-08-16 iter4 training and promotion gate
+
+- Stopped the CUDA inference service and generated new self-play data from champion step 242 using
+  PUCT search with 256 simulations, four determinizations, and inference batches of 64. Training
+  used base seed `2026081603` for 40 games / 3,160 positions; independent validation used
+  `2026081703` for eight games / 632 positions. All eight shards were atomic, had no `.partial`
+  residue, and passed the dataset schema, engine revision, seed, and visit-count checks.
+- Trained `output/puct-candidate-iter4.pt` from `champion-iter1.pt` for 10 epochs with learning rate
+  `1e-4`, policy-focused shared-win and VP-margin weights `0.05/0.05`, and batch size 64. The
+  validation-selected checkpoint is step 742 with loss `3.68366`, policy KL `1.01438`, and policy
+  Top-1 `18.99%`. Candidate SHA-256 is
+  `744cfc258d711a4197c70482dfb2f9bb7dd6df5837a77405e8a104c1b66bc4f9`.
+- A fresh seat-rotated candidate-vs-champion gate used seed `2026081803`, 20 independent seed
+  groups / 40 games, and 64-search-simulation PUCT agents. Candidate mean shared win was `0.625`,
+  mean score delta `+0.25`, standard error `0.12301`, and two-sided 95% lower bound `-0.00746`.
+  The strict `lower bound > 0` promotion rule correctly refused promotion; champion step 242
+  remains deployed. The full report is `output/iter4-promotion-gate.json`.
+
+## 2026-08-16 human-strategy prior iteration 5
+
+- Added the auditable `human-strategy-v1` prior from the RulesPal rulebook, the BGG strategy guide,
+  and the open-source `npow/brass-birmingham` implementation. The public search found strategy
+  guidance and a digital game's action-log UI, but no complete machine-readable human replay corpus;
+  the BGG page itself is protected by Cloudflare. Human score references are metadata only and are
+  not fabricated supervised labels.
+- Generated 40 training games / 3,160 positions and eight independent validation games / 632
+  positions at 256 searches, four determinizations, and strategy-prior strength `0.7`. The resulting
+  48-game corpus has mean player VP `31.85`, median `31.5`, maximum `98`, and zero of 96 player
+  scores at or above 100. Selected roots still contain 1,224 network actions and 484 passes, so this
+  iteration is not human-strength evidence and the prior is not yet strong enough to correct the
+  low-quality value distribution.
+- Candidate `output/puct-candidate-iter5-strategy.pt` (step 742, model ID
+  `sha256:1e041b8188a67235dc19a96559d8a06130b676ebf7437f53db7773b89d354666`) passed the declared
+  40-game seat-rotated gate against `champion-iter1.pt` and was deployed as
+  `output/champion-iter2-strategy.pt`. This is an improvement over the previous self-play champion,
+  not evidence of 100+ VP human strength.
+- Full verification passed 182 Rust all-target tests, 44 Python `unittest` training tests, Python
+  bytecode compilation, Svelte build, and `svelte-check`. Port 5173 browser QA verified automatic
+  analysis and staged `100 -> 400 -> 800 -> 3000` updates; final 3,000-search analysis completed
+  in about 21.7 seconds with model step 742 and no browser console errors observed.
+- On user request, GPU self-play/training processes were stopped. The 8765 CUDA inference service
+  remains healthy for gameplay. Before the next training cycle, add an explicit guarded strategy
+  policy for early Canal actions (especially no own industry -> no unproductive network) and
+  evaluate it with a small same-seed score/action-distribution experiment before spending another
+  full data-generation cycle.
+
+## 2026-08-28 map-aware strategy prior iteration 11
+
+- Read the complete AI implementation in `npow/brass-birmingham` at commit
+  `2b1da2d41036f2afaafcab320b2175ba3fd9f877`. It is an open-source heuristic AI, not human replay
+  data. Its useful network signals are newly reachable locations, merchant access, diminishing
+  exploration value, and endpoint VP; it must not be represented as human training data.
+- Added opt-in `human-strategy-v5-map-aware-lifecycle` while preserving v1-v4 and the default v3.
+  V5 decodes the real road topology and merchant tiles from the observer state, simulates each
+  candidate road (including double rail), measures shortest remaining phase-legal routes to a
+  matching merchant, detects newly sellable industries with legal beer sources, and credits endpoint
+  road VP plus useful industry-card access. Its audit ID is `network-route-v1`.
+- Focused tests prove v4 still assigns equal scores to otherwise identical roads, while v5 strongly
+  prefers a road that completes the correct merchant route and the first link on a shortest
+  multi-link route. The complete container Python suite passes 67 tests.
+- Same checkpoint, seed, 64-search, stable-argmax comparison: v4 strength 1 scored mean `4.75`,
+  median `0`, 12/16 zero players, 0 players at 50+, 11 Sell actions, and 168 Canal Network actions.
+  V5 strength 1 scored mean `36.875`, median `36.5`, 1/16 zero players, 7 players at 50+, 48 Sell,
+  and 67 Canal Network actions. The exact first game improved from `0-0` to `37-52`.
+- V5 strength 0.7 at 64 search further improved mean/median to `41.6875/45.0`, with one zero player,
+  six players at 50+, and 47 Sell actions. This beat pure v5 on mean and median while using fewer
+  loans, so strength 0.7 is the selected teacher blend.
+- An eight-game 256-search pilot with the same seeds scored mean `54.5625`, median `52`, minimum
+  `20`, maximum `88`, zero zero-score players, eight players at 50+, and 62 Sell actions. The same
+  64-search games scored mean `41.6875`, median `45`, and minimum `0`, so 256 searches is selected
+  for iter11 teacher generation. Report: `output/iter11-v5blend07-256-pilot-analysis.json`.
+- Next: generate 40 independent training games plus eight validation games at the locked teacher
+  settings, train a candidate without changing the deployed champion, then require both held-out
+  quality and the existing 40-game seat-rotated promotion gate before deployment.
+
+## 2026-08-28 map-aware strategy prior iteration 11 training and gate
+
+- Generated 40 training games / 3,160 positions at base seed `2026082801` and eight independent
+  validation games / 632 positions at base seed `2026082901`. The locked teacher used 256 searches,
+  four determinizations, stable argmax, and v5 prior strength `0.7`. Training players averaged
+  `50.125` VP with a maximum of `115`; validation players averaged `53.375` VP with a maximum of
+  `80`. Quality-50 filtering retained 1,543 training and 473 validation positions.
+- Full-model fine-tuning from the actor-VP-head-only iter8b checkpoint now deliberately restarts the
+  optimizer while preserving model weights and the lifetime global step. The full-data candidate
+  `output/puct-candidate-iter11-v5-full.pt` reached step `2558` with SHA-256
+  `aa0beda57b7c38c8026901696c4c7f7ee7c7c2e1fd1b829d666b5c84deea8e2a`; held-out policy KL
+  improved from `1.46221` to `1.24610` and Top-1 accuracy from `12.03%` to `16.77%`.
+- The quality-filtered candidate `output/puct-candidate-iter11-v5-quality50.pt` reached step `2258`
+  with SHA-256 `b06228bd3f1fbb674b230fab04816c4ad21e687a55e68b4780c56bcbfa4705f9`;
+  held-out policy KL improved from `1.58510` to `1.43916` and Top-1 accuracy from `12.68%` to
+  `15.01%`. Both full-model runs correctly recorded `optimizer_state_restored: false`.
+- A fresh same-seed eight-game blind comparison used base seed `2026083101`, 256 searches, and the
+  locked v5 teacher settings. The full-data candidate scored mean/median `66.8125/64.5`, minimum
+  `34`, maximum `103`, zero zero-score players, 12/16 players at 50+, 68 Sell actions, and 87 Canal
+  Network actions. The quality-filtered candidate scored `53.375/53`, minimum `0`, maximum `84`,
+  one zero-score player, 10/16 at 50+, 50 Sell actions, and 79 Canal Network actions. The full-data
+  candidate therefore advanced to the promotion gate. Reports are
+  `output/iter11-fullcandidate-v5blend07-256-ab-analysis.json` and
+  `output/iter11-quality50candidate-v5blend07-256-ab-analysis.json`.
+- The predeclared 40-game / 20-seed seat-rotated gate at 64 PUCT searches gave the full-data
+  candidate 55% shared wins, mean score delta `+0.10`, mean VP margin `+3.775`, standard error
+  `0.12354`, and a two-sided 95% lower bound of `-0.15858`. Its absolute mean score was `50.925`
+  versus champion `47.15`. The strict `lower bound > 0` rule refused promotion, so
+  `output/champion-iter2-strategy.pt` remains deployed. Full report:
+  `output/iter11-v5-full-promotion-gate.json`.
+- Final verification passed 68 Python training/evaluation tests and 186 Rust all-target tests. The
+  CUDA inference service was restored and reports champion step `742`, model ID
+  `sha256:1e041b8188a67235dc19a96559d8a06130b676ebf7437f53db7773b89d354666`.
+
+## 2026-08-28 iterations 12-14 policy/value isolation
+
+- Iter12 tested larger policy models and a zero-initialized residual policy adapter without changing
+  the deployed champion. The strongest adapter checkpoint,
+  `output/puct-candidate-iter12-champion-value-adapter128.pt`, has step `1542` and SHA-256
+  `7c215e47af9f67df350a061d4504b5a386a013dae71e4ba4a2611a1a75bf4e5f`. Its held-out policy KL
+  was `0.8253` with Top-1 accuracy `26.90%`, but its four-game absolute-score pilot averaged only
+  `25.75` VP. An eight-game no-prior pilot against the champion finished `4/8`, mean VP margin
+  `+2.0`, and seed-group 95% lower bound `-1.837`; it was rejected before the formal gate.
+- Added independent policy/value tower fusion in `training/model.py` plus
+  `training/fuse_policy_value.py`. Iter13 fused the iter11 policy with the deployed champion value
+  heads as `output/puct-candidate-iter13-iter11-policy-champion-value.pt` (SHA-256
+  `7558a48103254e2b29a9506c999ce41504630d7c1859c1a8a145988b4945f1ab`). Exact tensor and
+  inference checks proved the policy matched iter11 and the value outputs matched the champion.
+  Its same-seed 256-search score averaged `65.81` VP, below iter11's `66.81`, and included a
+  zero-score trajectory, so it was rejected.
+- Added `--value-tower-only` training, which freezes every policy tensor and updates only the
+  independent value encoder and three value heads. Focused regression coverage passed `23/23` tests.
+  Iter14 generated 40 independent training games / 3,160 positions at seed `2026090601` and eight
+  validation games / 632 positions at seed `2026090701`, using the iter11 teacher with 256 searches,
+  four determinizations, stable argmax, and v5 prior strength `0.7`. Train/validation seed sets are
+  disjoint, all shards share one engine revision, and no iter14 `.partial` file remains.
+- Iter14 selected epoch 2 of 24 and saved
+  `output/puct-candidate-iter14-value-tower.pt` at step `2708`, SHA-256
+  `5fd2443029fccd7258cf726cec4f44d0f25dfa93598a115d57f77b89bcac3335`. All policy tensors
+  remained byte-identical while 18 value tensors changed. Held-out shared-win BCE improved from
+  `0.75749` to `0.64584`, VP-margin Huber from `0.03654` to `0.02872`, and actor-VP Huber from
+  `0.04039` to `0.01250`; the last epoch had already overfit to BCE `1.00549`, but checkpoint
+  rollback correctly retained epoch 2.
+- Iter14's four-game 64-search pilot remained poor at mean/median `22.75/20`, with three zero-score
+  players. The decisive same-seed eight-game 256-search pilot recovered to mean/median
+  `63.4375/71`, range `28..80`, zero zero-score players, and 13/16 players at 50+, but remained below
+  iter11's `66.8125` mean and `103` maximum. Report:
+  `output/iter14-value-v5blend07-256-ab-analysis.json`.
+- The eight-game no-prior direct pilot against the deployed champion improved to `6/8`, mean VP
+  margin `+15.125`, and mean score delta `+0.5`, but its four independent seed groups still gave a
+  95% lower bound of `-1.091`. Because it did not exceed iter11's absolute 256-search quality and
+  did not establish a positive confidence bound, iter14 was rejected without spending a formal
+  40-game gate. Full report: `output/iter14-value-tower-pilot-gate.json`.
+- No iter12, iter13, or iter14 candidate was promoted. The online checkpoint remains
+  `output/champion-iter2-strategy.pt`, step `742`, model ID
+  `sha256:1e041b8188a67235dc19a96559d8a06130b676ebf7437f53db7773b89d354666`.
+
+## Next training session
+
+- Use the implemented validation early stopping for all multi-epoch candidates so value-only runs do
+  not spend their full requested budget after sustained overfitting.
+- Diagnose why lower held-out value loss improves direct no-prior play but reduces the locked
+  256-search absolute-score benchmark. Keep both tests as independent candidate gates.
+- Do not run a formal 40-game gate or replace the deployed champion unless a candidate first exceeds
+  iter11's `66.8125` same-seed 256-search mean without zero scores and then clearly improves the
+  eight-game direct pilot.
+- Public-data research still has not found complete machine-readable human Brass: Birmingham action
+  logs. `npow/brass-birmingham` is an open-source heuristic opponent, not human training data; do not
+  label it as such.
+
+## 2026-08-28 training pause and online runtime
+
+- Paused at the user's request after iter14 evaluation. No self-play, training, or evaluation worker
+  remains active; all iter14 checkpoints, JSONL shards, and reports are complete. The unrelated old
+  `output/model-self-play-strategy-smoke.jsonl.partial` residue predates iter14 and was preserved.
+- Restored the strict-gate champion inference service on CUDA. `/health` reports checkpoint step
+  `742` and model ID
+  `sha256:1e041b8188a67235dc19a96559d8a06130b676ebf7437f53db7773b89d354666`.
+- Ports 3000 and 5173 were occupied by unrelated user projects, so those processes were left intact.
+  Added an optional `FAST_BRASS_API_URL` Vite proxy override and a reusable local Nginx config, then
+  published the Brass API on port 3010 and the current static UI on port 5174. Both runtime containers
+  use `restart: unless-stopped`; the API connects to `http://inference:8765/evaluate` on the Compose
+  network.
+- Rebuilt the current Svelte UI and release Rust API successfully. Browser smoke at
+  `http://127.0.0.1:5174` rendered the Brass setup screen, returned matching
+  `render_game_to_text()` setup state, and emitted no console-error artifact. Final screenshot and
+  state: `output/web-game-online-iter14-2/`.
+
+## 2026-08-28 compute discipline and validation early stopping
+
+- Added opt-in `--early-stopping-patience` and `--early-stopping-min-delta` to `training.train`.
+  Early stopping requires independent validation shards. The exact lowest validation-loss state is
+  still selected even when an improvement is smaller than `min_delta`; only patience reset uses the
+  significant-improvement threshold.
+- Training now emits a structured `training_early_stopped` event and records stop reason, epochs run,
+  patience state, reference loss, and trigger status in checkpoint metadata. Invalid negative values
+  and a min-delta without enabled patience are rejected before data loading.
+- Added deterministic regression coverage proving that a requested 10-epoch run stops after three
+  epochs under the configured synthetic validation sequence while retaining the exact best epoch.
+  All 75 training tests passed before the final boundary test; the focused partition suite then
+  passed `15/15`. Python bytecode compilation and CLI option inspection also passed.
+- Added `docs/training-methodology.md`, which records measured throughput decisions, failed model
+  routes, the six-stage compute funnel, hard promotion gates, top-human evidence requirements,
+  three-failure hypothesis timeboxing, and the reusable contract for other hidden-information board
+  games. README training examples now enable the initial patience/min-delta settings and link the
+  methodology.
+- This work used CPU-only test models. No self-play or CUDA training restarted, and the online
+  champion inference/API/UI services remained available.

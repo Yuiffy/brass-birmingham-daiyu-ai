@@ -12,6 +12,7 @@ use axum::{
 use rusqlite::{params, Connection};
 use rust_embed::Embed;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -38,6 +39,7 @@ pub struct ServerState {
     inference_client: Option<ModelInferenceClient>,
     revision: u64,
     last_analysis: Option<CachedAnalysis>,
+    analysis_session: Option<NeuralAnalysisSession>,
 }
 
 #[derive(Clone)]
@@ -47,10 +49,18 @@ struct CachedAnalysis {
     report: RootSearchReport,
 }
 
+struct NeuralAnalysisSession {
+    revision: u64,
+    config: RootSearchConfig,
+    model_id: String,
+    search: BatchedNeuralPuctSearch,
+}
+
 impl ServerState {
     fn mark_position_changed(&mut self) {
         self.revision = self.revision.wrapping_add(1);
         self.last_analysis = None;
+        self.analysis_session = None;
     }
 }
 
@@ -74,6 +84,21 @@ enum PersistEvent {
     ResolveShortfall {
         player_idx: usize,
         chosen_tile_order: Vec<usize>,
+    },
+    ReplayAnalysis {
+        position_key: String,
+        player_idx: usize,
+        state: serde_json::Value,
+        analysis: serde_json::Value,
+    },
+    ReplayMove {
+        position_key: String,
+        player_idx: usize,
+        action_type: String,
+        action_key: Option<String>,
+        selections: Vec<String>,
+        before_state: serde_json::Value,
+        after_state: serde_json::Value,
     },
 }
 
@@ -112,12 +137,14 @@ pub async fn start_server(port: u16) {
         inference_client,
         revision: 0,
         last_analysis: None,
+        analysis_session: None,
     }));
 
     let app = Router::new()
         .route("/api/new_game", post(api_new_game))
         .route("/api/games", get(api_games))
         .route("/api/load_game", post(api_load_game))
+        .route("/api/replay", post(api_replay))
         .route("/api/state", get(api_state))
         .route("/api/set_observer", post(api_set_observer))
         .route("/api/industry_data", get(api_industry_data))
@@ -315,10 +342,119 @@ fn replay_events(runner: &mut GameRunner, events: &[PersistEvent]) -> Result<(),
                 let session = runner.pending_shortfall_sessions.remove(session_idx);
                 runner.resolve_shortfall_with_tiles(session, chosen_tile_order.clone());
             }
+            PersistEvent::ReplayAnalysis { .. } | PersistEvent::ReplayMove { .. } => {}
         }
     }
     runner.framework.replay_mode = false;
     Ok(())
+}
+
+fn replay_position_key(runner: &GameRunner) -> String {
+    format!(
+        "{:?}:{}:{}:{}:{}:{}",
+        runner.game_phase,
+        runner.round_in_phase,
+        runner.turn_count,
+        runner.framework.current_player,
+        runner.actions_remaining_in_turn,
+        runner.framework.current_session().is_some()
+    )
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReplayMoveJson {
+    player_idx: usize,
+    action_type: String,
+    action_key: Option<String>,
+    selections: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReplayPositionJson {
+    index: usize,
+    position_key: String,
+    player_idx: usize,
+    state: serde_json::Value,
+    analysis: Option<serde_json::Value>,
+    #[serde(rename = "move")]
+    move_data: Option<ReplayMoveJson>,
+}
+
+fn replay_history_from_events(
+    events: &[PersistEvent],
+) -> (Vec<ReplayPositionJson>, Option<serde_json::Value>) {
+    let mut positions = Vec::new();
+    let mut position_indices = HashMap::<String, usize>::new();
+    let mut final_state = None;
+
+    for event in events {
+        match event {
+            PersistEvent::ReplayAnalysis {
+                position_key,
+                player_idx,
+                state,
+                analysis,
+            } => {
+                let index = *position_indices
+                    .entry(position_key.clone())
+                    .or_insert_with(|| {
+                        let index = positions.len();
+                        positions.push(ReplayPositionJson {
+                            index,
+                            position_key: position_key.clone(),
+                            player_idx: *player_idx,
+                            state: state.clone(),
+                            analysis: None,
+                            move_data: None,
+                        });
+                        index
+                    });
+                let position = &mut positions[index];
+                position.player_idx = *player_idx;
+                position.state = state.clone();
+                position.analysis = Some(analysis.clone());
+            }
+            PersistEvent::ReplayMove {
+                position_key,
+                player_idx,
+                action_type,
+                action_key,
+                selections,
+                before_state,
+                after_state,
+            } => {
+                let index = *position_indices
+                    .entry(position_key.clone())
+                    .or_insert_with(|| {
+                        let index = positions.len();
+                        positions.push(ReplayPositionJson {
+                            index,
+                            position_key: position_key.clone(),
+                            player_idx: *player_idx,
+                            state: before_state.clone(),
+                            analysis: None,
+                            move_data: None,
+                        });
+                        index
+                    });
+                let position = &mut positions[index];
+                position.player_idx = *player_idx;
+                position.move_data = Some(ReplayMoveJson {
+                    player_idx: *player_idx,
+                    action_type: action_type.clone(),
+                    action_key: action_key.clone(),
+                    selections: selections.clone(),
+                });
+                final_state = Some(after_state.clone());
+            }
+            _ => {}
+        }
+    }
+
+    for (index, position) in positions.iter_mut().enumerate() {
+        position.index = index;
+    }
+    (positions, final_state)
 }
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {
@@ -482,6 +618,48 @@ async fn api_load_game(
     Json(serde_json::json!({"ok": true, "state": gs}))
 }
 
+async fn api_replay(
+    State(state): State<SharedState>,
+    Json(req): Json<LoadGameRequest>,
+) -> Json<serde_json::Value> {
+    let guard = state.lock().await;
+    let conn = match Connection::open(&guard.db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            return Json(serde_json::json!({"ok": false, "error": format!("db open: {}", e)}))
+        }
+    };
+    let action_log: String = match conn.query_row(
+        "SELECT action_log FROM games WHERE id = ?1",
+        params![req.game_id],
+        |row| row.get(0),
+    ) {
+        Ok(value) => value,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("load replay: {}", e)
+            }))
+        }
+    };
+    let events: Vec<PersistEvent> = match serde_json::from_str(&action_log) {
+        Ok(value) => value,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("decode replay: {}", e)
+            }))
+        }
+    };
+    let (positions, final_state) = replay_history_from_events(&events);
+    Json(serde_json::json!({
+        "ok": true,
+        "game_id": req.game_id,
+        "positions": positions,
+        "final_state": final_state,
+    }))
+}
+
 async fn api_state(State(state): State<SharedState>) -> Json<serde_json::Value> {
     let guard = state.lock().await;
     match guard.runner.as_ref() {
@@ -521,12 +699,20 @@ async fn api_set_observer(
         }
     }
 
+    let observer_changed = guard.observer_player != req.player_index;
     guard.observer_player = req.player_index;
+    if observer_changed {
+        // Analysis includes private-card identities when the observer is the acting player.
+        // Treat an observer change as a new view revision so cached actions cannot leak or apply
+        // against a different seat's hand.
+        guard.mark_position_changed();
+    }
     let runner = guard.runner.as_ref().expect("runner was checked above");
     let game_state = serialize_state_for_observer(runner, guard.observer_player);
     Json(serde_json::json!({
         "ok": true,
         "observer_player": guard.observer_player,
+        "revision": guard.revision,
         "state": game_state
     }))
 }
@@ -538,6 +724,7 @@ async fn api_industry_data() -> Json<serde_json::Value> {
 #[derive(Deserialize)]
 struct AnalyzeRequest {
     simulations: Option<u64>,
+    progress_to: Option<u64>,
     top_n: Option<usize>,
     seed: Option<u64>,
 }
@@ -545,43 +732,45 @@ struct AnalyzeRequest {
 const WEB_NEURAL_DETERMINIZATIONS: usize = 4;
 const WEB_NEURAL_BATCH_SIZE: usize = 64;
 
-async fn run_model_guided_search(
+async fn create_model_guided_search(
     client: &ModelInferenceClient,
     runner: &GameRunner,
     config: &RootSearchConfig,
-) -> Result<RootSearchReport, String> {
+) -> Result<(BatchedNeuralPuctSearch, String), String> {
     let policy = client.evaluate(runner).await?;
-    if runner.framework.board.state.players.len() != 2 {
-        let search_runner = runner.clone();
-        let search_config = config.clone();
-        return tokio::task::spawn_blocking(move || {
-            search_top_actions_with_policy(&search_runner, &search_config, &policy)
-        })
-        .await
-        .map_err(|error| format!("analysis task failed: {error}"))?;
-    }
-
     let model_id = policy.model_id.clone();
-    let mut search = BatchedNeuralPuctSearch::new(
+    let search = BatchedNeuralPuctSearch::new(
         runner,
         BatchedNeuralPuctConfig {
             search: config.clone(),
             determinizations: WEB_NEURAL_DETERMINIZATIONS,
+            score_utility_weight: 0.0,
+            group_card_choices: false,
         },
         policy,
     )?;
-    while !search.is_complete() {
-        let leaves = search.next_inference_batch(WEB_NEURAL_BATCH_SIZE)?;
+    Ok((search, model_id))
+}
+
+async fn advance_model_guided_search(
+    client: &ModelInferenceClient,
+    search: &mut BatchedNeuralPuctSearch,
+    model_id: &str,
+    target_simulations: u64,
+) -> Result<RootSearchReport, String> {
+    while search.completed_simulations() < target_simulations {
+        let leaves =
+            search.next_inference_batch_until(WEB_NEURAL_BATCH_SIZE, target_simulations)?;
         if leaves.is_empty() {
-            if search.is_complete() {
+            if search.completed_simulations() >= target_simulations {
                 break;
             }
             return Err("neural search returned an empty incomplete leaf batch".to_string());
         }
-        let evaluations = client.evaluate_leaf_batch(&leaves, &model_id).await?;
+        let evaluations = client.evaluate_leaf_batch(&leaves, model_id).await?;
         search.submit_inference_batch(evaluations)?;
     }
-    search.finish_report()
+    search.report_at_current_progress()
 }
 
 async fn api_analyze(
@@ -595,6 +784,13 @@ async fn api_analyze(
             "error": "simulations must be between 1 and 50000"
         }));
     }
+    let progress_to = req.progress_to.unwrap_or(simulations);
+    if !(1..=simulations).contains(&progress_to) {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "progress_to must be between 1 and simulations"
+        }));
+    }
     let top_n = req.top_n.unwrap_or(3);
     if !(1..=10).contains(&top_n) {
         return Json(serde_json::json!({
@@ -603,8 +799,8 @@ async fn api_analyze(
         }));
     }
 
-    let (runner, revision, inference_client) = {
-        let guard = state.lock().await;
+    let (runner, revision, inference_client, previous_session) = {
+        let mut guard = state.lock().await;
         let Some(runner) = guard.runner.as_ref() else {
             return Json(serde_json::json!({"ok": false, "error": "No game in progress"}));
         };
@@ -612,6 +808,7 @@ async fn api_analyze(
             runner.clone(),
             guard.revision,
             guard.inference_client.clone(),
+            guard.analysis_session.take(),
         )
     };
     let search_seed = req.seed.unwrap_or_else(|| {
@@ -624,14 +821,79 @@ async fn api_analyze(
         ..RootSearchConfig::default()
     };
     let started = Instant::now();
+    let mut previous_session = previous_session;
+    let mut retained_session = None;
     let report_result = match inference_client {
-        Some(client) => run_model_guided_search(&client, &runner, &config).await,
-        None => {
+        Some(client) if runner.framework.board.state.players.len() == 2 => {
+            let mut session = match previous_session
+                .take()
+                .filter(|session| session.revision == revision && session.config == config)
+            {
+                Some(session) => session,
+                None => {
+                    let (search, model_id) =
+                        match create_model_guided_search(&client, &runner, &config).await {
+                            Ok(value) => value,
+                            Err(error) => {
+                                return Json(serde_json::json!({"ok": false, "error": error}))
+                            }
+                        };
+                    NeuralAnalysisSession {
+                        revision,
+                        config: config.clone(),
+                        model_id,
+                        search,
+                    }
+                }
+            };
+            let result = advance_model_guided_search(
+                &client,
+                &mut session.search,
+                &session.model_id,
+                progress_to,
+            )
+            .await;
+            if result.is_ok() && !session.search.is_complete() {
+                retained_session = Some(session);
+            }
+            result
+        }
+        Some(client) => {
+            let mut stage_config = config.clone();
+            stage_config.simulations = progress_to;
+            let policy = match client.evaluate(&runner).await {
+                Ok(policy) => policy,
+                Err(error) => return Json(serde_json::json!({"ok": false, "error": error})),
+            };
             let search_runner = runner.clone();
-            tokio::task::spawn_blocking(move || search_top_actions(&search_runner, &config))
-                .await
-                .map_err(|error| format!("analysis task failed: {error}"))
-                .and_then(|report| report)
+            let search_config = stage_config.clone();
+            match tokio::task::spawn_blocking(move || {
+                search_top_actions_with_policy(&search_runner, &search_config, &policy)
+            })
+            .await
+            {
+                Ok(result) => result.map(|mut report| {
+                    report.requested_simulations = simulations;
+                    report
+                }),
+                Err(error) => Err(format!("analysis task failed: {error}")),
+            }
+        }
+        None => {
+            let mut stage_config = config.clone();
+            stage_config.simulations = progress_to;
+            let search_runner = runner.clone();
+            match tokio::task::spawn_blocking(move || {
+                search_top_actions(&search_runner, &stage_config)
+            })
+            .await
+            {
+                Ok(result) => result.map(|mut report| {
+                    report.requested_simulations = simulations;
+                    report
+                }),
+                Err(error) => Err(format!("analysis task failed: {error}")),
+            }
         }
     };
     let report = match report_result {
@@ -649,6 +911,7 @@ async fn api_analyze(
             "error": "The position changed while analysis was running. Analyze the current position again."
         }));
     }
+    guard.analysis_session = retained_session;
     let reveal_private_cards =
         observer_player_index(&runner, guard.observer_player) == report.root_player;
     let analysis = serialize_analysis_for_observer(
@@ -658,6 +921,31 @@ async fn api_analyze(
         elapsed_ms,
         reveal_private_cards,
     );
+    if progress_to == simulations {
+        if let Some(game_id) = guard.active_game_id {
+            match (
+                serde_json::to_value(serialize_state_for_observer(&runner, guard.observer_player)),
+                serde_json::to_value(&analysis),
+            ) {
+                (Ok(state), Ok(analysis_value)) => {
+                    let event = PersistEvent::ReplayAnalysis {
+                        position_key: replay_position_key(&runner),
+                        player_idx: runner.framework.current_player,
+                        state,
+                        analysis: analysis_value,
+                    };
+                    if let Err(error) =
+                        append_event_and_update_meta(&guard.db_path, game_id, event, &runner)
+                    {
+                        eprintln!("Replay analysis persistence failed: {error}");
+                    }
+                }
+                (Err(error), _) | (_, Err(error)) => {
+                    eprintln!("Replay analysis serialization failed: {error}");
+                }
+            }
+        }
+    }
     guard.last_analysis = Some(CachedAnalysis {
         revision,
         runner,
@@ -761,6 +1049,20 @@ async fn api_apply_analyzed_action(
     let db_path = guard.db_path.clone();
     let active_game_id = guard.active_game_id;
     let observer_player = guard.observer_player;
+    let replay_position = replay_position_key(&cached.runner);
+    let replay_player = cached.runner.framework.current_player;
+    let replay_before_state = match serde_json::to_value(serialize_state_for_observer(
+        &cached.runner,
+        observer_player,
+    )) {
+        Ok(state) => state,
+        Err(error) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("serialize replay position: {}", error)
+            }))
+        }
+    };
     let runner = guard
         .runner
         .as_mut()
@@ -795,6 +1097,26 @@ async fn api_apply_analyzed_action(
             events.push(PersistEvent::StartTurn);
         }
     }
+    let replay_after_state =
+        match serde_json::to_value(serialize_state_for_observer(runner, observer_player)) {
+            Ok(state) => state,
+            Err(error) => {
+                *runner = before_runner;
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": format!("serialize replay result: {}", error)
+                }));
+            }
+        };
+    events.push(PersistEvent::ReplayMove {
+        position_key: replay_position,
+        player_idx: replay_player,
+        action_type: action_type_str(action.root).to_string(),
+        action_key: Some(req.action_key.clone()),
+        selections: Vec::new(),
+        before_state: replay_before_state,
+        after_state: replay_after_state,
+    });
     if let Some(game_id) = active_game_id {
         if let Err(error) = append_events_and_update_meta(&db_path, game_id, &events, runner) {
             *runner = before_runner;
@@ -993,22 +1315,62 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
     let active_game_id = guard.active_game_id;
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
-        Some(runner) => match runner.confirm_action() {
-            Ok(()) => {
-                let gs = serialize_state_for_observer(runner, observer_player);
-                if let Some(game_id) = active_game_id {
-                    let _ = append_event_and_update_meta(
-                        &db_path,
-                        game_id,
-                        PersistEvent::ConfirmAction,
-                        runner,
-                    );
+        Some(runner) => {
+            let replay_position = replay_position_key(runner);
+            let replay_player = runner.framework.current_player;
+            let replay_action_type = runner
+                .framework
+                .current_session()
+                .map(|session| action_type_str(session.action_type).to_string());
+            let replay_before_state =
+                match serde_json::to_value(serialize_state_for_observer(runner, observer_player)) {
+                    Ok(state) => state,
+                    Err(error) => {
+                        return Json(serde_json::json!({
+                            "ok": false,
+                            "error": format!("serialize replay position: {}", error)
+                        }))
+                    }
+                };
+            match runner.confirm_action() {
+                Ok(()) => {
+                    let gs = serialize_state_for_observer(runner, observer_player);
+                    let selections = gs
+                        .turn_action_history
+                        .last()
+                        .map(|action| action.selections.clone())
+                        .unwrap_or_default();
+                    let replay_after_state = match serde_json::to_value(&gs) {
+                        Ok(state) => state,
+                        Err(error) => {
+                            return Json(serde_json::json!({
+                                "ok": false,
+                                "error": format!("serialize replay result: {}", error)
+                            }))
+                        }
+                    };
+                    if let Some(game_id) = active_game_id {
+                        let events = vec![
+                            PersistEvent::ConfirmAction,
+                            PersistEvent::ReplayMove {
+                                position_key: replay_position,
+                                player_idx: replay_player,
+                                action_type: replay_action_type
+                                    .unwrap_or_else(|| "Unknown".to_string()),
+                                action_key: None,
+                                selections,
+                                before_state: replay_before_state,
+                                after_state: replay_after_state,
+                            },
+                        ];
+                        let _ = append_events_and_update_meta(&db_path, game_id, &events, runner);
+                    }
+                    guard.mark_position_changed();
+                    Json(serde_json::json!({"ok": true, "state": gs}))
                 }
-                guard.mark_position_changed();
-                Json(serde_json::json!({"ok": true, "state": gs}))
+                Err(e) => Json(serde_json::json!({"ok": false, "error": e})),
             }
-            Err(e) => Json(serde_json::json!({"ok": false, "error": e})),
-        },
+        }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
 }
@@ -1307,5 +1669,49 @@ mod tests {
         assert!(runner.pending_shortfall_sessions.is_empty());
         assert_eq!(runner.framework.board.state.players[0].victory_points, 6);
         assert_eq!(runner.framework.board.state.visible_vps[0], 6);
+    }
+
+    #[test]
+    fn replay_history_joins_analysis_to_the_recorded_move() {
+        let position_key = "Canal:0:0:1:1:false".to_string();
+        let before_state = serde_json::json!({"current_player": 1});
+        let after_state = serde_json::json!({"current_player": 0});
+        let analysis = serde_json::json!({
+            "recommendations": [
+                {"rank": 1, "action_key": "pass|c0,confirm"},
+                {"rank": 2, "action_key": "loan|c1,confirm"}
+            ]
+        });
+        let events = vec![
+            PersistEvent::ReplayAnalysis {
+                position_key: position_key.clone(),
+                player_idx: 1,
+                state: before_state.clone(),
+                analysis: analysis.clone(),
+            },
+            PersistEvent::ReplayMove {
+                position_key,
+                player_idx: 1,
+                action_type: "Pass".to_string(),
+                action_key: Some("pass|c0,confirm".to_string()),
+                selections: Vec::new(),
+                before_state,
+                after_state: after_state.clone(),
+            },
+        ];
+
+        let (positions, final_state) = replay_history_from_events(&events);
+
+        assert_eq!(positions.len(), 1);
+        assert_eq!(positions[0].player_idx, 1);
+        assert_eq!(positions[0].analysis.as_ref(), Some(&analysis));
+        assert_eq!(
+            positions[0]
+                .move_data
+                .as_ref()
+                .and_then(|movement| movement.action_key.as_deref()),
+            Some("pass|c0,confirm")
+        );
+        assert_eq!(final_state, Some(after_state));
     }
 }

@@ -83,6 +83,7 @@ impl ModelInferenceClient {
             victory_point_margin: payload.victory_point_margin.ok_or_else(|| {
                 "model inference response omitted victory_point_margin".to_string()
             })?,
+            actor_victory_points: payload.actor_victory_points.unwrap_or(0.0),
         })
     }
 
@@ -139,6 +140,7 @@ impl ModelInferenceClient {
                 policy_probabilities: evaluation.policy_probabilities,
                 shared_win_rate: evaluation.shared_win_rate,
                 victory_point_margin: evaluation.victory_point_margin,
+                actor_victory_points: evaluation.actor_victory_points,
             })
             .collect())
     }
@@ -192,6 +194,7 @@ struct InferenceResponse {
     policy_probabilities: Option<Vec<f64>>,
     shared_win_rate: Option<f64>,
     victory_point_margin: Option<f64>,
+    actor_victory_points: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -209,6 +212,8 @@ struct InferenceBatchEvaluationResponse {
     policy_probabilities: Vec<f64>,
     shared_win_rate: f64,
     victory_point_margin: f64,
+    #[serde(default)]
+    actor_victory_points: f64,
 }
 
 fn build_inference_request(runner: &GameRunner) -> Result<InferenceRequest, String> {

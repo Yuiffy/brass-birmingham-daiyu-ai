@@ -4,6 +4,8 @@
 	import { BrainCircuit, Gamepad2 } from 'lucide-svelte';
 	import {
 		analysisReport,
+		analysisAutoEnabled,
+		analysisProgress,
 		aiPlayback,
 		aiControlsPlayer,
 		choiceSet,
@@ -22,6 +24,7 @@
 	import CardHand from '$lib/components/CardHand.svelte';
 	import IndustryMat from '$lib/components/IndustryMat.svelte';
 	import DiscardPileViewer from '$lib/components/DiscardPileViewer.svelte';
+	import ReplayViewer from '$lib/components/ReplayViewer.svelte';
 	import { setObserverPlayer } from '$lib/api';
 
 	let started = false;
@@ -34,6 +37,7 @@
 	let humanPlayerIndex = 0;
 	let previousControlKey = '';
 	let controlSyncing = false;
+	let replayGameId: number | null = null;
 
 	function showGameInspector() {
 		inspectorTab = 'game';
@@ -162,6 +166,8 @@
 						estimated_shared_win_rate: candidate.estimated_shared_win_rate
 					}))
 				} : null,
+				analysis_progress: get(analysisProgress),
+				auto_analysis: get(analysisAutoEnabled),
 				ai_playback: playback
 			});
 		};
@@ -184,10 +190,14 @@
 			delete testWindow.advanceTime;
 		};
 	});
+
+	function handleReplay(event: CustomEvent<number>) {
+		replayGameId = event.detail;
+	}
 </script>
 
 {#if !started}
-	<SetupScreen on:started={handleStarted} />
+	<SetupScreen on:started={handleStarted} on:replay={handleReplay} />
 {:else if gs}
 	<div class="game-layout">
 		<div class="left-col">
@@ -234,13 +244,16 @@
 					/>
 				</div>
 				<div class="inspector-view" class:active={inspectorTab === 'analysis'} aria-hidden={inspectorTab !== 'analysis'}>
-					<AnalysisPanel {controlMode} {humanPlayerIndex} on:applied={handleAnalysisApplied} />
+					<AnalysisPanel {controlMode} {humanPlayerIndex} {controlSyncing} on:applied={handleAnalysisApplied} />
 				</div>
 			</div>
 		</div>
 	</div>
 	<IndustryMat bind:open={matOpen} playerIndex={matPlayerIndex} on:close={() => matOpen = false} />
 	<DiscardPileViewer bind:open={discardOpen} playerIndex={discardPlayerIndex} on:close={() => discardOpen = false} />
+{/if}
+{#if replayGameId !== null}
+	<ReplayViewer gameId={replayGameId} on:close={() => replayGameId = null} />
 {/if}
 
 <style>

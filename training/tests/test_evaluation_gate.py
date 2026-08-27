@@ -43,6 +43,7 @@ class EvaluationGateTests(unittest.TestCase):
         )
 
         selected = policy.select_action(
+            {},
             {"feature_version": 1, "features": [0.0, 1.0]},
             {
                 "feature_version": 1,
@@ -51,6 +52,44 @@ class EvaluationGateTests(unittest.TestCase):
                     {"index": 1, "key": "b", "feature_indices": [1]},
                 ],
             },
+        )
+
+        self.assertEqual(selected, 1)
+
+    def test_evaluation_policy_can_apply_strategy_prior_at_the_root(self) -> None:
+        schema = FeatureSchema.from_schema_dict(
+            {"version": 1, "state_dim": 2, "action_dim": 4}
+        )
+        evaluator = _FakeEvaluator(schema, probabilities=(0.99, 0.01))
+        policy = EvaluationPolicy(
+            evaluator,
+            schema,
+            "guided-candidate",
+            "checkpoint",
+            strategy_prior_strength=1.0,
+            strategy_prior_version="human-strategy-v5-map-aware-lifecycle",
+        )
+        observation = {
+            "decision_player": 0,
+            "global_features": [1.0, 0.0, 0.0],
+            "players_public": [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]],
+            "industry_mats": [[0.125, 1.0, 1.0] * 6],
+            "buildings": [],
+            "roads": [],
+            "self_hand_counts": [],
+        }
+        legal_record = {
+            "feature_version": 1,
+            "actions": [
+                {"index": 0, "key": "pass|c0,confirm", "feature_indices": [0]},
+                {"index": 1, "key": "loan|c0,confirm", "feature_indices": [1]},
+            ],
+        }
+
+        selected = policy.select_action(
+            observation,
+            {"feature_version": 1, "features": [0.0, 1.0]},
+            legal_record,
         )
 
         self.assertEqual(selected, 1)
@@ -181,10 +220,15 @@ def _result(index: int, score_delta: float) -> MatchResult:
 
 
 class _FakeEvaluator:
-    def __init__(self, schema: FeatureSchema) -> None:
+    def __init__(
+        self,
+        schema: FeatureSchema,
+        probabilities: tuple[float, float] = (0.25, 0.75),
+    ) -> None:
         self.schema = schema
         self.model_id = "sha256:fake"
         self.checkpoint_step = 9
+        self.probabilities = probabilities
 
     def predict(self, state_record, legal_record, request_schema=None):
         self.schema.assert_compatible(request_schema, "fake request")
@@ -192,7 +236,7 @@ class _FakeEvaluator:
             model_id=self.model_id,
             checkpoint_step=self.checkpoint_step,
             action_keys=tuple(action["key"] for action in legal_record["actions"]),
-            policy_probabilities=(0.25, 0.75),
+            policy_probabilities=self.probabilities,
             shared_win_rate=0.5,
             victory_point_margin=0.0,
         )

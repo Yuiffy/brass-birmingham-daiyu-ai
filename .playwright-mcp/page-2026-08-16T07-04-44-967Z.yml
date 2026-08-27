@@ -1,0 +1,165 @@
+- generic [ref=e680]:
+  - generic [ref=e686]:
+    - generic [ref=e687]: 你的手牌 · Coade
+    - generic [ref=e688]:
+      - button "Coal Coal" [ref=e689]:
+        - img "Coal" [ref=e690]
+        - generic [ref=e691]: Coal
+      - button "Wolverhampton Wolverhampton" [ref=e692]:
+        - generic [ref=e693]: Wolverhampton
+        - generic [ref=e695]: Wolverhampton
+      - button "Beer Beer" [ref=e696]:
+        - img "Beer" [ref=e697]
+        - generic [ref=e698]: Beer
+      - button "Redditch Redditch" [ref=e699]:
+        - generic [ref=e700]: Redditch
+        - generic [ref=e702]: Redditch
+      - button "Dudley Dudley" [ref=e703]:
+        - generic [ref=e704]: Dudley
+        - generic [ref=e706]: Dudley
+      - button "Cannock Cannock" [ref=e707]:
+        - generic [ref=e708]: Cannock
+        - generic [ref=e710]: Cannock
+      - button "Coal Coal" [ref=e711]:
+        - img "Coal" [ref=e712]
+        - generic [ref=e713]: Coal
+      - button "Iron Iron" [ref=e714]:
+        - img "Iron" [ref=e715]
+        - generic [ref=e716]: Iron
+  - generic [ref=e717]:
+    - navigation "侧边栏视图" [ref=e718]:
+      - button "对局" [ref=e719] [cursor=pointer]
+      - button "AI 分析" [ref=e723] [cursor=pointer]
+    - region "对局控制权" [ref=e737]:
+      - generic [ref=e743]:
+        - strong [ref=e744]: AI 操作
+        - generic [ref=e745]: Brunel
+      - generic [ref=e746]:
+        - generic [ref=e747]:
+          - generic [ref=e748]: 模式
+          - combobox "对局模式" [disabled] [ref=e749]:
+            - option "人机对练" [selected]
+            - option "AI 观战"
+            - option "全部手动"
+        - generic [ref=e750]:
+          - generic [ref=e751]: 你的席位
+          - combobox "你的席位" [disabled] [ref=e752]:
+            - option "Coade" [selected]
+            - option "Brunel"
+    - generic [ref=e755]:
+      - banner [ref=e756]:
+        - generic [ref=e757]:
+          - generic [ref=e758]: POSITION REVIEW
+          - heading "AI 分析" [level=2] [ref=e759]
+      - generic [ref=e762]:
+        - generic "分析深度" [ref=e763]:
+          - button "快速" [disabled] [ref=e764]
+          - button "标准" [disabled] [ref=e765]
+          - button "深入" [disabled] [ref=e766]
+        - button "搜索中· 100/3,000" [disabled] [ref=e767]
+      - generic [ref=e772] [cursor=pointer]:
+        - checkbox "自动分析玩家回合" [ref=e773]
+        - generic [ref=e774]: 自动分析玩家回合
+      - region "AI 对局控制" [ref=e775]:
+        - generic [ref=e776]:
+          - generic [ref=e782]:
+            - strong [ref=e783]: AI 对局
+            - generic [ref=e784]: 自动运行中 · 0 手
+          - generic [ref=e785]:
+            - button "播放 AI 对局" [disabled] [ref=e786]
+            - button "暂停 AI 对局" [ref=e789] [cursor=pointer]
+            - button "AI 分析或前进一步" [disabled] [ref=e793]
+            - button "停止 AI 对局" [ref=e796] [cursor=pointer]
+        - generic "播放速度" [ref=e799]:
+          - button "0.5×" [ref=e800] [cursor=pointer]
+          - button "1×" [ref=e801] [cursor=pointer]
+          - button "2×" [ref=e802] [cursor=pointer]
+      - generic [ref=e804]:
+        - generic [ref=e805]: 分阶段搜索
+        - strong [ref=e806]: 100 / 3,000 · 第 2/4 阶段
+      - generic [ref=e809]:
+        - generic [ref=e810]: 100 次模拟
+        - generic [ref=e811]: 16/311 估值 · 16 访问
+        - generic [ref=e812]: 1.34s
+      - generic [ref=e813]:
+        - generic "sha256:8e7180489a004cbda2acad75d5fa724bb7018adcbd9afd6727c972367f9f636f" [ref=e814]: 深层 PUCT
+        - strong [ref=e815]: 策略价值网络 · 多层 PUCT · 隐藏牌确定化
+        - generic [ref=e816]: 根价值 30.0%
+      - generic [ref=e817]:
+        - generic [ref=e818]:
+          - text: 最大深度
+          - strong [ref=e819]: "2"
+        - generic [ref=e820]:
+          - text: 神经叶
+          - strong [ref=e821]: "100"
+        - generic [ref=e822]:
+          - text: 推理批次
+          - strong [ref=e823]: "2"
+      - generic [ref=e824]: PUCT 本轮访问 16/311 个根动作；其余动作有策略先验但尚无树搜索价值回传。
+      - region "推荐动作" [ref=e825]:
+        - button "1 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]> 37 次访问 · 37 次树回传 · SE 2.4% 51.0% 37.0% 访问" [ref=e826] [cursor=pointer]:
+          - generic [ref=e827]: "1"
+          - generic [ref=e828]:
+            - strong [ref=e829]: 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]>
+            - generic [ref=e830]: 37 次访问 · 37 次树回传 · SE 2.4%
+          - generic [ref=e831]:
+            - strong [ref=e832]: 51.0%
+            - generic [ref=e833]: 37.0% 访问
+        - button "2 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]> 7 次访问 · 7 次树回传 · SE 1.7% 54.0% 7.0% 访问" [ref=e834] [cursor=pointer]:
+          - generic [ref=e835]: "2"
+          - generic [ref=e836]:
+            - strong [ref=e837]: 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]>
+            - generic [ref=e838]: 7 次访问 · 7 次树回传 · SE 1.7%
+          - generic [ref=e839]:
+            - strong [ref=e840]: 54.0%
+            - generic [ref=e841]: 7.0% 访问
+        - button "3 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]> 4 次访问 · 4 次树回传 · SE 1.4% 55.8% 4.0% 访问" [ref=e842] [cursor=pointer]:
+          - generic [ref=e843]: "3"
+          - generic [ref=e844]:
+            - strong [ref=e845]: 铺设运河 · 弃 1 张手牌（暗牌） · Road 33 <Worcester–Birmingham [canal+rail]>
+            - generic [ref=e846]: 4 次访问 · 4 次树回传 · SE 1.4%
+          - generic [ref=e847]:
+            - strong [ref=e848]: 55.8%
+            - generic [ref=e849]: 4.0% 访问
+      - generic [ref=e850]:
+        - generic [ref=e851]:
+          - generic [ref=e852]:
+            - generic [ref=e853]: 第 1 选择
+            - heading "铺设运河" [level=3] [ref=e854]
+          - button "采用此步" [ref=e855] [cursor=pointer]
+        - generic [ref=e859]:
+          - generic [ref=e860]: 弃 1 张手牌（暗牌）
+          - generic [ref=e861]: Road 33 <Worcester–Birmingham [canal+rail]>
+        - generic [ref=e862]:
+          - generic [ref=e863]:
+            - generic [ref=e864]: 访问占比
+            - strong [ref=e865]: 37.0%
+          - generic [ref=e866]:
+            - generic [ref=e867]: 树搜索胜分
+            - strong [ref=e868]: 51.0%
+          - generic [ref=e869]:
+            - generic [ref=e870]: 策略概率
+            - strong [ref=e871]: 0.5%
+          - generic [ref=e872]:
+            - generic [ref=e873]: 校准胜率
+            - strong [ref=e874]: —
+        - generic [ref=e875]: 树搜索分差 -6.5
+        - generic [ref=e877]:
+          - generic [ref=e878]: 立即变化
+          - generic [ref=e879]:
+            - generic [ref=e880]: 现金
+            - strong [ref=e881]: £-3
+          - generic [ref=e882]:
+            - generic [ref=e883]: 线路
+            - strong [ref=e884]: "+1"
+        - button "随机样例续弈（非主变化）" [ref=e885] [cursor=pointer]
+      - generic [ref=e889]:
+        - heading "为什么这样走？" [level=3] [ref=e893]
+        - generic [ref=e894]:
+          - button "选择依据" [ref=e895] [cursor=pointer]
+          - button "胜率可信度" [ref=e896] [cursor=pointer]
+          - button "主要风险" [ref=e897] [cursor=pointer]
+        - generic [ref=e898]:
+          - textbox "追问当前走法" [ref=e899]:
+            - /placeholder: 继续追问当前走法
+          - button "发送问题" [disabled] [ref=e900] [cursor=pointer]

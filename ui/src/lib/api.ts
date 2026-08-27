@@ -3,9 +3,10 @@ import {
 	gameState, turnPhase, actionsAvailable, logMessage,
 	moneyAtTurnStart, snapshotMoney, currentAction, playerName,
 	allIndustryData, actionBudgetAtTurnStart, analysisReport, analysisLoading,
-	analysisError, selectedAnalysisKey, invalidateAnalysis, resetAiPlayback
+	analysisError, analysisProgress, analysisInvalidationVersion,
+	selectedAnalysisKey, invalidateAnalysis, resetAiPlayback
 } from './store';
-import type { AnalysisExplanation, AnalysisReport, GameState } from './types';
+import type { AnalysisExplanation, AnalysisReport, GameState, ReplayData } from './types';
 
 const ACTION_LABELS: Record<string, string> = {
 	BuildBuilding: 'Build', BuildRailroad: 'Network', BuildDoubleRailroad: 'Double Rail',
@@ -32,6 +33,7 @@ export interface SavedGameSummary {
 
 let lastTurnPlayer: number | null = null;
 let currentTurnActionBudget = 1;
+let analysisRunId = 0;
 
 function cpName(): string {
 	const gs = get(gameState);
@@ -95,6 +97,16 @@ export async function listSavedGames(): Promise<SavedGameSummary[]> {
 	return data?.games ?? [];
 }
 
+export async function loadReplay(gameId: number): Promise<ReplayData | null> {
+	const data = await api('replay', { game_id: gameId });
+	if (!data?.positions) return null;
+	return {
+		game_id: data.game_id as number,
+		positions: data.positions as ReplayData['positions'],
+		final_state: (data.final_state as GameState | null | undefined) ?? null
+	};
+}
+
 export async function loadGame(gameId: number) {
 	resetAiPlayback();
 	invalidateAnalysis();
@@ -123,6 +135,8 @@ export async function newGame(numPlayers: number, seed: number | null = null) {
 }
 
 export async function setObserverPlayer(playerIndex: number | null) {
+	// Observer changes alter which private hand and action context the UI represents.
+	invalidateAnalysis();
 	const data = await api('set_observer', { player_index: playerIndex });
 	if (data?.state && get(turnPhase) === 'choosing_action') {
 		actionsAvailable.set(data.state.available_actions ?? []);
@@ -270,22 +284,75 @@ export async function endTurn() {
 	return data;
 }
 
+function analysisStages(simulations: number): number[] {
+	return [...new Set([100, 400, 800, 3000, simulations])]
+		.filter(stage => stage > 0 && stage <= simulations)
+		.sort((left, right) => left - right);
+}
+
 export async function analyzePosition(simulations: number): Promise<AnalysisReport | null> {
+	return analyzePositionProgressive(simulations);
+}
+
+export async function analyzePositionProgressive(simulations: number): Promise<AnalysisReport | null> {
+	const runId = ++analysisRunId;
+	const invalidationVersion = get(analysisInvalidationVersion);
+	const stages = analysisStages(simulations);
 	analysisLoading.set(true);
 	analysisError.set(null);
+	analysisProgress.set({
+		completed: 0,
+		target: simulations,
+		stage: 0,
+		totalStages: stages.length
+	});
+	let latestReport: AnalysisReport | null = null;
+	const isCurrent = () => runId === analysisRunId
+		&& get(analysisInvalidationVersion) === invalidationVersion;
 	try {
-		const data = await api('analyze', { simulations, top_n: 3 });
-		if (!data?.analysis) {
-			analysisError.set('分析失败，请确认当前处于可行动状态');
-			return null;
+		for (const [index, progressTo] of stages.entries()) {
+			if (!isCurrent()) return null;
+			analysisProgress.set({
+				completed: latestReport?.completed_simulations ?? 0,
+				target: simulations,
+				stage: index + 1,
+				totalStages: stages.length
+			});
+			const data = await api('analyze', {
+				simulations,
+				progress_to: progressTo,
+				top_n: 3
+			});
+			if (!isCurrent()) return null;
+			if (!data?.analysis) {
+				analysisError.set('分析失败，请确认当前处于可行动状态');
+				return null;
+			}
+			const report = data.analysis as AnalysisReport;
+			latestReport = report;
+			analysisReport.set(report);
+			const selectedKey = get(selectedAnalysisKey);
+			if (!selectedKey || !report.recommendations.some(candidate => candidate.action_key === selectedKey)) {
+				selectedAnalysisKey.set(report.recommendations[0]?.action_key ?? null);
+			}
+			analysisProgress.set({
+				completed: report.completed_simulations,
+				target: simulations,
+				stage: index + 1,
+				totalStages: stages.length
+			});
 		}
-		const report = data.analysis as AnalysisReport;
-		analysisReport.set(report);
-		selectedAnalysisKey.set(report.recommendations[0]?.action_key ?? null);
-		logMessage(`AI analyzed ${report.completed_simulations} continuations in ${report.elapsed_ms}ms`);
-		return report;
+		if (latestReport) {
+			logMessage(`AI analyzed ${latestReport.completed_simulations} continuations in ${latestReport.elapsed_ms}ms`);
+		}
+		return latestReport;
+	} catch (error) {
+		if (isCurrent()) {
+			analysisError.set(error instanceof Error ? error.message : String(error));
+		}
+		return null;
 	} finally {
-		analysisLoading.set(false);
+		if (isCurrent()) analysisLoading.set(false);
 	}
 }
 

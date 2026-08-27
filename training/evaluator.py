@@ -12,6 +12,7 @@ class PolicyValuePredictionLike(Protocol):
     policy_probabilities: tuple[float, ...]
     shared_win_rate: float
     victory_point_margin: float
+    actor_victory_points: float
 
 
 class PolicyValueEvaluator(Protocol):

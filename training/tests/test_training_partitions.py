@@ -6,18 +6,24 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 import torch
 from torch.utils.data import DataLoader
 
-from training.checkpoint import load_model_checkpoint
+from training.checkpoint import load_model_checkpoint, save_checkpoint
 from training.data import SelfPlayDataset, collate_positions
-from training.model import BrassPolicyValueNet, ModelConfig
+from training.model import (
+    BrassPolicyValueNet,
+    ModelConfig,
+    fuse_policy_and_value_models,
+)
 from training.schema import FeatureSchema
 from training.train import (
     _evaluate,
     _load_datasets,
     _restore_optimizer_state,
+    _should_restore_optimizer_state,
     _validate_args,
     build_parser,
     train,
@@ -95,6 +101,117 @@ class TrainingPartitionTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "leaks positions"):
             _validate_args(args)
+
+    def test_early_stopping_requires_independent_validation_shards(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                "training.jsonl",
+                "--output",
+                "model.pt",
+                "--early-stopping-patience",
+                "2",
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "independent validation shards"):
+            _validate_args(args)
+
+    def test_early_stopping_rejects_invalid_thresholds(self) -> None:
+        cases = (
+            (["--early-stopping-patience", "-1"], "patience must be non-negative"),
+            (
+                ["--early-stopping-min-delta", "-0.1"],
+                "min-delta must be non-negative",
+            ),
+            (
+                ["--early-stopping-min-delta", "0.1"],
+                "requires positive early-stopping-patience",
+            ),
+        )
+
+        for extra_args, expected_error in cases:
+            with self.subTest(extra_args=extra_args):
+                args = build_parser().parse_args(
+                    [
+                        "--shards",
+                        "training.jsonl",
+                        "--output",
+                        "model.pt",
+                        *extra_args,
+                    ]
+                )
+                with self.assertRaisesRegex(ValueError, expected_error):
+                    _validate_args(args)
+
+    def test_early_stopping_preserves_exact_best_validation_epoch(self) -> None:
+        training = self.root / "training.jsonl"
+        validation = self.root / "validation.jsonl"
+        checkpoint = self.root / "early-stopped.pt"
+        _write_shard(training, engine_revision="engine-a", game_seed=101)
+        _write_shard(validation, engine_revision="engine-a", game_seed=202)
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                str(training),
+                "--validation-shards",
+                str(validation),
+                "--output",
+                str(checkpoint),
+                "--device",
+                "cpu",
+                "--epochs",
+                "10",
+                "--early-stopping-patience",
+                "2",
+                "--early-stopping-min-delta",
+                "0.05",
+                "--batch-size",
+                "1",
+                "--state-hidden-dim",
+                "8",
+                "--action-embedding-dim",
+                "4",
+                "--trunk-dim",
+                "8",
+                "--log-every",
+                "1",
+            ]
+        )
+        validation_results = [
+            {"loss": 1.0},
+            {"loss": 0.9},
+            {"loss": 0.89},
+            {"loss": 0.88},
+        ]
+        output = io.StringIO()
+
+        with patch("training.train._evaluate", side_effect=validation_results):
+            with redirect_stdout(output):
+                train(args)
+
+        events = [json.loads(line) for line in output.getvalue().splitlines()]
+        early_stop_events = [
+            event for event in events if event["event"] == "training_early_stopped"
+        ]
+        self.assertEqual(len(early_stop_events), 1)
+        self.assertEqual(early_stop_events[0]["epoch"], 2)
+        self.assertEqual(early_stop_events[0]["selected_epoch"], 2)
+
+        schema = FeatureSchema.from_schema_dict(SCHEMA)
+        _model, payload = load_model_checkpoint(
+            checkpoint, expected_schema=schema
+        )
+        metadata = payload["metadata"]["training"]
+        self.assertEqual(metadata["stop_reason"], "early_stopping")
+        self.assertTrue(metadata["early_stopping_triggered"])
+        self.assertEqual(metadata["epochs_ran"], 3)
+        self.assertEqual(metadata["steps_this_run"], 3)
+        self.assertEqual(metadata["selected_epoch"], 2)
+        self.assertEqual(metadata["last_completed_epoch"], 2)
+        self.assertEqual(metadata["selected_validation_metrics"]["loss"], 0.88)
+        self.assertEqual(metadata["early_stopping_reference_loss"], 0.9)
+        self.assertEqual(metadata["epochs_without_significant_improvement"], 2)
 
     def test_training_checkpoint_selects_and_records_best_validation_epoch(self) -> None:
         training = self.root / "training.jsonl"
@@ -224,6 +341,171 @@ class TrainingPartitionTests(unittest.TestCase):
             all(group["weight_decay"] == 5e-5 for group in optimizer.param_groups)
         )
 
+    def test_full_finetune_restarts_optimizer_after_head_only_training(self) -> None:
+        head_only_payload = {
+            "metadata": {"training": {"actor_vp_head_only": True}}
+        }
+        full_model_payload = {
+            "metadata": {"training": {"actor_vp_head_only": False}}
+        }
+
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                head_only_payload, actor_vp_head_only=False
+            )
+        )
+        self.assertTrue(
+            _should_restore_optimizer_state(
+                full_model_payload, actor_vp_head_only=False
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload, actor_vp_head_only=True
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload,
+                actor_vp_head_only=False,
+                policy_adapter_only=True,
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload,
+                actor_vp_head_only=False,
+                value_tower_only=True,
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload,
+                actor_vp_head_only=False,
+                architecture_expanded=True,
+            )
+        )
+
+    def test_policy_adapter_only_training_preserves_base_parameters(self) -> None:
+        training = self.root / "training.jsonl"
+        base_checkpoint = self.root / "base.pt"
+        adapted_checkpoint = self.root / "adapted.pt"
+        _write_shard(training, engine_revision="engine-a", game_seed=101)
+        dataset = SelfPlayDataset([training])
+        assert dataset.schema is not None
+        base_model = BrassPolicyValueNet(
+            ModelConfig(
+                state_dim=2,
+                action_dim=4,
+                state_hidden_dim=8,
+                action_embedding_dim=4,
+                trunk_dim=8,
+            )
+        )
+        save_checkpoint(base_checkpoint, base_model, dataset.schema)
+        dataset.close()
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                str(training),
+                "--output",
+                str(adapted_checkpoint),
+                "--resume",
+                str(base_checkpoint),
+                "--device",
+                "cpu",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "1",
+                "--policy-adapter-dim",
+                "8",
+                "--policy-adapter-only",
+            ]
+        )
+
+        with redirect_stdout(io.StringIO()):
+            train(args)
+
+        base, _base_payload = load_model_checkpoint(base_checkpoint)
+        adapted, payload = load_model_checkpoint(adapted_checkpoint)
+        self.assertEqual(adapted.config.policy_adapter_dim, 8)
+        adapted_state = adapted.state_dict()
+        for name, value in base.state_dict().items():
+            self.assertTrue(torch.equal(value, adapted_state[name]), name)
+        metadata = payload["metadata"]["training"]
+        self.assertTrue(metadata["policy_adapter_only"])
+        self.assertTrue(metadata["policy_adapter_expanded"])
+        self.assertFalse(metadata["optimizer_state_restored"])
+
+    def test_value_tower_only_training_preserves_policy_parameters(self) -> None:
+        training = self.root / "training.jsonl"
+        base_checkpoint = self.root / "fused-base.pt"
+        trained_checkpoint = self.root / "value-trained.pt"
+        _write_shard(training, engine_revision="engine-a", game_seed=101)
+        dataset = SelfPlayDataset([training])
+        assert dataset.schema is not None
+        config = ModelConfig(
+            state_dim=2,
+            action_dim=4,
+            state_hidden_dim=8,
+            action_embedding_dim=4,
+            trunk_dim=8,
+        )
+        torch.manual_seed(81)
+        policy_model = BrassPolicyValueNet(config)
+        torch.manual_seed(82)
+        value_model = BrassPolicyValueNet(config)
+        fused_model = fuse_policy_and_value_models(policy_model, value_model)
+        save_checkpoint(base_checkpoint, fused_model, dataset.schema)
+        dataset.close()
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                str(training),
+                "--output",
+                str(trained_checkpoint),
+                "--resume",
+                str(base_checkpoint),
+                "--device",
+                "cpu",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "1",
+                "--learning-rate",
+                "0.01",
+                "--value-tower-only",
+            ]
+        )
+
+        with redirect_stdout(io.StringIO()):
+            train(args)
+
+        base, _ = load_model_checkpoint(base_checkpoint)
+        trained, payload = load_model_checkpoint(trained_checkpoint)
+        value_prefixes = (
+            "value_state_encoder.",
+            "shared_win_head.",
+            "victory_point_margin_head.",
+            "actor_victory_points_head.",
+        )
+        base_state = base.state_dict()
+        trained_state = trained.state_dict()
+        for name, value in base_state.items():
+            if not name.startswith(value_prefixes):
+                self.assertTrue(torch.equal(value, trained_state[name]), name)
+        self.assertTrue(
+            any(
+                not torch.equal(value, trained_state[name])
+                for name, value in base_state.items()
+                if name.startswith(value_prefixes)
+            )
+        )
+        metadata = payload["metadata"]["training"]
+        self.assertTrue(metadata["value_tower_only"])
+        self.assertFalse(metadata["optimizer_state_restored"])
+
     def test_max_steps_counts_only_steps_from_the_current_resume(self) -> None:
         training = self.root / "training.jsonl"
         initial_checkpoint = self.root / "initial.pt"
@@ -313,6 +595,7 @@ def _write_shard(
             "format_version": 1,
             "game_index": 0,
             "game_seed": game_seed,
+            "victory_points": [30, 60],
         },
     ]
     for position_index in range(position_count):
@@ -325,6 +608,7 @@ def _write_shard(
                 "feature_version": 1,
                 "game_index": 0,
                 "position_index": position_index,
+                "actor": position_index % 2,
                 "state_features": [state_fraction, 1.0 - state_fraction],
                 "legal_actions": [
                     {

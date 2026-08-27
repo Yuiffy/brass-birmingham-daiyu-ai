@@ -1,0 +1,363 @@
+- generic [ref=e3]:
+  - heading "Brass Birmingham" [level=1] [ref=e4]
+  - generic [ref=e5]:
+    - button "New Game" [ref=e6] [cursor=pointer]
+    - button "Join Game" [active] [ref=e7] [cursor=pointer]
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: 2026/8/16 05:06:22
+        - generic [ref=e20]: Round 5 | Canal | 2p | Seed 17675849558288239000
+      - generic [ref=e21]:
+        - button "查看棋谱 50" [ref=e22] [cursor=pointer]
+        - button "Join" [ref=e27] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]: 2026/8/16 05:20:01
+        - generic [ref=e33]: Round 1 | Canal | 2p | Seed 1574148803884692200
+      - generic [ref=e34]:
+        - button "查看棋谱 51" [ref=e35] [cursor=pointer]
+        - button "Join" [ref=e40] [cursor=pointer]
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]: 2026/8/16 04:45:59
+        - generic [ref=e46]: Round 2 | Canal | 2p | Seed 910003
+      - generic [ref=e47]:
+        - button "查看棋谱 49" [ref=e48] [cursor=pointer]
+        - button "Join" [ref=e53] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]: 2026/8/16 04:40:23
+        - generic [ref=e59]: Round 1 | Canal | 2p | Seed 910002
+      - generic [ref=e60]:
+        - button "查看棋谱 48" [ref=e61] [cursor=pointer]
+        - button "Join" [ref=e66] [cursor=pointer]
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e71]: 2026/8/16 04:25:01
+        - generic [ref=e72]: Round 1 | Canal | 2p | Seed 2875452942987408000
+      - generic [ref=e73]:
+        - button "查看棋谱 47" [ref=e74] [cursor=pointer]
+        - button "Join" [ref=e79] [cursor=pointer]
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]: 2026/8/16 04:24:21
+        - generic [ref=e85]: Round 1 | Canal | 2p | Seed 424243
+      - generic [ref=e86]:
+        - button "查看棋谱 46" [ref=e87] [cursor=pointer]
+        - button "Join" [ref=e92] [cursor=pointer]
+    - generic [ref=e95]:
+      - generic [ref=e96]:
+        - generic [ref=e97]: 2026/8/16 04:24:03
+        - generic [ref=e98]: Round 1 | Canal | 2p | Seed 424242
+      - generic [ref=e99]:
+        - button "查看棋谱 45" [ref=e100] [cursor=pointer]
+        - button "Join" [ref=e105] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - generic [ref=e110]: 2026/8/16 04:22:47
+        - generic [ref=e111]: Round 1 | Canal | 2p | Seed 2793391380344411000
+      - generic [ref=e112]:
+        - button "查看棋谱 44" [ref=e113] [cursor=pointer]
+        - button "Join" [ref=e118] [cursor=pointer]
+    - generic [ref=e121]:
+      - generic [ref=e122]:
+        - generic [ref=e123]: 2026/8/16 04:22:29
+        - generic [ref=e124]: Round 1 | Canal | 2p | Seed 8385498624989296000
+      - generic [ref=e125]:
+        - button "查看棋谱 43" [ref=e126] [cursor=pointer]
+        - button "Join" [ref=e131] [cursor=pointer]
+    - generic [ref=e134]:
+      - generic [ref=e135]:
+        - generic [ref=e136]: 2026/8/16 04:11:54
+        - generic [ref=e137]: Round 2 | Canal | 2p | Seed 6081956176583648000
+      - generic [ref=e138]:
+        - button "查看棋谱 42" [ref=e139] [cursor=pointer]
+        - button "Join" [ref=e144] [cursor=pointer]
+    - generic [ref=e147]:
+      - generic [ref=e148]:
+        - generic [ref=e149]: 2026/8/16 04:11:37
+        - generic [ref=e150]: Round 1 | Canal | 2p | Seed 10941043915655375000
+      - generic [ref=e151]:
+        - button "查看棋谱 41" [ref=e152] [cursor=pointer]
+        - button "Join" [ref=e157] [cursor=pointer]
+    - generic [ref=e160]:
+      - generic [ref=e161]:
+        - generic [ref=e162]: 2026/8/16 04:11:24
+        - generic [ref=e163]: Round 1 | Canal | 2p | Seed 6634328441073662000
+      - generic [ref=e164]:
+        - button "查看棋谱 40" [ref=e165] [cursor=pointer]
+        - button "Join" [ref=e170] [cursor=pointer]
+    - generic [ref=e173]:
+      - generic [ref=e174]:
+        - generic [ref=e175]: 2026/8/16 04:09:48
+        - generic [ref=e176]: Round 1 | Canal | 2p | Seed 683830626024832800
+      - generic [ref=e177]:
+        - button "查看棋谱 39" [ref=e178] [cursor=pointer]
+        - button "Join" [ref=e183] [cursor=pointer]
+    - generic [ref=e186]:
+      - generic [ref=e187]:
+        - generic [ref=e188]: 2026/8/16 04:01:50
+        - generic [ref=e189]: Round 1 | Canal | 3p | Seed 15534932847761582000
+      - generic [ref=e190]:
+        - button "查看棋谱 38" [ref=e191] [cursor=pointer]
+        - button "Join" [ref=e196] [cursor=pointer]
+    - generic [ref=e199]:
+      - generic [ref=e200]:
+        - generic [ref=e201]: 2026/8/16 04:01:19
+        - generic [ref=e202]: Round 1 | Canal | 2p | Seed 12248459588151261000
+      - generic [ref=e203]:
+        - button "查看棋谱 37" [ref=e204] [cursor=pointer]
+        - button "Join" [ref=e209] [cursor=pointer]
+    - generic [ref=e212]:
+      - generic [ref=e213]:
+        - generic [ref=e214]: 2026/8/16 04:01:13
+        - generic [ref=e215]: Round 1 | Canal | 2p | Seed 11394745278098598000
+      - generic [ref=e216]:
+        - button "查看棋谱 36" [ref=e217] [cursor=pointer]
+        - button "Join" [ref=e222] [cursor=pointer]
+    - generic [ref=e225]:
+      - generic [ref=e226]:
+        - generic [ref=e227]: 2026/8/16 03:58:09
+        - generic [ref=e228]: Round 1 | Canal | 3p | Seed 2331315749050813000
+      - generic [ref=e229]:
+        - button "查看棋谱 35" [ref=e230] [cursor=pointer]
+        - button "Join" [ref=e235] [cursor=pointer]
+    - generic [ref=e238]:
+      - generic [ref=e239]:
+        - generic [ref=e240]: 2026/8/16 03:52:01
+        - generic [ref=e241]: Round 1 | Canal | 3p | Seed 9800084345042385000
+      - generic [ref=e242]:
+        - button "查看棋谱 34" [ref=e243] [cursor=pointer]
+        - button "Join" [ref=e248] [cursor=pointer]
+    - generic [ref=e251]:
+      - generic [ref=e252]:
+        - generic [ref=e253]: 2026/8/16 03:34:14
+        - generic [ref=e254]: Round 1 | Canal | 2p | Seed 7490199809857763000
+      - generic [ref=e255]:
+        - button "查看棋谱 33" [ref=e256] [cursor=pointer]
+        - button "Join" [ref=e261] [cursor=pointer]
+    - generic [ref=e264]:
+      - generic [ref=e265]:
+        - generic [ref=e266]: 2026/8/16 03:33:44
+        - generic [ref=e267]: Round 1 | Canal | 2p | Seed 20260820
+      - generic [ref=e268]:
+        - button "查看棋谱 32" [ref=e269] [cursor=pointer]
+        - button "Join" [ref=e274] [cursor=pointer]
+    - generic [ref=e277]:
+      - generic [ref=e278]:
+        - generic [ref=e279]: 2026/8/16 03:30:27
+        - generic [ref=e280]: Round 1 | Canal | 2p | Seed 11039324514026430000
+      - generic [ref=e281]:
+        - button "查看棋谱 31" [ref=e282] [cursor=pointer]
+        - button "Join" [ref=e287] [cursor=pointer]
+    - generic [ref=e290]:
+      - generic [ref=e291]:
+        - generic [ref=e292]: 2026/8/16 03:24:34
+        - generic [ref=e293]: Round 2 | Canal | 2p | Seed 20260820
+      - generic [ref=e294]:
+        - button "查看棋谱 30" [ref=e295] [cursor=pointer]
+        - button "Join" [ref=e300] [cursor=pointer]
+    - generic [ref=e303]:
+      - generic [ref=e304]:
+        - generic [ref=e305]: 2026/8/16 03:23:10
+        - generic [ref=e306]: Round 1 | Canal | 2p | Seed 20260820
+      - generic [ref=e307]:
+        - button "查看棋谱 29" [ref=e308] [cursor=pointer]
+        - button "Join" [ref=e313] [cursor=pointer]
+    - generic [ref=e316]:
+      - generic [ref=e317]:
+        - generic [ref=e318]: 2026/8/16 03:22:05
+        - generic [ref=e319]: Round 1 | Canal | 2p | Seed 20260820
+      - generic [ref=e320]:
+        - button "查看棋谱 28" [ref=e321] [cursor=pointer]
+        - button "Join" [ref=e326] [cursor=pointer]
+    - generic [ref=e329]:
+      - generic [ref=e330]:
+        - generic [ref=e331]: 2026/8/16 03:21:40
+        - generic [ref=e332]: Round 1 | Canal | 2p | Seed 1372164543459435300
+      - generic [ref=e333]:
+        - button "查看棋谱 27" [ref=e334] [cursor=pointer]
+        - button "Join" [ref=e339] [cursor=pointer]
+    - generic [ref=e342]:
+      - generic [ref=e343]:
+        - generic [ref=e344]: 2026/8/16 03:19:12
+        - generic [ref=e345]: Round 1 | Canal | 2p | Seed 20260816
+      - generic [ref=e346]:
+        - button "查看棋谱 26" [ref=e347] [cursor=pointer]
+        - button "Join" [ref=e352] [cursor=pointer]
+    - generic [ref=e355]:
+      - generic [ref=e356]:
+        - generic [ref=e357]: 2026/8/16 03:00:39
+        - generic [ref=e358]: Round 1 | Canal | 2p | Seed 20260816
+      - generic [ref=e359]:
+        - button "查看棋谱 25" [ref=e360] [cursor=pointer]
+        - button "Join" [ref=e365] [cursor=pointer]
+    - generic [ref=e368]:
+      - generic [ref=e369]:
+        - generic [ref=e370]: 2026/8/16 02:59:29
+        - generic [ref=e371]: Round 1 | Canal | 2p | Seed 14462603639028044000
+      - generic [ref=e372]:
+        - button "查看棋谱 24" [ref=e373] [cursor=pointer]
+        - button "Join" [ref=e378] [cursor=pointer]
+    - generic [ref=e381]:
+      - generic [ref=e382]:
+        - generic [ref=e383]: 2026/8/16 02:37:03
+        - generic [ref=e384]: Round 2 | Canal | 2p | Seed 20260816
+      - generic [ref=e385]:
+        - button "查看棋谱 23" [ref=e386] [cursor=pointer]
+        - button "Join" [ref=e391] [cursor=pointer]
+    - generic [ref=e394]:
+      - generic [ref=e395]:
+        - generic [ref=e396]: 2026/8/16 02:34:47
+        - generic [ref=e397]: Round 1 | Canal | 2p | Seed 5029386007199662000
+      - generic [ref=e398]:
+        - button "查看棋谱 22" [ref=e399] [cursor=pointer]
+        - button "Join" [ref=e404] [cursor=pointer]
+    - generic [ref=e407]:
+      - generic [ref=e408]:
+        - generic [ref=e409]: 2026/8/16 00:13:34
+        - generic [ref=e410]: Round 2 | Canal | 2p | Seed 20260816
+      - generic [ref=e411]:
+        - button "查看棋谱 21" [ref=e412] [cursor=pointer]
+        - button "Join" [ref=e417] [cursor=pointer]
+    - generic [ref=e420]:
+      - generic [ref=e421]:
+        - generic [ref=e422]: 2026/8/16 00:11:32
+        - generic [ref=e423]: Round 1 | Canal | 2p | Seed 14491194049890013000
+      - generic [ref=e424]:
+        - button "查看棋谱 20" [ref=e425] [cursor=pointer]
+        - button "Join" [ref=e430] [cursor=pointer]
+    - generic [ref=e433]:
+      - generic [ref=e434]:
+        - generic [ref=e435]: 2026/8/15 23:44:41
+        - generic [ref=e436]: Round 1 | Canal | 2p | Seed 7917801071701870000
+      - generic [ref=e437]:
+        - button "查看棋谱 19" [ref=e438] [cursor=pointer]
+        - button "Join" [ref=e443] [cursor=pointer]
+    - generic [ref=e446]:
+      - generic [ref=e447]:
+        - generic [ref=e448]: 2026/8/15 23:43:27
+        - generic [ref=e449]: Round 1 | Canal | 2p | Seed 424242
+      - generic [ref=e450]:
+        - button "查看棋谱 18" [ref=e451] [cursor=pointer]
+        - button "Join" [ref=e456] [cursor=pointer]
+    - generic [ref=e459]:
+      - generic [ref=e460]:
+        - generic [ref=e461]: 2026/8/15 23:30:48
+        - generic [ref=e462]: Round 2 | Canal | 2p | Seed 424242
+      - generic [ref=e463]:
+        - button "查看棋谱 17" [ref=e464] [cursor=pointer]
+        - button "Join" [ref=e469] [cursor=pointer]
+    - generic [ref=e472]:
+      - generic [ref=e473]:
+        - generic [ref=e474]: 2026/8/15 23:26:02
+        - generic [ref=e475]: Round 1 | Canal | 2p | Seed 12271509579830262000
+      - generic [ref=e476]:
+        - button "查看棋谱 16" [ref=e477] [cursor=pointer]
+        - button "Join" [ref=e482] [cursor=pointer]
+    - generic [ref=e485]:
+      - generic [ref=e486]:
+        - generic [ref=e487]: 2026/8/15 21:36:19
+        - generic [ref=e488]: Round 1 | Canal | 2p | Seed 424242
+      - generic [ref=e489]:
+        - button "查看棋谱 15" [ref=e490] [cursor=pointer]
+        - button "Join" [ref=e495] [cursor=pointer]
+    - generic [ref=e498]:
+      - generic [ref=e499]:
+        - generic [ref=e500]: 2026/8/15 21:34:47
+        - generic [ref=e501]: Round 1 | Canal | 2p | Seed 17132578957272089000
+      - generic [ref=e502]:
+        - button "查看棋谱 14" [ref=e503] [cursor=pointer]
+        - button "Join" [ref=e508] [cursor=pointer]
+    - generic [ref=e511]:
+      - generic [ref=e512]:
+        - generic [ref=e513]: 2026/8/15 21:13:04
+        - generic [ref=e514]: Round 2 | Canal | 2p | Seed 424242
+      - generic [ref=e515]:
+        - button "查看棋谱 13" [ref=e516] [cursor=pointer]
+        - button "Join" [ref=e521] [cursor=pointer]
+    - generic [ref=e524]:
+      - generic [ref=e525]:
+        - generic [ref=e526]: 2026/8/15 21:11:51
+        - generic [ref=e527]: Round 1 | Canal | 2p | Seed 14584723475490260000
+      - generic [ref=e528]:
+        - button "查看棋谱 12" [ref=e529] [cursor=pointer]
+        - button "Join" [ref=e534] [cursor=pointer]
+    - generic [ref=e537]:
+      - generic [ref=e538]:
+        - generic [ref=e539]: 2026/8/15 21:09:44
+        - generic [ref=e540]: Round 1 | Canal | 2p | Seed 424242
+      - generic [ref=e541]:
+        - button "查看棋谱 11" [ref=e542] [cursor=pointer]
+        - button "Join" [ref=e547] [cursor=pointer]
+    - generic [ref=e550]:
+      - generic [ref=e551]:
+        - generic [ref=e552]: 2026/8/15 21:01:12
+        - generic [ref=e553]: Round 1 | Canal | 2p | Seed 424242
+      - generic [ref=e554]:
+        - button "查看棋谱 10" [ref=e555] [cursor=pointer]
+        - button "Join" [ref=e560] [cursor=pointer]
+    - generic [ref=e563]:
+      - generic [ref=e564]:
+        - generic [ref=e565]: 2026/8/15 20:08:38
+        - generic [ref=e566]: Round 1 | Canal | 4p | Seed 2522370257715387000
+      - generic [ref=e567]:
+        - button "查看棋谱 9" [ref=e568] [cursor=pointer]
+        - button "Join" [ref=e573] [cursor=pointer]
+    - generic [ref=e576]:
+      - generic [ref=e577]:
+        - generic [ref=e578]: 2026/8/15 20:07:55
+        - generic [ref=e579]: Round 1 | Canal | 2p | Seed 8301
+      - generic [ref=e580]:
+        - button "查看棋谱 8" [ref=e581] [cursor=pointer]
+        - button "Join" [ref=e586] [cursor=pointer]
+    - generic [ref=e589]:
+      - generic [ref=e590]:
+        - generic [ref=e591]: 2026/8/15 19:58:22
+        - generic [ref=e592]: Round 1 | Canal | 2p | Seed 88016
+      - generic [ref=e593]:
+        - button "查看棋谱 7" [ref=e594] [cursor=pointer]
+        - button "Join" [ref=e599] [cursor=pointer]
+    - generic [ref=e602]:
+      - generic [ref=e603]:
+        - generic [ref=e604]: 2026/8/15 19:44:41
+        - generic [ref=e605]: Round 1 | Canal | 2p | Seed 88015
+      - generic [ref=e606]:
+        - button "查看棋谱 6" [ref=e607] [cursor=pointer]
+        - button "Join" [ref=e612] [cursor=pointer]
+    - generic [ref=e615]:
+      - generic [ref=e616]:
+        - generic [ref=e617]: 2026/8/15 19:03:16
+        - generic [ref=e618]: Round 1 | Canal | 2p | Seed 20260823
+      - generic [ref=e619]:
+        - button "查看棋谱 5" [ref=e620] [cursor=pointer]
+        - button "Join" [ref=e625] [cursor=pointer]
+    - generic [ref=e628]:
+      - generic [ref=e629]:
+        - generic [ref=e630]: 2026/8/15 19:01:31
+        - generic [ref=e631]: Round 1 | Canal | 4p | Seed 1999559350969753600
+      - generic [ref=e632]:
+        - button "查看棋谱 4" [ref=e633] [cursor=pointer]
+        - button "Join" [ref=e638] [cursor=pointer]
+    - generic [ref=e641]:
+      - generic [ref=e642]:
+        - generic [ref=e643]: 2026/8/15 18:59:27
+        - generic [ref=e644]: Round 1 | Canal | 2p | Seed 20260822
+      - generic [ref=e645]:
+        - button "查看棋谱 3" [ref=e646] [cursor=pointer]
+        - button "Join" [ref=e651] [cursor=pointer]
+    - generic [ref=e654]:
+      - generic [ref=e655]:
+        - generic [ref=e656]: 2026/8/15 18:40:49
+        - generic [ref=e657]: Round 1 | Canal | 2p | Seed 20260815
+      - generic [ref=e658]:
+        - button "查看棋谱 2" [ref=e659] [cursor=pointer]
+        - button "Join" [ref=e664] [cursor=pointer]
+    - generic [ref=e667]:
+      - generic [ref=e668]:
+        - generic [ref=e669]: 2026/8/15 18:36:15
+        - generic [ref=e670]: Round 1 | Canal | 2p | Seed 20260815
+      - generic [ref=e671]:
+        - button "查看棋谱 1" [ref=e672] [cursor=pointer]
+        - button "Join" [ref=e677] [cursor=pointer]

@@ -13,7 +13,28 @@ from typing import Any, Callable
 
 from .evaluator import PolicyValueEvaluator, PolicyValuePredictionLike
 from .neural_search import BATCHED_NEURAL_PUCT_METHOD, run_batched_neural_puct
+from .policy_normalization import (
+    CARD_CHOICE_GROUPING_VERSION,
+    card_invariant_action_intent,
+    rebalance_card_choice_groups,
+)
 from .schema import SELF_PLAY_FORMAT, SELF_PLAY_FORMAT_VERSION, FeatureSchema
+from .strategy_prior import (
+    CANAL_NETWORK_FALLBACK_CAP,
+    CANAL_NETWORK_PRODUCTIVE_CAP,
+    CAPPED_STRATEGY_PRIOR_VERSION,
+    HUMAN_REFERENCE_SCORE_SAMPLES,
+    HUMAN_REFERENCE_TARGET_RANGE,
+    LIFECYCLE_CANAL_NETWORK_CAP,
+    LIFECYCLE_STRATEGY_PRIOR_VERSION,
+    MAP_AWARE_NETWORK_SCORING_VERSION,
+    MAP_AWARE_STRATEGY_PRIOR_VERSION,
+    STRATEGY_PRIOR_VERSION,
+    STRATEGY_REFERENCE_SOURCES,
+    SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+    blend_policy_with_strategy,
+    build_strategy_prior,
+)
 
 GAME_SEED_STREAM = 0x6761_6D65_5F73_6565
 SEARCH_SEED_STREAM = 0x7365_6172_6368_5F73
@@ -39,6 +60,11 @@ class ModelSelfPlayConfig:
     max_game_actions: int = 256
     device: str = "auto"
     engine_revision: str = "unknown"
+    strategy_prior_strength: float = 0.0
+    strategy_prior_version: str = STRATEGY_PRIOR_VERSION
+    group_card_choices: bool = False
+    selection_temperature: float = 1.0
+    score_utility_weight: float = 0.0
 
     def validate(self) -> None:
         if (self.checkpoint is None) == (self.inference_url is None):
@@ -78,6 +104,25 @@ class ModelSelfPlayConfig:
             raise ValueError("inference_batch_size must be between 1 and 256")
         if self.max_game_actions <= 0:
             raise ValueError("max_game_actions must be positive")
+        if (
+            not math.isfinite(self.strategy_prior_strength)
+            or not 0.0 <= self.strategy_prior_strength <= 1.0
+        ):
+            raise ValueError("strategy_prior_strength must be between 0 and 1")
+        if self.strategy_prior_version not in SUPPORTED_STRATEGY_PRIOR_VERSIONS:
+            raise ValueError(
+                f"unsupported strategy prior version {self.strategy_prior_version!r}"
+            )
+        if (
+            not math.isfinite(self.selection_temperature)
+            or not 0.0 <= self.selection_temperature <= 10.0
+        ):
+            raise ValueError("selection_temperature must be between 0 and 10")
+        if (
+            not math.isfinite(self.score_utility_weight)
+            or not 0.0 <= self.score_utility_weight <= 1.0
+        ):
+            raise ValueError("score_utility_weight must be between 0 and 1")
         if not 0 <= self.base_seed <= MASK_64:
             raise ValueError("base_seed must fit in an unsigned 64-bit integer")
         if not self.engine_revision.strip():
@@ -111,6 +156,11 @@ def main() -> None:
         max_game_actions=args.max_game_actions,
         device=args.device,
         engine_revision=args.engine_revision or detect_engine_revision(),
+        strategy_prior_strength=args.strategy_prior_strength,
+        strategy_prior_version=args.strategy_prior_version,
+        group_card_choices=args.group_card_choices,
+        selection_temperature=args.selection_temperature,
+        score_utility_weight=args.score_utility_weight,
     )
     summary = export_model_self_play(
         config,
@@ -161,6 +211,40 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-game-actions", type=int, default=256)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--engine-revision")
+    parser.add_argument(
+        "--strategy-prior-strength",
+        type=float,
+        default=0.0,
+        help="Blend the human-strategy prior into root PUCT (0 disables it)",
+    )
+    parser.add_argument(
+        "--strategy-prior-version",
+        choices=SUPPORTED_STRATEGY_PRIOR_VERSIONS,
+        default=STRATEGY_PRIOR_VERSION,
+    )
+    parser.add_argument(
+        "--group-card-choices",
+        action="store_true",
+        help=(
+            "Normalize PUCT priors by card-invariant action intent so enumerated "
+            "discard choices do not inflate policy mass"
+        ),
+    )
+    parser.add_argument(
+        "--selection-temperature",
+        type=float,
+        default=1.0,
+        help="Visit-count action-selection temperature (0 selects stable argmax)",
+    )
+    parser.add_argument(
+        "--score-utility-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Blend secured-score progress into neural PUCT exploitation "
+            "(0 keeps win-only search)"
+        ),
+    )
     return parser
 
 
@@ -271,6 +355,26 @@ def generate_model_self_play_game(
         if int(legal_record["decision_player"]) != actor:
             raise RuntimeError("state and legal-action decision players disagree")
         prediction = evaluator.predict(state_record, legal_record, schema)
+        observation = game.get_observation(actor)
+        strategy_prior = build_strategy_prior(
+            observation,
+            legal_record,
+            version=config.strategy_prior_version,
+        )
+        guided_probabilities = blend_policy_with_strategy(
+            prediction.policy_probabilities,
+            strategy_prior.probabilities,
+            config.strategy_prior_strength,
+            guarded_actions=strategy_prior.guarded_actions,
+        )
+        search_probabilities = (
+            rebalance_card_choice_groups(
+                prediction.action_keys,
+                guided_probabilities,
+            )
+            if config.group_card_choices
+            else guided_probabilities
+        )
         search_seed = _derive_stream_seed(
             game_seed, SEARCH_SEED_STREAM, position_index
         )
@@ -288,11 +392,14 @@ def generate_model_self_play_game(
                 exploration_constant=config.exploration_constant,
                 determinizations=config.search_determinizations,
                 inference_batch_size=config.inference_batch_size,
+                root_policy_probabilities=search_probabilities,
+                group_leaf_card_choices=config.group_card_choices,
+                score_utility_weight=config.score_utility_weight,
             )
             expected_method = BATCHED_NEURAL_PUCT_METHOD
         else:
             report = game.search_legal_actions_with_policy(
-                list(prediction.policy_probabilities),
+                list(search_probabilities),
                 prediction.model_id,
                 prediction.shared_win_rate,
                 prediction.victory_point_margin,
@@ -301,12 +408,27 @@ def generate_model_self_play_game(
                 config.exploration_constant,
             )
             expected_method = ROOT_PUCT_METHOD
-        _validate_search_report(report, prediction, legal_record, config, expected_method)
-        action_targets = _build_action_targets(legal_record, report)
-        selected_action_index = _sample_action_index(action_targets, selection_seed)
+        _validate_search_report(
+            report,
+            prediction,
+            legal_record,
+            config,
+            expected_method,
+            expected_policy_probabilities=search_probabilities,
+        )
+        action_targets = _build_action_targets(
+            legal_record,
+            report,
+            model_policy_probabilities=prediction.policy_probabilities,
+            strategy_prior=strategy_prior,
+            strategy_prior_strength=config.strategy_prior_strength,
+        )
+        selected_action_index = _sample_action_index(
+            action_targets,
+            selection_seed,
+            config.selection_temperature,
+        )
         selected_action_key = action_targets[selected_action_index]["key"]
-        observation = game.get_observation(actor)
-
         positions.append(
             {
                 "record_type": "position",
@@ -336,8 +458,19 @@ def generate_model_self_play_game(
                 "search_method": report["method"],
                 "model_id": prediction.model_id,
                 "checkpoint_step": prediction.checkpoint_step,
+                "strategy_prior_version": strategy_prior.version,
+                "strategy_prior_strength": config.strategy_prior_strength,
+                "strategy_prior_phase": strategy_prior.phase,
+                "card_choice_grouping_version": (
+                    CARD_CHOICE_GROUPING_VERSION
+                    if config.group_card_choices
+                    else None
+                ),
+                "selection_temperature": config.selection_temperature,
+                "score_utility_weight": config.score_utility_weight,
                 "root_model_shared_win_rate": prediction.shared_win_rate,
                 "root_model_victory_point_margin": prediction.victory_point_margin,
+                "root_model_actor_victory_points": prediction.actor_victory_points,
                 "search_determinizations": (
                     config.search_determinizations
                     if config.num_players == 2
@@ -420,7 +553,85 @@ def _build_header(
             config.checkpoint.name if config.checkpoint is not None else None
         ),
         "inference_url": config.inference_url,
-        "action_selection": "deterministic_sample_from_root_visit_counts",
+        "action_selection": (
+            "stable_argmax_from_root_weights"
+            if config.selection_temperature == 0.0
+            else (
+                "deterministic_sample_from_strategy_weighted_root_visits"
+                if config.strategy_prior_strength > 0.0
+                else "deterministic_sample_from_root_visit_counts"
+            )
+        ),
+        "selection_temperature": config.selection_temperature,
+        "score_utility_weight": config.score_utility_weight,
+        "card_choice_grouping_version": (
+            CARD_CHOICE_GROUPING_VERSION if config.group_card_choices else None
+        ),
+        "strategy_selection_score_exponent": (
+            2.0 if config.strategy_prior_strength > 0.0 else None
+        ),
+        "strategy_prior_version": config.strategy_prior_version,
+        "strategy_prior_strength": config.strategy_prior_strength,
+        "strategy_canal_network_productive_cap": (
+            CANAL_NETWORK_PRODUCTIVE_CAP
+            if config.strategy_prior_version
+            in {CAPPED_STRATEGY_PRIOR_VERSION, STRATEGY_PRIOR_VERSION}
+            else None
+        ),
+        "strategy_canal_network_fallback_cap": (
+            CANAL_NETWORK_FALLBACK_CAP
+            if config.strategy_prior_version
+            in {CAPPED_STRATEGY_PRIOR_VERSION, STRATEGY_PRIOR_VERSION}
+            else None
+        ),
+        "strategy_lifecycle_canal_network_cap": (
+            LIFECYCLE_CANAL_NETWORK_CAP
+            if config.strategy_prior_version
+            in {
+                LIFECYCLE_STRATEGY_PRIOR_VERSION,
+                MAP_AWARE_STRATEGY_PRIOR_VERSION,
+            }
+            else None
+        ),
+        "strategy_balance_build_industries": (
+            config.strategy_prior_version
+            in {
+                STRATEGY_PRIOR_VERSION,
+                LIFECYCLE_STRATEGY_PRIOR_VERSION,
+                MAP_AWARE_STRATEGY_PRIOR_VERSION,
+            }
+        ),
+        "strategy_selection_grouping_version": (
+            CARD_CHOICE_GROUPING_VERSION
+            if config.strategy_prior_strength > 0.0
+            and config.strategy_prior_version
+            in {
+                LIFECYCLE_STRATEGY_PRIOR_VERSION,
+                MAP_AWARE_STRATEGY_PRIOR_VERSION,
+            }
+            else None
+        ),
+        "strategy_map_network_scoring_version": (
+            MAP_AWARE_NETWORK_SCORING_VERSION
+            if config.strategy_prior_version == MAP_AWARE_STRATEGY_PRIOR_VERSION
+            else None
+        ),
+        "strategy_low_income_loan_penalty_threshold": (
+            -4.0
+            if config.strategy_prior_version
+            in {
+                LIFECYCLE_STRATEGY_PRIOR_VERSION,
+                MAP_AWARE_STRATEGY_PRIOR_VERSION,
+            }
+            else (
+                -7.0
+                if config.strategy_prior_version == STRATEGY_PRIOR_VERSION
+                else None
+            )
+        ),
+        "strategy_prior_sources": list(STRATEGY_REFERENCE_SOURCES),
+        "human_reference_score_samples": list(HUMAN_REFERENCE_SCORE_SAMPLES),
+        "human_reference_target_range": list(HUMAN_REFERENCE_TARGET_RANGE),
         "shortfall_resolution": "ascending_liquidation_value_then_location",
     }
 
@@ -431,6 +642,8 @@ def _validate_search_report(
     legal_record: dict,
     config: ModelSelfPlayConfig,
     expected_method: str,
+    *,
+    expected_policy_probabilities: tuple[float, ...] | None = None,
 ) -> None:
     actions = legal_record.get("actions")
     searched_actions = report.get("actions")
@@ -448,23 +661,40 @@ def _validate_search_report(
     actual_keys = tuple(action.get("key") for action in searched_actions)
     if expected_keys != prediction.action_keys or actual_keys != expected_keys:
         raise RuntimeError("model, engine, and search action-key order disagree")
-    probability_mass = sum(prediction.policy_probabilities)
+    expected_probabilities = (
+        prediction.policy_probabilities
+        if expected_policy_probabilities is None
+        else expected_policy_probabilities
+    )
+    if len(expected_probabilities) != len(searched_actions):
+        raise RuntimeError("expected search policy probabilities have the wrong length")
+    probability_mass = sum(expected_probabilities)
     if not math.isfinite(probability_mass) or probability_mass <= 0.0:
-        raise RuntimeError("model policy probabilities have invalid total mass")
+        raise RuntimeError("expected search policy probabilities have invalid total mass")
     for index, (searched, probability) in enumerate(
-        zip(searched_actions, prediction.policy_probabilities)
+        zip(searched_actions, expected_probabilities, strict=True)
     ):
         if searched.get("index") != index:
             raise RuntimeError("search action indices are not stable and contiguous")
         actual_probability = searched.get("policy_probability")
         normalized_probability = probability / probability_mass
         if not isinstance(actual_probability, (int, float)) or not math.isclose(
-            float(actual_probability), normalized_probability, abs_tol=1e-12
+            float(actual_probability),
+            normalized_probability,
+            rel_tol=1e-9,
+            abs_tol=1e-9,
         ):
             raise RuntimeError("search report changed a model policy probability")
 
 
-def _build_action_targets(legal_record: dict, report: dict) -> list[dict]:
+def _build_action_targets(
+    legal_record: dict,
+    report: dict,
+    *,
+    model_policy_probabilities: tuple[float, ...] | None = None,
+    strategy_prior: Any | None = None,
+    strategy_prior_strength: float = 0.0,
+) -> list[dict]:
     legal_actions = legal_record["actions"]
     searched_actions = report["actions"]
     completed_simulations = int(report["completed_simulations"])
@@ -487,8 +717,37 @@ def _build_action_targets(legal_record: dict, report: dict) -> list[dict]:
                 "key": legal["key"],
                 "feature_indices": legal["feature_indices"],
                 "visits": visits,
+                "search_policy_target": visits / completed_simulations,
                 "policy_target": visits / completed_simulations,
-                "model_policy_probability": searched["policy_probability"],
+                "model_policy_probability": (
+                    model_policy_probabilities[index]
+                    if model_policy_probabilities is not None
+                    else searched["policy_probability"]
+                ),
+                "search_policy_probability": searched["policy_probability"],
+                "strategy_prior_probability": (
+                    strategy_prior.probabilities[index]
+                    if strategy_prior is not None
+                    else None
+                ),
+                "strategy_prior_score": (
+                    strategy_prior.scores[index] if strategy_prior is not None else None
+                ),
+                "strategy_prior_family": (
+                    strategy_prior.action_families[index]
+                    if strategy_prior is not None
+                    else None
+                ),
+                "strategy_prior_family_score": (
+                    strategy_prior.family_scores[index]
+                    if strategy_prior is not None
+                    else None
+                ),
+                "strategy_guarded": (
+                    strategy_prior.guarded_actions[index]
+                    if strategy_prior is not None
+                    else False
+                ),
                 "value_source": searched.get("value_source"),
                 "value_sample_count": searched.get("value_sample_count"),
                 "estimated_shared_win_rate": searched[
@@ -504,16 +763,121 @@ def _build_action_targets(legal_record: dict, report: dict) -> list[dict]:
             f"stable action targets contain {visit_sum} visits, expected "
             f"{completed_simulations}"
         )
+    if strategy_prior is not None and strategy_prior_strength > 0.0:
+        if strategy_prior.version in {
+            LIFECYCLE_STRATEGY_PRIOR_VERSION,
+            MAP_AWARE_STRATEGY_PRIOR_VERSION,
+        }:
+            selection_weights = _lifecycle_selection_weights(
+                targets,
+                strategy_prior_strength,
+            )
+        else:
+            selection_weights = []
+            for target in targets:
+                score = float(target["strategy_prior_score"])
+                weight = (
+                    0.0
+                    if target["strategy_guarded"]
+                    else int(target["visits"])
+                    * math.exp(strategy_prior_strength * 2.0 * score)
+                )
+                selection_weights.append(weight)
+        total_weight = sum(selection_weights)
+        if not math.isfinite(total_weight) or total_weight <= 0.0:
+            raise RuntimeError("strategy-guided action targets have no visit mass")
+        for target, weight in zip(targets, selection_weights, strict=True):
+            target["selection_weight"] = weight
+            target["policy_target"] = weight / total_weight
     return targets
 
 
-def _sample_action_index(targets: list[dict], selection_seed: int) -> int:
-    total_visits = sum(int(target["visits"]) for target in targets)
-    if total_visits <= 0:
-        raise RuntimeError("cannot sample an action from zero visits")
+def _lifecycle_selection_weights(
+    targets: list[dict], strategy_prior_strength: float
+) -> list[float]:
+    grouped_indices: dict[str, list[int]] = {}
+    for index, target in enumerate(targets):
+        grouped_indices.setdefault(
+            card_invariant_action_intent(str(target["key"])), []
+        ).append(index)
+
+    weights = [0.0] * len(targets)
+    for indices in grouped_indices.values():
+        visited = [
+            index
+            for index in indices
+            if int(targets[index]["visits"]) > 0
+            and not targets[index]["strategy_guarded"]
+        ]
+        if not visited:
+            continue
+        group_visits = sum(int(targets[index]["visits"]) for index in visited)
+        group_score = max(
+            float(targets[index]["strategy_prior_score"])
+            for index in visited
+        )
+        group_weight = group_visits * math.exp(
+            strategy_prior_strength * 2.0 * group_score
+        )
+        conditional = [
+            max(float(targets[index]["strategy_prior_probability"]), 1e-8)
+            for index in visited
+        ]
+        conditional_total = sum(conditional)
+        for index, probability in zip(visited, conditional, strict=True):
+            weights[index] = group_weight * probability / conditional_total
+    return weights
+
+
+def _sample_action_index(
+    targets: list[dict], selection_seed: int, temperature: float = 1.0
+) -> int:
+    has_selection_weights = any("selection_weight" in target for target in targets)
+    weights = [
+        float(target.get("selection_weight", 0.0))
+        if has_selection_weights
+        else float(target["visits"])
+        for target in targets
+    ]
+    if not math.isfinite(temperature) or not 0.0 <= temperature <= 10.0:
+        raise ValueError("selection temperature must be between 0 and 10")
+    if not weights or any(
+        not math.isfinite(weight) or weight < 0.0 for weight in weights
+    ):
+        raise RuntimeError("cannot select from invalid root weights")
+    if max(weights, default=0.0) <= 0.0:
+        raise RuntimeError("cannot select an action from zero root weight")
+    if temperature == 0.0:
+        selected = max(range(len(weights)), key=weights.__getitem__)
+        return int(targets[selected]["index"])
+
+    if temperature != 1.0:
+        maximum_log_weight = max(
+            math.log(weight) for weight in weights if weight > 0.0
+        )
+        inverse_temperature = 1.0 / temperature
+        weights = [
+            0.0
+            if weight == 0.0
+            else math.exp(
+                (math.log(weight) - maximum_log_weight) * inverse_temperature
+            )
+            for weight in weights
+        ]
+
+    if has_selection_weights or temperature != 1.0:
+        total_weight = sum(weights)
+        draw = (_splitmix64(selection_seed) / float(1 << 64)) * total_weight
+        for target, weight in zip(targets, weights, strict=True):
+            if draw < weight:
+                return int(target["index"])
+            draw -= weight
+        return int(targets[-1]["index"])
+
+    total_visits = sum(int(weight) for weight in weights)
     draw = _splitmix64(selection_seed) % total_visits
-    for target in targets:
-        visits = int(target["visits"])
+    for target, weight in zip(targets, weights, strict=True):
+        visits = int(weight)
         if draw < visits:
             return int(target["index"])
         draw -= visits

@@ -21,6 +21,7 @@ class PolicyValuePrediction:
     policy_probabilities: tuple[float, ...]
     shared_win_rate: float
     victory_point_margin: float
+    actor_victory_points: float
 
     def to_dict(self) -> dict:
         return {
@@ -30,6 +31,7 @@ class PolicyValuePrediction:
             "policy_probabilities": list(self.policy_probabilities),
             "shared_win_rate": self.shared_win_rate,
             "victory_point_margin": self.victory_point_margin,
+            "actor_victory_points": self.actor_victory_points,
         }
 
 
@@ -39,6 +41,7 @@ class BatchValuePrediction:
     checkpoint_step: int
     shared_win_rates: tuple[float, ...]
     victory_point_margins: tuple[float, ...]
+    actor_victory_points: tuple[float, ...]
 
     def to_dict(self) -> dict:
         return {
@@ -46,6 +49,7 @@ class BatchValuePrediction:
             "checkpoint_step": self.checkpoint_step,
             "shared_win_rates": list(self.shared_win_rates),
             "victory_point_margins": list(self.victory_point_margins),
+            "actor_victory_points": list(self.actor_victory_points),
         }
 
 
@@ -115,6 +119,10 @@ class CheckpointEvaluator:
             output.victory_point_margin_normalized
             * self.model.config.vp_margin_scale
         ).cpu()
+        actor_victory_points = (
+            output.actor_victory_points_normalized
+            * self.model.config.actor_vp_scale
+        ).clamp_min(0.0).cpu()
         flat_probability_values = tuple(
             float(value) for value in flat_probabilities.cpu()
         )
@@ -125,6 +133,7 @@ class CheckpointEvaluator:
             probability_values = flat_probability_values[action_offset:next_offset]
             shared_win_rate = float(shared_win_rates[batch_index])
             victory_point_margin = float(victory_point_margins[batch_index])
+            actor_victory_points_value = float(actor_victory_points[batch_index])
             if not math.isclose(sum(probability_values), 1.0, abs_tol=1e-5):
                 raise RuntimeError(
                     f"model policy probabilities for batch row {batch_index} "
@@ -141,6 +150,10 @@ class CheckpointEvaluator:
                 raise RuntimeError(
                     f"model produced an invalid VP-margin estimate for batch row {batch_index}"
                 )
+            if not math.isfinite(actor_victory_points_value):
+                raise RuntimeError(
+                    f"model produced an invalid actor-VP estimate for batch row {batch_index}"
+                )
             predictions.append(
                 PolicyValuePrediction(
                     model_id=self.model_id,
@@ -149,6 +162,7 @@ class CheckpointEvaluator:
                     policy_probabilities=probability_values,
                     shared_win_rate=shared_win_rate,
                     victory_point_margin=victory_point_margin,
+                    actor_victory_points=actor_victory_points_value,
                 )
             )
             action_offset = next_offset
@@ -172,7 +186,9 @@ class CheckpointEvaluator:
         if request_schema is not None:
             self.schema.assert_compatible(request_schema, "value inference request")
         states = build_value_state_batch(state_records, self.schema).to(self.device)
-        shared_win_logits, normalized_margins = self.model.forward_values(states)
+        shared_win_logits, normalized_margins, normalized_actor_vps = (
+            self.model.forward_values(states)
+        )
         shared_win_rates = tuple(
             float(value) for value in torch.sigmoid(shared_win_logits).cpu()
         )
@@ -182,6 +198,12 @@ class CheckpointEvaluator:
                 normalized_margins * self.model.config.vp_margin_scale
             ).cpu()
         )
+        actor_victory_points = tuple(
+            float(value)
+            for value in (
+                normalized_actor_vps * self.model.config.actor_vp_scale
+            ).clamp_min(0.0).cpu()
+        )
         if any(
             not math.isfinite(value) or not 0.0 <= value <= 1.0
             for value in shared_win_rates
@@ -189,11 +211,14 @@ class CheckpointEvaluator:
             raise RuntimeError("model produced an invalid batched shared-win estimate")
         if any(not math.isfinite(value) for value in victory_point_margins):
             raise RuntimeError("model produced an invalid batched VP-margin estimate")
+        if any(not math.isfinite(value) for value in actor_victory_points):
+            raise RuntimeError("model produced an invalid batched actor-VP estimate")
         return BatchValuePrediction(
             model_id=self.model_id,
             checkpoint_step=self.checkpoint_step,
             shared_win_rates=shared_win_rates,
             victory_point_margins=victory_point_margins,
+            actor_victory_points=actor_victory_points,
         )
 
     def predict_successor_action_values(
@@ -216,6 +241,7 @@ class CheckpointEvaluator:
                 checkpoint_step=self.checkpoint_step,
                 shared_win_rates=(),
                 victory_point_margins=(),
+                actor_victory_points=(),
             )
         return aggregate_two_player_successor_values(successor_batch, prediction)
 
@@ -314,6 +340,7 @@ def build_inference_batch_many(
         policy_targets=torch.zeros(total_actions, dtype=torch.float32),
         shared_win_targets=torch.zeros(len(states), dtype=torch.float32),
         victory_point_margin_targets=torch.zeros(len(states), dtype=torch.float32),
+        actor_victory_points_targets=torch.zeros(len(states), dtype=torch.float32),
         action_keys=tuple(batched_action_keys),
         record_ids=tuple((0, batch_index) for batch_index in range(len(states))),
     )
@@ -363,7 +390,7 @@ def aggregate_two_player_successor_values(
         raise ValueError("successor batch states and samples must be arrays")
     if len(prediction.shared_win_rates) != len(states) or len(
         prediction.victory_point_margins
-    ) != len(states):
+    ) != len(states) or len(prediction.actor_victory_points) != len(states):
         raise ValueError("batched predictions do not match successor states")
     if len(samples) != len(action_keys) * determinizations:
         raise ValueError("successor batch does not contain every action sample")

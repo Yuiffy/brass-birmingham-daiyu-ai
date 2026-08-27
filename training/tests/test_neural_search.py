@@ -52,6 +52,7 @@ class NeuralSearchTests(unittest.TestCase):
             policy_probabilities=(0.75, 0.25),
             shared_win_rate=0.6,
             victory_point_margin=2.0,
+            actor_victory_points=70.0,
         )
         report = run_batched_neural_puct(
             _CompletingGame(),

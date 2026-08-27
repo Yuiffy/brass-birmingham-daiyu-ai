@@ -175,6 +175,7 @@ class InferenceRequestHandler(BaseHTTPRequestHandler):
                             ),
                             "shared_win_rate": prediction.shared_win_rate,
                             "victory_point_margin": prediction.victory_point_margin,
+                            "actor_victory_points": prediction.actor_victory_points,
                         }
                         for request_id, prediction in zip(
                             request_ids, predictions, strict=True

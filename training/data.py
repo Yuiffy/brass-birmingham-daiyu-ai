@@ -27,6 +27,7 @@ class PositionExample:
     policy_target: torch.Tensor
     shared_win_target: torch.Tensor
     victory_point_margin_target: torch.Tensor
+    actor_victory_points_target: torch.Tensor
     game_index: int
     position_index: int
 
@@ -41,6 +42,7 @@ class TrainingBatch:
     policy_targets: torch.Tensor
     shared_win_targets: torch.Tensor
     victory_point_margin_targets: torch.Tensor
+    actor_victory_points_targets: torch.Tensor
     action_keys: tuple[tuple[str, ...], ...]
     record_ids: tuple[tuple[int, int], ...]
 
@@ -66,6 +68,9 @@ class TrainingBatch:
             victory_point_margin_targets=self.victory_point_margin_targets.to(
                 device, non_blocking=non_blocking
             ),
+            actor_victory_points_targets=self.actor_victory_points_targets.to(
+                device, non_blocking=non_blocking
+            ),
             action_keys=self.action_keys,
             record_ids=self.record_ids,
         )
@@ -87,6 +92,7 @@ class SelfPlayDataset(Dataset[PositionExample]):
         self.metadata: list[dict] = []
         self.engine_revisions: set[str] = set()
         self.game_seeds: set[int] = set()
+        self.game_victory_points: dict[tuple[Path, int], tuple[int, ...]] = {}
         self.allow_mixed_engine_revisions = allow_mixed_engine_revisions
         self._positions: list[PositionLocator] = []
         self._handles: dict[Path, BinaryIO] = {}
@@ -146,6 +152,26 @@ class SelfPlayDataset(Dataset[PositionExample]):
                 elif record_type == "position":
                     self._positions.append(PositionLocator(path, offset, line_number))
                 elif record_type == "game":
+                    game_index = _non_negative_int(
+                        record.get("game_index"), f"{path}:{line_number}: game_index"
+                    )
+                    raw_victory_points = record.get("victory_points")
+                    if not isinstance(raw_victory_points, list) or not raw_victory_points:
+                        raise ValueError(
+                            f"{path}:{line_number}: game.victory_points is required"
+                        )
+                    victory_points = tuple(
+                        _non_negative_int(
+                            value, f"{path}:{line_number}: victory_points"
+                        )
+                        for value in raw_victory_points
+                    )
+                    game_key = (path, game_index)
+                    if game_key in self.game_victory_points:
+                        raise ValueError(
+                            f"{path}:{line_number}: duplicate game index {game_index}"
+                        )
+                    self.game_victory_points[game_key] = victory_points
                     game_seed = record.get("game_seed")
                     if game_seed is not None:
                         self.game_seeds.add(
@@ -216,6 +242,7 @@ class SelfPlayDataset(Dataset[PositionExample]):
         action_keys: list[str] = []
         visits: list[int] = []
         serialized_targets: list[float] = []
+        serialized_search_targets: list[float] = []
         for expected_index, action in enumerate(raw_actions):
             if not isinstance(action, dict):
                 raise ValueError(
@@ -261,6 +288,18 @@ class SelfPlayDataset(Dataset[PositionExample]):
                     f"{context}: action {expected_index} has invalid policy target"
                 )
             serialized_targets.append(float(serialized_target))
+            serialized_search_target = action.get(
+                "search_policy_target", serialized_target
+            )
+            if (
+                isinstance(serialized_search_target, bool)
+                or not isinstance(serialized_search_target, (int, float))
+                or not math.isfinite(float(serialized_search_target))
+            ):
+                raise ValueError(
+                    f"{context}: action {expected_index} has invalid search policy target"
+                )
+            serialized_search_targets.append(float(serialized_search_target))
 
         visit_sum = sum(visits)
         if visit_sum <= 0:
@@ -268,11 +307,17 @@ class SelfPlayDataset(Dataset[PositionExample]):
         policy_values = [visit / visit_sum for visit in visits]
         if any(
             abs(expected - serialized) > 1e-5
-            for expected, serialized in zip(policy_values, serialized_targets)
+            for expected, serialized in zip(policy_values, serialized_search_targets)
         ):
             raise ValueError(
-                f"{context}: serialized policy targets disagree with visits"
+                f"{context}: serialized search policy targets disagree with visits"
             )
+        if any(value < 0.0 for value in serialized_targets):
+            raise ValueError(f"{context}: policy targets must be non-negative")
+        behavior_mass = sum(serialized_targets)
+        if not math.isfinite(behavior_mass) or behavior_mass <= 0.0:
+            raise ValueError(f"{context}: policy targets have no mass")
+        behavior_values = [value / behavior_mass for value in serialized_targets]
 
         selected_action_index = _non_negative_int(
             record.get("selected_action_index"), f"{context}: selected_action_index"
@@ -300,18 +345,31 @@ class SelfPlayDataset(Dataset[PositionExample]):
         if not isinstance(vp_margin, int) or isinstance(vp_margin, bool):
             raise ValueError(f"{context}: VP-margin target must be an integer")
 
+        game_index = _non_negative_int(
+            record.get("game_index"), f"{context}: game_index"
+        )
+        actor = _non_negative_int(record.get("actor"), f"{context}: actor")
+        victory_points = self.game_victory_points.get((locator.path, game_index))
+        if victory_points is None:
+            raise ValueError(
+                f"{context}: position has no preceding game victory-point record"
+            )
+        if actor >= len(victory_points):
+            raise ValueError(f"{context}: actor is outside game victory-point records")
+
         return PositionExample(
             state=state,
             action_features=tuple(action_features),
             action_keys=tuple(action_keys),
-            policy_target=torch.tensor(policy_values, dtype=torch.float32),
+            policy_target=torch.tensor(behavior_values, dtype=torch.float32),
             shared_win_target=torch.tensor(float(shared_win), dtype=torch.float32),
             victory_point_margin_target=torch.tensor(
                 float(vp_margin), dtype=torch.float32
             ),
-            game_index=_non_negative_int(
-                record.get("game_index"), f"{context}: game_index"
+            actor_victory_points_target=torch.tensor(
+                float(victory_points[actor]), dtype=torch.float32
             ),
+            game_index=game_index,
             position_index=_non_negative_int(
                 record.get("position_index"), f"{context}: position_index"
             ),
@@ -364,6 +422,9 @@ def collate_positions(examples: Iterable[PositionExample]) -> TrainingBatch:
         ),
         victory_point_margin_targets=torch.stack(
             [example.victory_point_margin_target for example in examples]
+        ),
+        actor_victory_points_targets=torch.stack(
+            [example.actor_victory_points_target for example in examples]
         ),
         action_keys=tuple(example.action_keys for example in examples),
         record_ids=tuple(

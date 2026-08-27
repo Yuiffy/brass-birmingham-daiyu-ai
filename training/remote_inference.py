@@ -19,6 +19,7 @@ class RemotePolicyValuePrediction:
     policy_probabilities: tuple[float, ...]
     shared_win_rate: float
     victory_point_margin: float
+    actor_victory_points: float
 
 
 class RemoteInferenceEvaluator:
@@ -185,6 +186,12 @@ class RemoteInferenceEvaluator:
             victory_point_margin = _finite_float(
                 evaluation.get("victory_point_margin"), "victory-point margin"
             )
+            actor_victory_points = _finite_float(
+                evaluation.get("actor_victory_points", 0.0),
+                "actor victory points",
+            )
+            if actor_victory_points < 0.0:
+                raise RuntimeError("remote inference returned invalid actor victory points")
             predictions.append(
                 RemotePolicyValuePrediction(
                     model_id=self.model_id,
@@ -193,6 +200,7 @@ class RemoteInferenceEvaluator:
                     policy_probabilities=probabilities,
                     shared_win_rate=shared_win_rate,
                     victory_point_margin=victory_point_margin,
+                    actor_victory_points=actor_victory_points,
                 )
             )
         return tuple(predictions)

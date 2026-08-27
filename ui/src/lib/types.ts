@@ -228,3 +228,25 @@ export interface AnalysisExplanation {
 	evidence: string[];
 	caveat: string;
 }
+
+export interface ReplayMove {
+	player_idx: number;
+	action_type: string;
+	action_key: string | null;
+	selections: string[];
+}
+
+export interface ReplayPosition {
+	index: number;
+	position_key: string;
+	player_idx: number;
+	state: GameState;
+	analysis: AnalysisReport | null;
+	move: ReplayMove | null;
+}
+
+export interface ReplayData {
+	game_id: number;
+	positions: ReplayPosition[];
+	final_state: GameState | null;
+}

@@ -1,0 +1,49 @@
+- generic [ref=e680]:
+  - generic [ref=e686]:
+    - generic [ref=e687]: 当前手牌 · Brunel
+    - generic [ref=e914]: 8 cards (hidden)
+  - generic [ref=e717]:
+    - navigation "侧边栏视图" [ref=e718]:
+      - button "对局" [ref=e719] [cursor=pointer]
+      - button "AI 分析" [ref=e723] [cursor=pointer]
+    - region "对局控制权" [ref=e737]:
+      - generic [ref=e743]:
+        - strong [ref=e744]: 手动操作
+        - generic [ref=e745]: Brunel
+      - generic [ref=e746]:
+        - generic [ref=e747]:
+          - generic [ref=e748]: 模式
+          - combobox "对局模式" [disabled] [ref=e749]:
+            - option "人机对练"
+            - option "AI 观战"
+            - option "全部手动" [selected]
+        - generic "全部手动" [ref=e920]
+    - generic [ref=e927]:
+      - generic [ref=e928]:
+        - generic [ref=e929]: Canal Era
+        - generic [ref=e930]: Turn 10 · Round 5/10 · Action 1/2
+        - button "Seed 17675849558288239000" [ref=e931] [cursor=pointer]
+      - generic [ref=e935]:
+        - heading "Players (Turn Order)" [level=3] [ref=e936]
+        - generic [ref=e937]:
+          - generic [ref=e938]: "1"
+          - generic [ref=e940]: Coade
+          - generic [ref=e941]: £18 · VP:0 · Inc:-3
+          - button "Mat" [ref=e942] [cursor=pointer]
+          - button "Discard" [ref=e943] [cursor=pointer]
+        - generic [ref=e944]:
+          - generic [ref=e945]: "2"
+          - generic [ref=e947]: Brunel
+          - generic [ref=e948]: £11 · VP:0 · Inc:-3
+          - button "Mat" [ref=e949] [cursor=pointer]
+          - button "Discard" [ref=e950] [cursor=pointer]
+      - generic [ref=e951]:
+        - heading "Market" [level=3] [ref=e952]
+        - generic [ref=e953]: "Coal: 12/14 Iron: 10/10"
+      - generic [ref=e956]:
+        - button "My Industry Mat" [ref=e957] [cursor=pointer]
+        - button "My Discard" [ref=e958] [cursor=pointer]
+      - heading "Actions" [level=3] [ref=e960]
+      - generic [ref=e961]:
+        - heading "Log" [level=3] [ref=e962]
+        - generic [ref=e963]: "Loaded game #50"
