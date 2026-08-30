@@ -34,7 +34,7 @@ services:
       - -m
       - training.serve_inference
       - --checkpoint
-      - output/champion-iter2-strategy.pt
+      - output/champion-iter3-mixed-v5-v6.pt
       - --host
       - 0.0.0.0
       - --port

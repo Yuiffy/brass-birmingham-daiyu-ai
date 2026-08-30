@@ -1,12 +1,27 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, replace
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .data import TrainingBatch
+from .data import (
+    ACTOR_VP_RAILROAD_SCALE_DEFAULT,
+    ACTOR_VP_TARGET_ABSOLUTE,
+    SUPPORTED_ACTOR_VP_TARGET_MODES,
+    TrainingBatch,
+    actor_vp_target_scales,
+)
+
+
+FINAL_VP_QUALITY_REFERENCE_VP = 100.0
+FINAL_VP_QUALITY_WEIGHT_MAX = 2.0
+# Human demonstrations are intentionally applied as a residual policy signal.
+# Keeping the residual bounded prevents a small, distribution-specific replay
+# shard from overwhelming the established policy on out-of-distribution states.
+POLICY_ADAPTER_MAX_LOGIT_DELTA = 1.0
 
 
 @dataclass(frozen=True)
@@ -18,8 +33,10 @@ class ModelConfig:
     trunk_dim: int = 256
     vp_margin_scale: float = 100.0
     actor_vp_scale: float = 140.0
+    actor_vp_railroad_scale: float = ACTOR_VP_RAILROAD_SCALE_DEFAULT
     policy_adapter_dim: int = 0
     separate_value_encoder: bool = False
+    actor_vp_target_mode: str = ACTOR_VP_TARGET_ABSOLUTE
 
     def validate(self) -> None:
         for name in (
@@ -37,6 +54,13 @@ class ModelConfig:
             raise ValueError("vp_margin_scale must be positive")
         if self.actor_vp_scale <= 0.0:
             raise ValueError("actor_vp_scale must be positive")
+        if self.actor_vp_railroad_scale <= 0.0:
+            raise ValueError("actor_vp_railroad_scale must be positive")
+        if self.actor_vp_target_mode not in SUPPORTED_ACTOR_VP_TARGET_MODES:
+            raise ValueError(
+                "actor_vp_target_mode must be one of "
+                f"{SUPPORTED_ACTOR_VP_TARGET_MODES}"
+            )
         if self.policy_adapter_dim < 0:
             raise ValueError("policy_adapter_dim must be non-negative")
         if not isinstance(self.separate_value_encoder, bool):
@@ -182,11 +206,14 @@ class BrassPolicyValueNet(nn.Module):
             owning_adapter_state_context = adapter_state_context.index_select(
                 0, batch.action_batch_indices
             )
-            policy_logits = policy_logits + self.policy_adapter_scorer(
+            adapter_logits = self.policy_adapter_scorer(
                 torch.cat(
                     (owning_adapter_state_context, adapter_action_context), dim=-1
                 )
             ).squeeze(-1)
+            policy_logits = policy_logits + POLICY_ADAPTER_MAX_LOGIT_DELTA * torch.tanh(
+                adapter_logits / POLICY_ADAPTER_MAX_LOGIT_DELTA
+            )
         (
             shared_win_logits,
             victory_point_margin_normalized,
@@ -273,6 +300,24 @@ def expand_with_policy_adapter(
     return expanded
 
 
+def with_actor_vp_target_mode(
+    model: BrassPolicyValueNet,
+    actor_vp_target_mode: str,
+) -> BrassPolicyValueNet:
+    if actor_vp_target_mode not in SUPPORTED_ACTOR_VP_TARGET_MODES:
+        raise ValueError(
+            "actor_vp_target_mode must be one of "
+            f"{SUPPORTED_ACTOR_VP_TARGET_MODES}"
+        )
+    if model.config.actor_vp_target_mode == actor_vp_target_mode:
+        return model
+    converted = BrassPolicyValueNet(
+        replace(model.config, actor_vp_target_mode=actor_vp_target_mode)
+    )
+    converted.load_state_dict(model.state_dict(), strict=True)
+    return converted
+
+
 def fuse_policy_and_value_models(
     policy_model: BrassPolicyValueNet,
     value_model: BrassPolicyValueNet,
@@ -300,6 +345,8 @@ def fuse_policy_and_value_models(
             policy_config,
             vp_margin_scale=value_config.vp_margin_scale,
             actor_vp_scale=value_config.actor_vp_scale,
+            actor_vp_railroad_scale=value_config.actor_vp_railroad_scale,
+            actor_vp_target_mode=value_config.actor_vp_target_mode,
             separate_value_encoder=True,
         )
     )
@@ -336,36 +383,76 @@ def compute_losses(
     batch: TrainingBatch,
     vp_margin_scale: float,
     actor_vp_scale: float = 140.0,
+    actor_vp_railroad_scale: float = ACTOR_VP_RAILROAD_SCALE_DEFAULT,
+    actor_vp_target_mode: str = ACTOR_VP_TARGET_ABSOLUTE,
     shared_win_weight: float = 1.0,
     victory_point_margin_weight: float = 0.25,
     actor_victory_points_weight: float = 0.25,
+    final_vp_quality_weight: float = 0.0,
 ) -> LossOutput:
     if vp_margin_scale <= 0.0:
         raise ValueError("vp_margin_scale must be positive")
     if actor_vp_scale <= 0.0:
         raise ValueError("actor_vp_scale must be positive")
+    if (
+        not math.isfinite(final_vp_quality_weight)
+        or not 0.0 <= final_vp_quality_weight <= FINAL_VP_QUALITY_WEIGHT_MAX
+    ):
+        raise ValueError(
+            "final_vp_quality_weight must be finite and between 0 and "
+            f"{FINAL_VP_QUALITY_WEIGHT_MAX}"
+        )
+    if (
+        final_vp_quality_weight > 0.0
+        and actor_vp_target_mode != ACTOR_VP_TARGET_ABSOLUTE
+    ):
+        raise ValueError(
+            "final_vp_quality_weight requires absolute_final_vp targets"
+        )
     if output.actor_victory_points_normalized.shape != batch.actor_victory_points_targets.shape:
         raise ValueError("actor victory-point output and targets must have equal shapes")
+    position_weights = final_vp_quality_position_weights(
+        batch.actor_victory_points_targets,
+        final_vp_quality_weight,
+    )
+    policy_position_weights = _policy_position_weights(batch, position_weights)
+    value_position_weights = _value_position_weights(batch, position_weights)
     policy_cross_entropy, policy_kl, policy_top1_accuracy = _segmented_policy_metrics(
         output.policy_logits,
         batch.policy_targets,
         batch.action_counts,
+        policy_position_weights,
     )
-    shared_win_bce = F.binary_cross_entropy_with_logits(
-        output.shared_win_logits,
-        batch.shared_win_targets,
+    shared_win_bce = _weighted_mean(
+        F.binary_cross_entropy_with_logits(
+            output.shared_win_logits,
+            batch.shared_win_targets,
+            reduction="none",
+        ),
+        value_position_weights,
     )
     normalized_margin_target = batch.victory_point_margin_targets / vp_margin_scale
-    victory_point_margin_huber = F.smooth_l1_loss(
-        output.victory_point_margin_normalized,
-        normalized_margin_target,
+    victory_point_margin_huber = _weighted_mean(
+        F.smooth_l1_loss(
+            output.victory_point_margin_normalized,
+            normalized_margin_target,
+            reduction="none",
+        ),
+        value_position_weights,
     )
-    normalized_actor_vp_target = (
-        batch.actor_victory_points_targets / actor_vp_scale
+    normalized_actor_vp_target = batch.actor_victory_points_targets / actor_vp_target_scales(
+        batch.states,
+        target_mode=actor_vp_target_mode,
+        actor_vp_scale=actor_vp_scale,
+        actor_vp_railroad_scale=actor_vp_railroad_scale,
     )
-    actor_victory_points_huber = F.smooth_l1_loss(
-        output.actor_victory_points_normalized,
-        normalized_actor_vp_target,
+    actor_victory_points_huber = _weighted_mean(
+        F.smooth_l1_loss(
+            output.actor_victory_points_normalized,
+            normalized_actor_vp_target,
+            reduction="none",
+        ),
+        value_position_weights,
     )
     total = (
         policy_cross_entropy
@@ -382,6 +469,85 @@ def compute_losses(
         victory_point_margin_huber=victory_point_margin_huber,
         actor_victory_points_huber=actor_victory_points_huber,
     )
+
+
+def final_vp_quality_position_weights(
+    actor_victory_points_targets: torch.Tensor,
+    quality_weight: float = 0.0,
+) -> torch.Tensor:
+    """Return normalized position weights that mildly favor high-VP trajectories."""
+    if actor_victory_points_targets.ndim != 1:
+        raise ValueError("actor victory-point targets must be one-dimensional")
+    if (
+        not math.isfinite(quality_weight)
+        or not 0.0 <= quality_weight <= FINAL_VP_QUALITY_WEIGHT_MAX
+    ):
+        raise ValueError(
+            "quality_weight must be finite and between 0 and "
+            f"{FINAL_VP_QUALITY_WEIGHT_MAX}"
+        )
+    if (
+        not torch.isfinite(actor_victory_points_targets).all().item()
+        or (actor_victory_points_targets < 0.0).any().item()
+    ):
+        raise ValueError("actor victory-point targets must be finite and non-negative")
+    if quality_weight == 0.0:
+        return torch.ones_like(actor_victory_points_targets)
+    quality = (
+        actor_victory_points_targets / FINAL_VP_QUALITY_REFERENCE_VP
+    ).clamp(0.0, 1.0)
+    weights = 1.0 + quality_weight * quality
+    return weights / weights.mean().clamp_min(torch.finfo(weights.dtype).tiny)
+
+
+def _weighted_mean(values: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
+    if values.shape != weights.shape:
+        raise ValueError("loss values and position weights must have equal shapes")
+    return (values * weights).sum() / weights.sum().clamp_min(
+        torch.finfo(values.dtype).tiny
+    )
+
+
+def _policy_position_weights(
+    batch: TrainingBatch, quality_weights: torch.Tensor
+) -> torch.Tensor:
+    """Combine optional per-position expert weights with quality weighting.
+
+    Expert weighting is deliberately applied only to the policy metrics. Value
+    heads use their own optional mask, so a policy-only demonstration cannot
+    multiply a contaminated terminal value target into the loss.
+    """
+    explicit = batch.policy_loss_weights
+    if explicit is None:
+        return quality_weights
+    if explicit.ndim != 1 or explicit.shape != quality_weights.shape:
+        raise ValueError("policy loss weights must match the position batch")
+    explicit = explicit.to(device=quality_weights.device, dtype=quality_weights.dtype)
+    if (
+        not torch.isfinite(explicit).all().item()
+        or (explicit < 0.0).any().item()
+        or not (explicit > 0.0).any().item()
+    ):
+        raise ValueError("policy loss weights must be finite, non-negative, and non-zero")
+    return quality_weights * explicit
+
+
+def _value_position_weights(
+    batch: TrainingBatch, quality_weights: torch.Tensor
+) -> torch.Tensor:
+    """Combine trajectory-quality weights with optional value-target masks."""
+    explicit = batch.value_loss_weights
+    if explicit is None:
+        return quality_weights
+    if explicit.ndim != 1 or explicit.shape != quality_weights.shape:
+        raise ValueError("value loss weights must match the position batch")
+    explicit = explicit.to(device=quality_weights.device, dtype=quality_weights.dtype)
+    if (
+        not torch.isfinite(explicit).all().item()
+        or (explicit < 0.0).any().item()
+    ):
+        raise ValueError("value loss weights must be finite and non-negative")
+    return quality_weights * explicit
 
 
 def segmented_policy_probabilities(
@@ -402,12 +568,20 @@ def _segmented_policy_metrics(
     logits: torch.Tensor,
     targets: torch.Tensor,
     action_counts: torch.Tensor,
+    position_weights: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    if position_weights is None:
+        position_weights = torch.ones(
+            action_counts.shape[0], dtype=logits.dtype, device=logits.device
+        )
+    if position_weights.ndim != 1 or position_weights.shape[0] != action_counts.shape[0]:
+        raise ValueError("policy position weights must match action-count positions")
     cross_entropies = []
     kls = []
     top1 = []
+    segment_weights = []
     start = 0
-    for count in action_counts.detach().cpu().tolist():
+    for position_index, count in enumerate(action_counts.detach().cpu().tolist()):
         if count <= 0:
             raise ValueError("each position must contain at least one legal action")
         end = start + count
@@ -433,11 +607,13 @@ def _segmented_policy_metrics(
         top1.append(
             (segment_logits.argmax() == segment_targets.argmax()).to(dtype=logits.dtype)
         )
+        segment_weights.append(position_weights[position_index])
         start = end
     if start != logits.numel() or targets.numel() != logits.numel():
         raise ValueError("action counts do not cover policy logits and targets")
+    weights = torch.stack(segment_weights)
     return (
-        torch.stack(cross_entropies).mean(),
-        torch.stack(kls).mean(),
-        torch.stack(top1).mean(),
+        _weighted_mean(torch.stack(cross_entropies), weights),
+        _weighted_mean(torch.stack(kls), weights),
+        _weighted_mean(torch.stack(top1), weights),
     )

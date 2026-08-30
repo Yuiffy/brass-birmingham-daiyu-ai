@@ -132,6 +132,40 @@ pub fn enumerate_legal_actions(runner: &GameRunner) -> Result<Vec<LegalAction>, 
     Ok(actions)
 }
 
+/// Enumerate one root family without expanding unrelated actions.
+///
+/// `BuildRailroad` intentionally retains both the single- and double-rail
+/// branches exposed by the shared network action session.
+pub(crate) fn enumerate_legal_actions_for_root(
+    runner: &GameRunner,
+    root: ActionType,
+) -> Result<Vec<LegalAction>, String> {
+    ensure_decision_boundary(runner)?;
+    if runner.is_game_finished() {
+        return Ok(Vec::new());
+    }
+
+    let canonical_root = if root == ActionType::BuildDoubleRailroad {
+        ActionType::BuildRailroad
+    } else {
+        root
+    };
+    let mut decision_state = runner.clone();
+    let roots = decision_state.start_turn();
+    if !roots.contains(&canonical_root) {
+        return Ok(Vec::new());
+    }
+
+    let mut branch = decision_state.clone();
+    branch.framework.start_action_session(canonical_root);
+    let mut actions = Vec::new();
+    enumerate_session(branch, canonical_root, Vec::new(), &mut actions)?;
+    if root == ActionType::BuildDoubleRailroad {
+        actions.retain(|action| action.intent.action_type == ActionType::BuildDoubleRailroad);
+    }
+    Ok(actions)
+}
+
 fn ensure_decision_boundary(runner: &GameRunner) -> Result<(), String> {
     if runner.framework.action_context.is_some() {
         return Err("cannot enumerate or apply during an active action session".to_string());
@@ -369,10 +403,17 @@ fn resource_source_key(source: crate::board::resources::ResourceSource) -> Strin
     }
 }
 
-fn choice_set_contains(set: &ChoiceSet, choice: &ActionChoice) -> bool {
+pub(crate) fn choice_set_contains(set: &ChoiceSet, choice: &ActionChoice) -> bool {
     match (set, choice) {
         (ChoiceSet::Industry(values), ActionChoice::Industry(value))
         | (ChoiceSet::SecondIndustry(values), ActionChoice::Industry(value)) => {
+            values.contains(value)
+        }
+        // The web protocol represents the second industry as a free-development
+        // choice, while the Python composite-action bridge still uses the
+        // historical `Industry` variant. Accept both encodings for the same
+        // advertised choice set.
+        (ChoiceSet::SecondIndustry(values), ActionChoice::FreeDevelopment(value)) => {
             values.contains(value)
         }
         (ChoiceSet::Card(values), ActionChoice::Card(value))

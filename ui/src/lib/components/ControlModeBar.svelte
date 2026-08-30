@@ -57,7 +57,7 @@
 		<label>
 			<span>模式</span>
 			<select value={mode} on:change={changeMode} {disabled} aria-label="对局模式">
-				<option value="human-vs-ai" disabled={players.length !== 2}>人机对练</option>
+				<option value="human-vs-ai">人机对练</option>
 				<option value="ai-vs-ai" disabled={players.length !== 2}>AI 观战</option>
 				<option value="manual">全部手动</option>
 			</select>

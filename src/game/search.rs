@@ -21,10 +21,15 @@ pub const ROOT_PUCT_METHOD: &str = "determinized_root_puct_policy_random_rollout
 pub const ROOT_PUCT_ACTION_VALUE_METHOD: &str =
     "determinized_root_puct_policy_batched_successor_value";
 pub const BATCHED_NEURAL_PUCT_METHOD: &str = "determinized_batched_neural_puct";
+/// Lightweight, explainable action ranking based on one-step state deltas.
+pub const RULE_DECISION_TREE_METHOD: &str = "rule_decision_tree_immediate_score";
 pub const RANDOM_ROLLOUT_VALUE_SOURCE: &str = "random_terminal_rollout";
 pub const SUCCESSOR_MODEL_VALUE_SOURCE: &str = "batched_successor_model";
 pub const NEURAL_TREE_VALUE_SOURCE: &str = "batched_neural_tree_search";
+/// Value source label used by the CPU-only rule policy.
+pub const RULE_IMMEDIATE_SCORE_SOURCE: &str = "rule_immediate_state_score";
 const SCORE_UTILITY_REFERENCE_VP: f64 = 140.0;
+const FINAL_VP_UTILITY_MARGIN_SCALE: f64 = 50.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RootSearchConfig {
@@ -94,6 +99,7 @@ pub struct RootSearchReport {
     pub inference_batches: Option<u64>,
     pub root_action_model_shared_win_rates: Option<Vec<f64>>,
     pub root_action_model_victory_point_margins: Option<Vec<f64>>,
+    pub root_action_model_actor_victory_points: Option<Vec<f64>>,
     pub root_action_model_shared_win_standard_errors: Option<Vec<Option<f64>>>,
     pub root_action_model_sample_counts: Option<Vec<u64>>,
     pub recommendations: Vec<RootActionEstimate>,
@@ -114,6 +120,7 @@ pub struct BatchedNeuralPuctConfig {
     pub search: RootSearchConfig,
     pub determinizations: usize,
     pub score_utility_weight: f64,
+    pub final_vp_utility_weight: f64,
     pub group_card_choices: bool,
 }
 
@@ -123,6 +130,7 @@ impl Default for BatchedNeuralPuctConfig {
             search: RootSearchConfig::default(),
             determinizations: 4,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: false,
         }
     }
@@ -138,6 +146,11 @@ impl BatchedNeuralPuctConfig {
             || !(0.0..=1.0).contains(&self.score_utility_weight)
         {
             return Err("neural score utility weight must be finite and in [0, 1]".to_string());
+        }
+        if !self.final_vp_utility_weight.is_finite()
+            || !(0.0..=1.0).contains(&self.final_vp_utility_weight)
+        {
+            return Err("neural final VP utility weight must be finite and in [0, 1]".to_string());
         }
         Ok(())
     }
@@ -226,8 +239,10 @@ pub struct RootActionValueEvaluation {
     pub action_keys: Vec<String>,
     pub shared_win_rates: Vec<f64>,
     pub victory_point_margins: Vec<f64>,
+    pub actor_victory_points: Vec<f64>,
     pub shared_win_standard_errors: Vec<Option<f64>>,
     pub sample_counts: Vec<u64>,
+    pub final_vp_utility_weight: f64,
 }
 
 impl RootActionValueEvaluation {
@@ -245,6 +260,7 @@ impl RootActionValueEvaluation {
         if self.action_keys.len() != expected
             || self.shared_win_rates.len() != expected
             || self.victory_point_margins.len() != expected
+            || self.actor_victory_points.len() != expected
             || self.shared_win_standard_errors.len() != expected
             || self.sample_counts.len() != expected
         {
@@ -275,6 +291,13 @@ impl RootActionValueEvaluation {
                     "action-value VP-margin estimate at index {index} is invalid"
                 ));
             }
+            if !self.actor_victory_points[index].is_finite()
+                || self.actor_victory_points[index] < 0.0
+            {
+                return Err(format!(
+                    "action-value actor VP estimate at index {index} is invalid"
+                ));
+            }
             if self.sample_counts[index] == 0 {
                 return Err(format!(
                     "action-value sample count at index {index} is zero"
@@ -287,6 +310,13 @@ impl RootActionValueEvaluation {
                     "action-value standard error at index {index} is invalid"
                 ));
             }
+        }
+        if !self.final_vp_utility_weight.is_finite()
+            || !(0.0..=1.0).contains(&self.final_vp_utility_weight)
+        {
+            return Err(
+                "action-value final VP utility weight must be finite and in [0, 1]".to_string(),
+            );
         }
         Ok(())
     }
@@ -309,6 +339,11 @@ pub struct RootActionEstimate {
     pub shared_win_rate_standard_error: Option<f64>,
     pub policy_probability: Option<f64>,
     pub calibrated_win_rate: Option<f64>,
+    /// Optional explainable score emitted by the CPU rule policy.  Neural and
+    /// rollout searches leave this unset so existing consumers remain
+    /// backwards-compatible.
+    pub rule_score: Option<f64>,
+    pub rule_score_breakdown: Option<crate::game::rule_ai::RuleScoreBreakdown>,
     pub immediate_effect: ImmediateEffect,
     pub sample_random_continuation: SampleRandomContinuation,
 }
@@ -486,9 +521,9 @@ impl BatchedNeuralPuctSearch {
             return Err("cannot search a finished game".to_string());
         }
         let num_players = runner.framework.board.state.players.len();
-        if num_players != 2 {
+        if !(2..=4).contains(&num_players) {
             return Err(format!(
-                "batched neural PUCT currently requires exactly two players, got {num_players}"
+                "batched neural PUCT requires between two and four players, got {num_players}"
             ));
         }
 
@@ -514,7 +549,7 @@ impl BatchedNeuralPuctSearch {
                     "root legal actions changed in determinization {determinization_index}"
                 ));
             }
-            let (root_score, opponent_score) = two_player_predicted_scores(
+            let (root_score, opponent_score) = predicted_scores_for_root(
                 &determinized,
                 root_player,
                 root_player,
@@ -691,19 +726,21 @@ impl BatchedNeuralPuctSearch {
                 actor_victory_points: evaluation.actor_victory_points,
             };
             let normalized_policy = policy.normalized_probabilities(&node.actions)?;
-            let (root_shared_win_rate, root_victory_point_margin) = to_root_perspective(
+            let (root_shared_win_rate, _model_root_victory_point_margin) = to_root_perspective(
                 self.root_player,
                 node.actor,
+                node.runner.framework.board.state.players.len(),
                 policy.shared_win_rate,
                 policy.victory_point_margin,
             )?;
-            let (root_score, opponent_score) = two_player_predicted_scores(
+            let (root_score, opponent_score) = predicted_scores_for_root(
                 &node.runner,
                 self.root_player,
                 node.actor,
                 policy.actor_victory_points,
                 policy.victory_point_margin,
             )?;
+            let root_victory_point_margin = root_score - opponent_score;
             validated.push(ValidatedNeuralSubmission {
                 request_id: evaluation.request_id,
                 normalized_policy,
@@ -775,6 +812,7 @@ impl BatchedNeuralPuctSearch {
                 stats[index].visits += edge.visits;
                 stats[index].shared_win_sum += edge.root_shared_win_sum;
                 stats[index].shared_win_square_sum += edge.root_shared_win_square_sum;
+                stats[index].final_victory_points_sum += edge.root_score_sum;
                 stats[index].victory_point_margin_sum += edge.root_victory_point_margin_sum;
             }
         }
@@ -845,7 +883,9 @@ impl BatchedNeuralPuctSearch {
                 estimated_shared_win_rate: mean_shared_win(candidate),
                 estimated_outright_win_rate: None,
                 estimated_tied_first_rate: None,
-                average_final_victory_points: None,
+                average_final_victory_points: Some(
+                    candidate.final_victory_points_sum / candidate.visits as f64,
+                ),
                 average_victory_point_margin: candidate.victory_point_margin_sum
                     / candidate.visits as f64,
                 shared_win_rate_standard_error: sample_standard_error(
@@ -855,6 +895,8 @@ impl BatchedNeuralPuctSearch {
                 ),
                 policy_probability: Some(self.normalized_root_policy[action_index]),
                 calibrated_win_rate: None,
+                rule_score: None,
+                rule_score_breakdown: None,
                 immediate_effect: immediate_effects[action_index].clone(),
                 sample_random_continuation,
             });
@@ -883,6 +925,7 @@ impl BatchedNeuralPuctSearch {
             inference_batches: Some(self.inference_batches),
             root_action_model_shared_win_rates: None,
             root_action_model_victory_point_margins: None,
+            root_action_model_actor_victory_points: None,
             root_action_model_shared_win_standard_errors: None,
             root_action_model_sample_counts: None,
             recommendations,
@@ -901,6 +944,7 @@ impl BatchedNeuralPuctSearch {
                     self.root_player,
                     self.config.search.exploration_constant,
                     self.config.score_utility_weight,
+                    self.config.final_vp_utility_weight,
                 )
             };
             let Some(edge_index) = edge_index else {
@@ -951,8 +995,15 @@ impl BatchedNeuralPuctSearch {
                         let root_shared_win_rate = outcome.shared_win_credit;
                         let root_victory_point_margin = outcome.victory_point_margin as f64;
                         let root_score = outcome.final_victory_points[self.root_player] as f64;
-                        let opponent_score =
-                            outcome.final_victory_points[1 - self.root_player] as f64;
+                        let opponent_score = outcome
+                            .final_victory_points
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(player_index, score)| {
+                                (player_index != self.root_player).then_some(*score as f64)
+                            })
+                            .max_by(|left, right| left.total_cmp(right))
+                            .unwrap_or(root_score);
                         self.trees[tree_index].nodes[node_index].edges[edge_index].child =
                             NeuralTreeChild::Terminal {
                                 root_shared_win_rate,
@@ -1081,6 +1132,7 @@ fn select_neural_edge(
     root_player: usize,
     exploration_constant: f64,
     score_utility_weight: f64,
+    final_vp_utility_weight: f64,
 ) -> Option<usize> {
     let node = tree.nodes.get(node_index)?;
     if node.pending_evaluation || node.actions.len() != node.edges.len() {
@@ -1150,11 +1202,13 @@ fn select_neural_edge(
         let actor_value = actor_utility_from_root_values(
             node,
             root_player,
+            node.runner.framework.board.state.players.len(),
             root_win_value,
             root_score,
             opponent_score,
             root_margin,
             score_utility_weight,
+            final_vp_utility_weight,
         );
         let exploration = exploration_constant * group_prior * sqrt_total
             / (1.0 + group_visits as f64 + group_virtual_visits as f64);
@@ -1172,6 +1226,7 @@ fn select_neural_edge(
         root_player,
         exploration_constant,
         score_utility_weight,
+        final_vp_utility_weight,
     )
 }
 
@@ -1182,6 +1237,7 @@ fn select_neural_edge_within_group(
     root_player: usize,
     exploration_constant: f64,
     score_utility_weight: f64,
+    final_vp_utility_weight: f64,
 ) -> Option<usize> {
     let group_visits = members
         .iter()
@@ -1221,11 +1277,13 @@ fn select_neural_edge_within_group(
         let actor_value = actor_utility_from_root_values(
             node,
             root_player,
+            node.runner.framework.board.state.players.len(),
             root_win_value,
             root_score,
             opponent_score,
             root_margin,
             score_utility_weight,
+            final_vp_utility_weight,
         );
         let conditional_prior = if group_prior > 0.0 {
             node.priors[edge_index] / group_prior
@@ -1245,27 +1303,41 @@ fn select_neural_edge_within_group(
 fn actor_utility_from_root_values(
     node: &NeuralTreeNode,
     root_player: usize,
+    num_players: usize,
     root_win_value: f64,
     root_score: f64,
     opponent_score: f64,
     root_victory_point_margin: f64,
     score_utility_weight: f64,
+    final_vp_utility_weight: f64,
 ) -> f64 {
-    if node.actor == root_player {
-        combined_actor_utility(
+    debug_assert!(num_players >= 2);
+    let (actor_win_value, actor_score, other_score, actor_margin) = if node.actor == root_player {
+        (
             root_win_value,
             root_score,
+            opponent_score,
             root_victory_point_margin,
-            score_utility_weight,
         )
     } else {
-        combined_actor_utility(
-            1.0 - root_win_value,
+        (
+            ((1.0 - root_win_value) / (num_players.saturating_sub(1) as f64)).clamp(0.0, 1.0),
             opponent_score,
+            root_score,
             -root_victory_point_margin,
-            score_utility_weight,
         )
-    }
+    };
+    combined_actor_utility(
+        actor_win_value,
+        actor_score,
+        actor_margin,
+        score_utility_weight,
+    ) + calibrated_final_vp_utility(
+        actor_win_value,
+        actor_score,
+        other_score,
+        final_vp_utility_weight,
+    )
 }
 
 fn build_neural_action_groups(
@@ -1305,6 +1377,26 @@ fn combined_actor_utility(
         (0.5 + victory_point_margin / (2.0 * SCORE_UTILITY_REFERENCE_VP)).clamp(0.0, 1.0);
     let score_quality = 0.5 * (absolute_score_quality + margin_quality);
     (1.0 - score_utility_weight) * shared_win_value + score_utility_weight * score_quality
+}
+
+/// Adds a bounded VP tie-breaker without overriding a clear win/loss estimate.
+/// The uncertainty gate makes the learned final-VP head matter most when the
+/// shared-win head cannot confidently distinguish the actions.
+fn calibrated_final_vp_utility(
+    shared_win_value: f64,
+    actor_score: f64,
+    opponent_score: f64,
+    final_vp_utility_weight: f64,
+) -> f64 {
+    if final_vp_utility_weight == 0.0 {
+        return 0.0;
+    }
+    let uncertainty = (4.0 * shared_win_value * (1.0 - shared_win_value)).clamp(0.0, 1.0);
+    let relative_quality =
+        0.5 + 0.5 * ((actor_score - opponent_score) / FINAL_VP_UTILITY_MARGIN_SCALE).tanh();
+    let absolute_quality = (actor_score / SCORE_UTILITY_REFERENCE_VP).clamp(0.0, 1.0);
+    let final_vp_quality = 0.8 * relative_quality + 0.2 * absolute_quality;
+    final_vp_utility_weight * uncertainty * (final_vp_quality - 0.5)
 }
 
 fn add_virtual_visits(tree: &mut NeuralTree, path: &[(usize, usize)]) -> Result<(), String> {
@@ -1353,6 +1445,7 @@ fn backup_neural_path(
 fn to_root_perspective(
     root_player: usize,
     evaluation_player: usize,
+    num_players: usize,
     shared_win_rate: f64,
     victory_point_margin: f64,
 ) -> Result<(f64, f64), String> {
@@ -1362,13 +1455,19 @@ fn to_root_perspective(
     if !victory_point_margin.is_finite() {
         return Err("neural leaf VP-margin estimate must be finite".to_string());
     }
-    if root_player > 1 || evaluation_player > 1 {
-        return Err("two-player neural perspective index is out of bounds".to_string());
+    if !(2..=4).contains(&num_players)
+        || root_player >= num_players
+        || evaluation_player >= num_players
+    {
+        return Err("multiplayer neural perspective index is out of bounds".to_string());
     }
     Ok(if evaluation_player == root_player {
         (shared_win_rate, victory_point_margin)
     } else {
-        (1.0 - shared_win_rate, -victory_point_margin)
+        (
+            ((1.0 - shared_win_rate) / (num_players - 1) as f64).clamp(0.0, 1.0),
+            -victory_point_margin,
+        )
     })
 }
 
@@ -1377,6 +1476,7 @@ pub fn aggregate_two_player_action_values(
     model_id: String,
     shared_win_rates: &[f64],
     victory_point_margins: &[f64],
+    actor_victory_points: &[f64],
 ) -> Result<RootActionValueEvaluation, String> {
     if batch.num_players != 2 {
         return Err(format!(
@@ -1389,18 +1489,22 @@ pub fn aggregate_two_player_action_values(
     }
     if shared_win_rates.len() != batch.states.len()
         || victory_point_margins.len() != batch.states.len()
+        || actor_victory_points.len() != batch.states.len()
     {
         return Err(format!(
-            "received {} shared-win and {} VP-margin predictions for {} successor states",
+            "received {} shared-win, {} VP-margin, and {} actor-VP predictions for {} successor states",
             shared_win_rates.len(),
             victory_point_margins.len(),
+            actor_victory_points.len(),
             batch.states.len()
         ));
     }
-    for (state_index, (shared_win_rate, victory_point_margin)) in shared_win_rates
-        .iter()
-        .zip(victory_point_margins)
-        .enumerate()
+    for (state_index, ((shared_win_rate, victory_point_margin), actor_victory_points)) in
+        shared_win_rates
+            .iter()
+            .zip(victory_point_margins)
+            .zip(actor_victory_points)
+            .enumerate()
     {
         if !shared_win_rate.is_finite() || !(0.0..=1.0).contains(shared_win_rate) {
             return Err(format!(
@@ -1412,12 +1516,18 @@ pub fn aggregate_two_player_action_values(
                 "successor VP-margin prediction at state {state_index} is invalid"
             ));
         }
+        if !actor_victory_points.is_finite() || *actor_victory_points < 0.0 {
+            return Err(format!(
+                "successor actor-VP prediction at state {state_index} is invalid"
+            ));
+        }
     }
 
     let action_count = batch.action_keys.len();
     let mut win_sums = vec![0.0; action_count];
     let mut win_square_sums = vec![0.0; action_count];
     let mut margin_sums = vec![0.0; action_count];
+    let mut actor_vp_sums = vec![0.0; action_count];
     let mut sample_counts = vec![0u64; action_count];
     for sample in &batch.samples {
         if sample.action_index >= action_count
@@ -1428,45 +1538,55 @@ pub fn aggregate_two_player_action_values(
         if sample.sample_index >= batch.determinizations_per_action {
             return Err("successor sample index is out of bounds".to_string());
         }
-        let (root_shared_win_rate, root_victory_point_margin) = if let Some(state_index) =
-            sample.state_index
-        {
-            let state = batch
-                .states
-                .get(state_index)
-                .ok_or_else(|| "successor sample state index is out of bounds".to_string())?;
-            if state.observer_idx != sample.evaluation_player
-                || sample.evaluation_player >= batch.num_players
-            {
-                return Err("successor sample evaluation player is inconsistent".to_string());
-            }
-            if sample.terminal_root_shared_win_rate.is_some()
-                || sample.terminal_root_victory_point_margin.is_some()
-            {
-                return Err("non-terminal successor sample contains terminal values".to_string());
-            }
-            let value = shared_win_rates[state_index];
-            let margin = victory_point_margins[state_index];
-            if sample.evaluation_player == batch.root_player {
-                (value, margin)
-            } else {
-                (1.0 - value, -margin)
-            }
-        } else {
-            match (
-                sample.terminal_root_shared_win_rate,
-                sample.terminal_root_victory_point_margin,
-            ) {
-                (Some(value), Some(margin)) => (value, margin),
-                _ => {
-                    return Err("terminal successor sample is missing exact root values".to_string())
+        let (root_shared_win_rate, root_victory_point_margin, root_actor_victory_points) =
+            if let Some(state_index) = sample.state_index {
+                let state = batch
+                    .states
+                    .get(state_index)
+                    .ok_or_else(|| "successor sample state index is out of bounds".to_string())?;
+                if state.observer_idx != sample.evaluation_player
+                    || sample.evaluation_player >= batch.num_players
+                {
+                    return Err("successor sample evaluation player is inconsistent".to_string());
                 }
-            }
-        };
+                if sample.terminal_root_shared_win_rate.is_some()
+                    || sample.terminal_root_victory_point_margin.is_some()
+                {
+                    return Err(
+                        "non-terminal successor sample contains terminal values".to_string()
+                    );
+                }
+                let value = shared_win_rates[state_index];
+                let margin = victory_point_margins[state_index];
+                let actor_vp = actor_victory_points[state_index];
+                if sample.evaluation_player == batch.root_player {
+                    (value, margin, actor_vp)
+                } else {
+                    (1.0 - value, -margin, (actor_vp - margin).max(0.0))
+                }
+            } else {
+                match (
+                    sample.terminal_root_shared_win_rate,
+                    sample.terminal_root_victory_point_margin,
+                    sample.terminal_root_actor_victory_points,
+                ) {
+                    (Some(value), Some(margin), Some(actor_vp))
+                        if actor_vp.is_finite() && actor_vp >= 0.0 =>
+                    {
+                        (value, margin, actor_vp)
+                    }
+                    _ => {
+                        return Err(
+                            "terminal successor sample is missing exact root values".to_string()
+                        )
+                    }
+                }
+            };
         let index = sample.action_index;
         win_sums[index] += root_shared_win_rate;
         win_square_sums[index] += root_shared_win_rate * root_shared_win_rate;
         margin_sums[index] += root_victory_point_margin;
+        actor_vp_sums[index] += root_actor_victory_points;
         sample_counts[index] += 1;
     }
 
@@ -1486,6 +1606,11 @@ pub fn aggregate_two_player_action_values(
         .zip(&sample_counts)
         .map(|(sum, count)| sum / *count as f64)
         .collect::<Vec<_>>();
+    let actor_victory_points = actor_vp_sums
+        .iter()
+        .zip(&sample_counts)
+        .map(|(sum, count)| sum / *count as f64)
+        .collect::<Vec<_>>();
     let shared_win_standard_errors = win_sums
         .iter()
         .zip(&win_square_sums)
@@ -1498,8 +1623,10 @@ pub fn aggregate_two_player_action_values(
         action_keys: batch.action_keys.clone(),
         shared_win_rates,
         victory_point_margins,
+        actor_victory_points,
         shared_win_standard_errors,
         sample_counts,
+        final_vp_utility_weight: 0.0,
     })
 }
 
@@ -1584,6 +1711,9 @@ fn search_top_actions_internal(
                 config.exploration_constant,
                 probabilities,
                 &values.shared_win_rates,
+                &values.victory_point_margins,
+                &values.actor_victory_points,
+                values.final_vp_utility_weight,
             );
             stats[candidate_idx].visits += 1;
         }
@@ -1713,6 +1843,7 @@ fn search_top_actions_internal(
                         .map(|probabilities| probabilities[candidate_idx]),
                     values.shared_win_rates[candidate_idx],
                     values.victory_point_margins[candidate_idx],
+                    values.actor_victory_points[candidate_idx],
                     values.shared_win_standard_errors[candidate_idx],
                     values.sample_counts[candidate_idx],
                     sample,
@@ -1763,6 +1894,8 @@ fn search_top_actions_internal(
             .map(|values| values.shared_win_rates.clone()),
         root_action_model_victory_point_margins: action_values
             .map(|values| values.victory_point_margins.clone()),
+        root_action_model_actor_victory_points: action_values
+            .map(|values| values.actor_victory_points.clone()),
         root_action_model_shared_win_standard_errors: action_values
             .map(|values| values.shared_win_standard_errors.clone()),
         root_action_model_sample_counts: action_values.map(|values| values.sample_counts.clone()),
@@ -1843,9 +1976,14 @@ fn select_puct_candidate_with_action_values(
     exploration_constant: f64,
     policy_probabilities: &[f64],
     action_shared_win_rates: &[f64],
+    action_victory_point_margins: &[f64],
+    action_actor_victory_points: &[f64],
+    final_vp_utility_weight: f64,
 ) -> usize {
     debug_assert_eq!(stats.len(), policy_probabilities.len());
     debug_assert_eq!(stats.len(), action_shared_win_rates.len());
+    debug_assert_eq!(stats.len(), action_victory_point_margins.len());
+    debug_assert_eq!(stats.len(), action_actor_victory_points.len());
     let sqrt_total = (total_visits + 1) as f64;
     let sqrt_total = sqrt_total.sqrt();
     let mut best_index = 0usize;
@@ -1853,7 +1991,17 @@ fn select_puct_candidate_with_action_values(
     for (candidate_idx, candidate) in stats.iter().enumerate() {
         let exploration = exploration_constant * policy_probabilities[candidate_idx] * sqrt_total
             / (1.0 + candidate.visits as f64);
-        let score = action_shared_win_rates[candidate_idx] + exploration;
+        let actor_victory_points = action_actor_victory_points[candidate_idx];
+        let opponent_victory_points =
+            (actor_victory_points - action_victory_point_margins[candidate_idx]).max(0.0);
+        let exploitation = action_shared_win_rates[candidate_idx]
+            + calibrated_final_vp_utility(
+                action_shared_win_rates[candidate_idx],
+                actor_victory_points,
+                opponent_victory_points,
+                final_vp_utility_weight,
+            );
+        let score = exploitation + exploration;
         if score > best_score {
             best_score = score;
             best_index = candidate_idx;
@@ -1899,6 +2047,8 @@ fn estimate_from_stats(
         ),
         policy_probability,
         calibrated_win_rate: None,
+        rule_score: None,
+        rule_score_breakdown: None,
         immediate_effect: immediate_effect.clone(),
         sample_random_continuation: stats
             .sample_random_continuation
@@ -1917,6 +2067,7 @@ fn estimate_from_action_value(
     policy_probability: Option<f64>,
     shared_win_rate: f64,
     victory_point_margin: f64,
+    actor_victory_points: f64,
     shared_win_standard_error: Option<f64>,
     value_sample_count: u64,
     sample_random_continuation: SampleRandomContinuation,
@@ -1932,11 +2083,13 @@ fn estimate_from_action_value(
         estimated_shared_win_rate: shared_win_rate,
         estimated_outright_win_rate: None,
         estimated_tied_first_rate: None,
-        average_final_victory_points: None,
+        average_final_victory_points: Some(actor_victory_points),
         average_victory_point_margin: victory_point_margin,
         shared_win_rate_standard_error: shared_win_standard_error,
         policy_probability,
         calibrated_win_rate: None,
+        rule_score: None,
+        rule_score_breakdown: None,
         immediate_effect: immediate_effect.clone(),
         sample_random_continuation,
     }
@@ -2208,19 +2361,26 @@ fn evaluate_finished_game(
     })
 }
 
-fn immediate_effect_for_action(
+pub(crate) fn immediate_effect_for_action(
     runner: &GameRunner,
     action: &LegalAction,
 ) -> Result<ImmediateEffect, String> {
     let before = runner;
     let mut after = runner.clone();
     action.apply(&mut after)?;
+    Ok(immediate_effect_between(before, &after))
+}
+
+/// Computes the public immediate delta between two already-materialized
+/// runners.  Keeping this separate lets lightweight policies apply each legal
+/// action exactly once instead of cloning and replaying it a second time.
+pub(crate) fn immediate_effect_between(before: &GameRunner, after: &GameRunner) -> ImmediateEffect {
     let before_state = &before.framework.board.state;
     let after_state = &after.framework.board.state;
     let before_potential_vps = potential_era_victory_points(before);
-    let after_potential_vps = potential_era_victory_points(&after);
+    let after_potential_vps = potential_era_victory_points(after);
 
-    Ok(ImmediateEffect {
+    ImmediateEffect {
         player_money_delta: zip_player_delta(before, &after, |player| player.money as i32),
         player_income_level_delta: before_state
             .players
@@ -2276,7 +2436,7 @@ fn immediate_effect_for_action(
         phase_after: after.game_phase,
         era_before: before_state.era,
         era_after: after_state.era,
-    })
+    }
 }
 
 fn zip_player_delta<F>(before: &GameRunner, after: &GameRunner, value: F) -> Vec<i32>
@@ -2305,7 +2465,7 @@ fn flipped_building_count(runner: &GameRunner) -> usize {
         .count()
 }
 
-fn potential_era_victory_points(runner: &GameRunner) -> Vec<u16> {
+pub(crate) fn potential_era_victory_points(runner: &GameRunner) -> Vec<u16> {
     let state = &runner.framework.board.state;
     let mut potential_vps = vec![0u16; state.players.len()];
     for road_idx in state.built_roads.ones() {
@@ -2342,22 +2502,34 @@ fn potential_era_victory_points(runner: &GameRunner) -> Vec<u16> {
     potential_vps
 }
 
-fn two_player_score_progress(
-    runner: &GameRunner,
-    root_player: usize,
-) -> Result<(f64, f64), String> {
+/// Returns each player's currently secured score plus the VP that can already
+/// be claimed from flipped buildings and connected links.  Keeping this as a
+/// vector makes the neural search usable for 3- and 4-player games while the
+/// tree still stores only the root score and the strongest non-root score.
+fn score_progress(runner: &GameRunner) -> Result<Vec<f64>, String> {
     let state = &runner.framework.board.state;
-    if state.players.len() != 2 || root_player >= 2 {
-        return Err("score progress requires a valid two-player root".to_string());
+    if state.players.len() < 2 {
+        return Err("score progress requires at least two players".to_string());
     }
     let potential = potential_era_victory_points(runner);
-    let score = |player_idx: usize| {
-        f64::from(state.players[player_idx].victory_points) + f64::from(potential[player_idx])
-    };
-    Ok((score(root_player), score(1 - root_player)))
+    Ok(state
+        .players
+        .iter()
+        .enumerate()
+        .map(|(player_idx, player)| {
+            f64::from(player.victory_points) + f64::from(potential[player_idx])
+        })
+        .collect())
 }
 
-fn two_player_predicted_scores(
+/// Converts the model's actor-centric absolute VP prediction into the two
+/// scalar scores needed by the tree: root score and the highest score among
+/// all non-root players.  For an opponent leaf we cannot identify which other
+/// player supplied the model's margin, so we retain the known root score and
+/// use the actor prediction for the non-root maximum.  This is deliberately a
+/// conservative multiplayer approximation; it avoids pretending a two-player
+/// zero-sum margin is exact in a free-for-all game.
+fn predicted_scores_for_root(
     runner: &GameRunner,
     root_player: usize,
     evaluation_player: usize,
@@ -2370,22 +2542,41 @@ fn two_player_predicted_scores(
     if !actor_victory_point_margin.is_finite() {
         return Err("predicted victory-point margin must be finite".to_string());
     }
-    if evaluation_player >= 2 {
-        return Err("predicted score requires a valid evaluation player".to_string());
+    let num_players = runner.framework.board.state.players.len();
+    if num_players < 2 || root_player >= num_players || evaluation_player >= num_players {
+        return Err("predicted score requires valid multiplayer player indices".to_string());
     }
 
-    let actor_score = actor_victory_points;
-    let other_score = (actor_victory_points - actor_victory_point_margin).max(0.0);
-    let (predicted_root, predicted_opponent) = if evaluation_player == root_player {
-        (actor_score, other_score)
+    let progress = score_progress(runner)?;
+    if num_players == 2 {
+        // Preserve the established two-player zero-sum conversion exactly.
+        let actor_score = actor_victory_points;
+        let other_score = (actor_victory_points - actor_victory_point_margin).max(0.0);
+        let (predicted_root, predicted_opponent) = if evaluation_player == root_player {
+            (actor_score, other_score)
+        } else {
+            (other_score, actor_score)
+        };
+        return Ok((
+            predicted_root.max(progress[root_player]),
+            predicted_opponent.max(progress[1 - root_player]),
+        ));
+    }
+    let actor_score = actor_victory_points.max(progress[evaluation_player]);
+    let inferred_best_other = (actor_victory_points - actor_victory_point_margin).max(0.0);
+    let secured_root = progress[root_player];
+    let secured_opponent = progress
+        .iter()
+        .enumerate()
+        .filter_map(|(player_idx, score)| (player_idx != root_player).then_some(*score))
+        .max_by(|left, right| left.total_cmp(right))
+        .unwrap_or(secured_root);
+
+    if evaluation_player == root_player {
+        Ok((actor_score, secured_opponent.max(inferred_best_other)))
     } else {
-        (other_score, actor_score)
-    };
-    let (secured_root, secured_opponent) = two_player_score_progress(runner, root_player)?;
-    Ok((
-        predicted_root.max(secured_root),
-        predicted_opponent.max(secured_opponent),
-    ))
+        Ok((secured_root, secured_opponent.max(actor_score)))
+    }
 }
 
 #[cfg(test)]
@@ -2412,6 +2603,27 @@ mod tests {
             combined_actor_utility(1.0, 10.0, 10.0, 0.2)
                 > combined_actor_utility(0.0, 140.0, -10.0, 0.2)
         );
+    }
+
+    #[test]
+    fn calibrated_final_vp_utility_is_relative_and_uncertainty_gated() {
+        assert_eq!(calibrated_final_vp_utility(0.5, 0.0, 0.0, 0.0), 0.0);
+        assert!(
+            calibrated_final_vp_utility(0.5, 110.0, 70.0, 0.2)
+                > calibrated_final_vp_utility(0.5, 70.0, 110.0, 0.2)
+        );
+        assert_eq!(calibrated_final_vp_utility(0.0, 110.0, 70.0, 0.2), 0.0);
+        assert_eq!(calibrated_final_vp_utility(1.0, 110.0, 70.0, 0.2), 0.0);
+    }
+
+    #[test]
+    fn multiplayer_neural_perspective_distributes_non_root_win_mass() {
+        assert_eq!(
+            to_root_perspective(0, 1, 3, 0.25, 8.0).unwrap(),
+            (0.375, -8.0)
+        );
+        assert_eq!(to_root_perspective(2, 0, 4, 0.1, -6.0).unwrap(), (0.3, 6.0));
+        assert!(to_root_perspective(0, 4, 3, 0.5, 0.0).is_err());
     }
 
     #[test]

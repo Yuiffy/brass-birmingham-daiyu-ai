@@ -37,6 +37,48 @@ fn test_first_turn_has_single_action_budget() {
 }
 
 #[test]
+fn duplicate_end_turn_cannot_advance_the_next_player() {
+    let mut runner = GameRunner::new(3, Some(12_345));
+    assert!(runner.try_end_turn().is_err());
+
+    let first_player = runner.framework.current_player;
+    runner.start_turn();
+    do_pass_action(&mut runner);
+    assert_eq!(runner.actions_remaining_in_turn, 0);
+
+    runner
+        .try_end_turn()
+        .expect("a completed turn should end successfully");
+    let next_player = runner.framework.current_player;
+    let next_turn_count = runner.turn_count;
+    assert_ne!(next_player, first_player);
+    assert!(!runner.turn_started);
+
+    let duplicate = runner.try_end_turn();
+    assert!(duplicate.is_err(), "duplicate end_turn must be rejected");
+    assert_eq!(runner.framework.current_player, next_player);
+    assert_eq!(runner.turn_count, next_turn_count);
+}
+
+#[test]
+fn strict_web_choice_rejects_invalid_value_without_mutating_session() {
+    let mut runner = GameRunner::new(2, Some(12_346));
+    runner.start_turn();
+    let choice_set = runner
+        .try_start_action(ActionType::Pass)
+        .expect("pass should be legal");
+    assert!(matches!(choice_set, ChoiceSet::Card(_)));
+    let before = runner.framework.current_session().expect("session");
+
+    assert!(runner
+        .try_apply_choice(ActionChoice::Card(usize::MAX))
+        .is_err());
+    let after = runner.framework.current_session().expect("session remains");
+    assert_eq!(before.intent, after.intent);
+    assert_eq!(before.next_choices, after.next_choices);
+}
+
+#[test]
 fn test_second_personal_turn_has_two_actions() {
     let mut runner = GameRunner::new(2, Some(1234));
 

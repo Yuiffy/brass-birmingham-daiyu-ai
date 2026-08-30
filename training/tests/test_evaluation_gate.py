@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -32,6 +33,8 @@ class EvaluationGateTests(unittest.TestCase):
         self.assertIsNone(args.champion)
         self.assertEqual(args.candidate_inference_url, "http://host.test:8766")
         self.assertEqual(args.champion_inference_url, "http://host.test:8765")
+        self.assertEqual(args.candidate_score_utility_weight, 0.0)
+        self.assertEqual(args.champion_score_utility_weight, 0.0)
 
     def test_evaluation_policy_selects_greedy_action_via_common_protocol(self) -> None:
         schema = FeatureSchema.from_schema_dict(
@@ -55,6 +58,124 @@ class EvaluationGateTests(unittest.TestCase):
         )
 
         self.assertEqual(selected, 1)
+
+    def test_evaluation_policy_passes_score_utility_weight_to_neural_search(self) -> None:
+        schema = FeatureSchema.from_schema_dict(
+            {"version": 1, "state_dim": 2, "action_dim": 4}
+        )
+        evaluator = _FakeEvaluator(schema)
+        policy = EvaluationPolicy(
+            evaluator,
+            schema,
+            "utility-candidate",
+            "checkpoint",
+            score_utility_weight=0.35,
+        )
+        report = {
+            "method": "determinized_batched_neural_puct",
+            "model_id": evaluator.model_id,
+            "completed_simulations": 4,
+            "actions": [
+                {
+                    "index": 0,
+                    "key": "a",
+                    "visits": 3,
+                    "estimated_shared_win_rate": 0.5,
+                    "policy_probability": 0.5,
+                },
+                {
+                    "index": 1,
+                    "key": "b",
+                    "visits": 1,
+                    "estimated_shared_win_rate": 0.5,
+                    "policy_probability": 0.5,
+                },
+            ],
+        }
+        with patch(
+            "training.evaluate.run_batched_neural_puct", return_value=report
+        ) as search:
+            selected = policy.select_action_with_search(
+                None,
+                {},
+                {"feature_version": 1, "features": [0.0, 1.0]},
+                {
+                    "feature_version": 1,
+                    "actions": [
+                        {"index": 0, "key": "a", "feature_indices": [0]},
+                        {"index": 1, "key": "b", "feature_indices": [1]},
+                    ],
+                },
+                2,
+                4,
+                1.5,
+                4,
+                32,
+                99,
+            )
+
+        self.assertEqual(selected, 0)
+        self.assertEqual(search.call_args.kwargs["score_utility_weight"], 0.35)
+
+    def test_evaluation_policy_uses_batched_neural_search_for_three_players(self) -> None:
+        schema = FeatureSchema.from_schema_dict(
+            {"version": 1, "state_dim": 2, "action_dim": 4}
+        )
+        evaluator = _FakeEvaluator(schema)
+        policy = EvaluationPolicy(
+            evaluator,
+            schema,
+            "three-player-candidate",
+            "checkpoint",
+        )
+        report = {
+            "method": "determinized_batched_neural_puct",
+            "model_id": evaluator.model_id,
+            "completed_simulations": 6,
+            "actions": [
+                {
+                    "index": 0,
+                    "key": "a",
+                    "visits": 1,
+                    "estimated_shared_win_rate": 0.4,
+                    "policy_probability": 0.25,
+                },
+                {
+                    "index": 1,
+                    "key": "b",
+                    "visits": 5,
+                    "estimated_shared_win_rate": 0.6,
+                    "policy_probability": 0.75,
+                },
+            ],
+        }
+        game = object()
+        with patch(
+            "training.evaluate.run_batched_neural_puct", return_value=report
+        ) as search:
+            selected = policy.select_action_with_search(
+                game,
+                {},
+                {"feature_version": 1, "features": [0.0, 1.0]},
+                {
+                    "feature_version": 1,
+                    "actions": [
+                        {"index": 0, "key": "a", "feature_indices": [0]},
+                        {"index": 1, "key": "b", "feature_indices": [1]},
+                    ],
+                },
+                3,
+                6,
+                1.5,
+                5,
+                16,
+                123,
+            )
+
+        self.assertEqual(selected, 1)
+        self.assertIs(search.call_args.args[0], game)
+        self.assertEqual(search.call_args.kwargs["determinizations"], 5)
+        self.assertEqual(search.call_args.kwargs["inference_batch_size"], 16)
 
     def test_evaluation_policy_can_apply_strategy_prior_at_the_root(self) -> None:
         schema = FeatureSchema.from_schema_dict(
@@ -239,6 +360,7 @@ class _FakeEvaluator:
             policy_probabilities=self.probabilities,
             shared_win_rate=0.5,
             victory_point_margin=0.0,
+            actor_victory_points=20.0,
         )
 
     def predict_batch(self, state_records, legal_records, request_schema=None):

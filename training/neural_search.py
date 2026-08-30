@@ -24,6 +24,7 @@ def run_batched_neural_puct(
     root_policy_probabilities: Sequence[float] | None = None,
     group_leaf_card_choices: bool = False,
     score_utility_weight: float = 0.0,
+    final_vp_utility_weight: float = 0.0,
 ) -> dict:
     if not 1 <= inference_batch_size <= 256:
         raise ValueError("inference_batch_size must be between 1 and 256")
@@ -32,6 +33,11 @@ def run_batched_neural_puct(
         or not 0.0 <= score_utility_weight <= 1.0
     ):
         raise ValueError("score_utility_weight must be between 0 and 1")
+    if (
+        not math.isfinite(final_vp_utility_weight)
+        or not 0.0 <= final_vp_utility_weight <= 1.0
+    ):
+        raise ValueError("final_vp_utility_weight must be between 0 and 1")
     policy_probabilities = tuple(
         root_prediction.policy_probabilities
         if root_policy_probabilities is None
@@ -52,6 +58,7 @@ def run_batched_neural_puct(
         score_utility_weight,
         root_prediction.actor_victory_points,
         group_leaf_card_choices,
+        final_vp_utility_weight,
     )
 
     while not search.is_complete():

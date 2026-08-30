@@ -8,7 +8,11 @@ from pathlib import Path
 import torch
 
 from .checkpoint import load_model_checkpoint
-from .data import TrainingBatch
+from .data import (
+    ACTOR_VP_TARGET_REMAINING_MODES,
+    TrainingBatch,
+    actor_vp_target_scales,
+)
 from .model import segmented_policy_probabilities
 from .schema import FeatureSchema
 
@@ -60,6 +64,7 @@ class RootActionValuePrediction:
     action_keys: tuple[str, ...]
     shared_win_rates: tuple[float, ...]
     victory_point_margins: tuple[float, ...]
+    actor_victory_points: tuple[float, ...]
     shared_win_standard_errors: tuple[float | None, ...]
     sample_counts: tuple[int, ...]
 
@@ -119,10 +124,11 @@ class CheckpointEvaluator:
             output.victory_point_margin_normalized
             * self.model.config.vp_margin_scale
         ).cpu()
-        actor_victory_points = (
-            output.actor_victory_points_normalized
-            * self.model.config.actor_vp_scale
-        ).clamp_min(0.0).cpu()
+        actor_victory_points = self._absolute_actor_victory_points(
+            output.actor_victory_points_normalized,
+            batch.states,
+            self.schema,
+        ).cpu()
         flat_probability_values = tuple(
             float(value) for value in flat_probabilities.cpu()
         )
@@ -200,9 +206,11 @@ class CheckpointEvaluator:
         )
         actor_victory_points = tuple(
             float(value)
-            for value in (
-                normalized_actor_vps * self.model.config.actor_vp_scale
-            ).clamp_min(0.0).cpu()
+            for value in self._absolute_actor_victory_points(
+                normalized_actor_vps,
+                states,
+                self.schema,
+            ).cpu()
         )
         if any(
             not math.isfinite(value) or not 0.0 <= value <= 1.0
@@ -220,6 +228,23 @@ class CheckpointEvaluator:
             victory_point_margins=victory_point_margins,
             actor_victory_points=actor_victory_points,
         )
+
+    def _absolute_actor_victory_points(
+        self,
+        normalized_values: torch.Tensor,
+        states: torch.Tensor,
+        schema: FeatureSchema,
+    ) -> torch.Tensor:
+        scales = actor_vp_target_scales(
+            states,
+            target_mode=self.model.config.actor_vp_target_mode,
+            actor_vp_scale=self.model.config.actor_vp_scale,
+            actor_vp_railroad_scale=self.model.config.actor_vp_railroad_scale,
+        )
+        values = normalized_values * scales
+        if self.model.config.actor_vp_target_mode in ACTOR_VP_TARGET_REMAINING_MODES:
+            values = values + _current_observer_victory_points(states, schema)
+        return values.clamp_min(0.0)
 
     def predict_successor_action_values(
         self,
@@ -358,6 +383,42 @@ def build_value_state_batch(
     return torch.tensor(rows, dtype=torch.float32)
 
 
+def _current_observer_victory_points(
+    states: torch.Tensor, schema: FeatureSchema
+) -> torch.Tensor:
+    raw_schema = schema.to_schema_dict()
+    players_block = next(
+        (
+            block
+            for block in raw_schema.get("state_blocks", [])
+            if isinstance(block, dict) and block.get("name") == "players"
+        ),
+        None,
+    )
+    max_players = raw_schema.get("max_players")
+    if not isinstance(players_block, dict) or not isinstance(max_players, int):
+        raise ValueError(
+            "remaining_vp model output requires a players state block and max_players"
+        )
+    offset = players_block.get("offset")
+    size = players_block.get("size")
+    if (
+        not isinstance(offset, int)
+        or not isinstance(size, int)
+        or max_players <= 0
+        or size % max_players != 0
+        or size // max_players <= 7
+    ):
+        raise ValueError("players state block cannot locate observer victory points")
+    index = offset + 7
+    if states.ndim != 2 or index >= states.shape[1]:
+        raise ValueError("observer victory-point feature is outside the state tensor")
+    current = states[:, index] * 100.0
+    if not torch.isfinite(current).all().item() or (current < 0.0).any().item():
+        raise ValueError("observer victory-point features must be finite and non-negative")
+    return current
+
+
 def aggregate_two_player_successor_values(
     successor_batch: dict,
     prediction: BatchValuePrediction,
@@ -406,6 +467,7 @@ def aggregate_two_player_successor_values(
 
     win_values: list[list[float]] = [[] for _ in action_keys]
     margin_values: list[list[float]] = [[] for _ in action_keys]
+    actor_vp_values: list[list[float]] = [[] for _ in action_keys]
     referenced_states: set[int] = set()
     for flat_index, sample in enumerate(samples):
         if not isinstance(sample, dict):
@@ -435,8 +497,14 @@ def aggregate_two_player_successor_values(
                 sample.get("terminal_root_victory_point_margin"),
                 "terminal root VP-margin value",
             )
+            root_actor_vp = _finite_number(
+                sample.get("terminal_root_actor_victory_points"),
+                "terminal root actor-VP value",
+            )
             if not 0.0 <= root_win <= 1.0:
                 raise ValueError("terminal root shared-win value must be in [0, 1]")
+            if root_actor_vp < 0.0:
+                raise ValueError("terminal root actor-VP value must be non-negative")
         else:
             if (
                 not isinstance(state_index, int)
@@ -451,17 +519,32 @@ def aggregate_two_player_successor_values(
                 raise ValueError("successor state observer and sample player disagree")
             raw_win = prediction.shared_win_rates[state_index]
             raw_margin = prediction.victory_point_margins[state_index]
+            raw_actor_vp = prediction.actor_victory_points[state_index]
             if evaluation_player == root_player:
-                root_win, root_margin = raw_win, raw_margin
+                root_win, root_margin, root_actor_vp = (
+                    raw_win,
+                    raw_margin,
+                    raw_actor_vp,
+                )
             else:
-                root_win, root_margin = 1.0 - raw_win, -raw_margin
+                root_win, root_margin, root_actor_vp = (
+                    1.0 - raw_win,
+                    -raw_margin,
+                    raw_actor_vp - raw_margin,
+                )
+            if not math.isfinite(root_actor_vp) or root_actor_vp < 0.0:
+                raise ValueError("successor root actor-VP value is invalid")
         win_values[action_index].append(root_win)
         margin_values[action_index].append(root_margin)
+        actor_vp_values[action_index].append(root_actor_vp)
 
     if referenced_states != set(range(len(states))):
         raise ValueError("successor batch contains unreferenced value states")
     shared_win_rates = tuple(sum(values) / len(values) for values in win_values)
     victory_point_margins = tuple(sum(values) / len(values) for values in margin_values)
+    actor_victory_points = tuple(
+        sum(values) / len(values) for values in actor_vp_values
+    )
     standard_errors = tuple(_sample_standard_error(values) for values in win_values)
     sample_counts = tuple(len(values) for values in win_values)
     return RootActionValuePrediction(
@@ -470,6 +553,7 @@ def aggregate_two_player_successor_values(
         action_keys=tuple(action_keys),
         shared_win_rates=shared_win_rates,
         victory_point_margins=victory_point_margins,
+        actor_victory_points=actor_victory_points,
         shared_win_standard_errors=standard_errors,
         sample_counts=sample_counts,
     )

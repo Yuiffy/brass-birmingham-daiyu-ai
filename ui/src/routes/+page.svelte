@@ -50,7 +50,7 @@
 	async function handleStarted() {
 		const state = get(gameState);
 		humanPlayerIndex = state?.players[0]?.index ?? 0;
-		controlMode = state?.players.length === 2 ? 'human-vs-ai' : 'manual';
+		controlMode = 'human-vs-ai';
 		previousControlKey = '';
 		inspectorTab = 'game';
 		controlSyncing = true;

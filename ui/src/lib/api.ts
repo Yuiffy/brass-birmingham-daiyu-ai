@@ -35,6 +35,17 @@ let lastTurnPlayer: number | null = null;
 let currentTurnActionBudget = 1;
 let analysisRunId = 0;
 
+// Browser clicks, map handlers, and AI playback can all issue mutations from
+// separate async callbacks.  Keep them in one FIFO so a stale response can
+// never overwrite a newer position (and a double-click cannot advance two
+// turns before the first response is applied).
+const MUTATION_ENDPOINTS = new Set([
+	'new_game', 'load_game', 'set_observer', 'start_turn', 'start_action',
+	'apply_choice', 'confirm_action', 'cancel_action', 'undo_last_action',
+	'end_turn', 'apply_analyzed_action', 'resolve_shortfalls'
+]);
+let mutationQueue: Promise<void> = Promise.resolve();
+
 function cpName(): string {
 	const gs = get(gameState);
 	return gs ? playerName(gs, gs.current_player) : '???';
@@ -60,28 +71,37 @@ export function applyLoadedState(state: GameState) {
 }
 
 export async function api(endpoint: string, body?: unknown): Promise<any> {
-	const opts: RequestInit = { method: body !== undefined ? 'POST' : 'GET' };
-	if (body !== undefined) {
-		opts.headers = { 'Content-Type': 'application/json' };
-		opts.body = JSON.stringify(body);
-	}
-	const postNoBody = ['start_turn', 'confirm_action', 'cancel_action', 'undo_last_action', 'end_turn'];
-	if (!opts.method || (opts.method === 'GET' && postNoBody.includes(endpoint))) {
-		opts.method = 'POST';
-	}
-	try {
-		const res = await fetch('/api/' + endpoint, opts);
-		if (!res.ok) { logMessage(`Server error: ${res.status}`); return null; }
-		const text = await res.text();
-		if (!text) { logMessage('Empty response'); return null; }
-		const data = JSON.parse(text);
-		if (!data.ok) { logMessage('Error: ' + (data.error || 'unknown')); return null; }
-		if (data.state) gameState.set(data.state);
-		return data;
-	} catch (e: any) {
-		logMessage('Network error: ' + e.message);
-		return null;
-	}
+	const request = async () => {
+		const opts: RequestInit = { method: body !== undefined ? 'POST' : 'GET' };
+		if (body !== undefined) {
+			opts.headers = { 'Content-Type': 'application/json' };
+			opts.body = JSON.stringify(body);
+		}
+		const postNoBody = ['start_turn', 'confirm_action', 'cancel_action', 'undo_last_action', 'end_turn'];
+		if (!opts.method || (opts.method === 'GET' && postNoBody.includes(endpoint))) {
+			opts.method = 'POST';
+		}
+		try {
+			const res = await fetch('/api/' + endpoint, opts);
+			if (!res.ok) { logMessage(`Server error: ${res.status}`); return null; }
+			const text = await res.text();
+			if (!text) { logMessage('Empty response'); return null; }
+			const data = JSON.parse(text);
+			if (!data.ok) { logMessage('Error: ' + (data.error || 'unknown')); return null; }
+			if (data.state) gameState.set(data.state);
+			return data;
+		} catch (e: any) {
+			logMessage('Network error: ' + e.message);
+			return null;
+		}
+	};
+
+	if (!MUTATION_ENDPOINTS.has(endpoint)) return request();
+	const queued = mutationQueue.then(request, request);
+	// Always release the queue, including failed requests.  `request` already
+	// converts transport/application errors to null for its caller.
+	mutationQueue = queued.then(() => undefined, () => undefined);
+	return queued;
 }
 
 export async function loadIndustryData() {
@@ -284,25 +304,35 @@ export async function endTurn() {
 	return data;
 }
 
-function analysisStages(simulations: number): number[] {
+export type AnalysisMode = 'auto' | 'rule';
+
+function analysisStages(simulations: number, mode: AnalysisMode): number[] {
+	if (mode === 'rule') return [1];
 	return [...new Set([100, 400, 800, 3000, simulations])]
 		.filter(stage => stage > 0 && stage <= simulations)
 		.sort((left, right) => left - right);
 }
 
-export async function analyzePosition(simulations: number): Promise<AnalysisReport | null> {
-	return analyzePositionProgressive(simulations);
+export async function analyzePosition(
+	simulations: number,
+	mode: AnalysisMode = 'rule'
+): Promise<AnalysisReport | null> {
+	return analyzePositionProgressive(simulations, mode);
 }
 
-export async function analyzePositionProgressive(simulations: number): Promise<AnalysisReport | null> {
+export async function analyzePositionProgressive(
+	simulations: number,
+	mode: AnalysisMode = 'rule'
+): Promise<AnalysisReport | null> {
 	const runId = ++analysisRunId;
 	const invalidationVersion = get(analysisInvalidationVersion);
-	const stages = analysisStages(simulations);
+	const stages = analysisStages(simulations, mode);
+	const progressTarget = mode === 'rule' ? 1 : simulations;
 	analysisLoading.set(true);
 	analysisError.set(null);
 	analysisProgress.set({
 		completed: 0,
-		target: simulations,
+		target: progressTarget,
 		stage: 0,
 		totalStages: stages.length
 	});
@@ -314,14 +344,15 @@ export async function analyzePositionProgressive(simulations: number): Promise<A
 			if (!isCurrent()) return null;
 			analysisProgress.set({
 				completed: latestReport?.completed_simulations ?? 0,
-				target: simulations,
+				target: progressTarget,
 				stage: index + 1,
 				totalStages: stages.length
 			});
 			const data = await api('analyze', {
-				simulations,
+				simulations: mode === 'rule' ? 1 : simulations,
 				progress_to: progressTo,
-				top_n: 3
+				top_n: 3,
+				mode
 			});
 			if (!isCurrent()) return null;
 			if (!data?.analysis) {
@@ -337,13 +368,17 @@ export async function analyzePositionProgressive(simulations: number): Promise<A
 			}
 			analysisProgress.set({
 				completed: report.completed_simulations,
-				target: simulations,
+				target: progressTarget,
 				stage: index + 1,
 				totalStages: stages.length
 			});
 		}
 		if (latestReport) {
-			logMessage(`AI analyzed ${latestReport.completed_simulations} continuations in ${latestReport.elapsed_ms}ms`);
+			if (mode === 'rule') {
+				logMessage(`CPU 规则树评估了 ${latestReport.root_action_count} 个合法动作，用时 ${latestReport.elapsed_ms}ms`);
+			} else {
+				logMessage(`AI analyzed ${latestReport.completed_simulations} continuations in ${latestReport.elapsed_ms}ms`);
+			}
 		}
 		return latestReport;
 	} catch (error) {

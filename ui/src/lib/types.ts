@@ -173,9 +173,28 @@ export interface AnalysisCandidate {
 	shared_win_rate_standard_error: number | null;
 	policy_probability: number | null;
 	calibrated_win_rate: number | null;
+	rule_score: number | null;
+	rule_score_breakdown: RuleScoreBreakdown | null;
 	immediate_effect: AnalysisImmediateEffect;
 	highlights: AnalysisHighlights;
 	sample_random_continuation: AnalysisContinuation;
+}
+
+export interface RuleScoreBreakdown {
+	immediate_vp: number;
+	potential_vp: number;
+	income: number;
+	cash: number;
+	industry: number;
+	network: number;
+	resources: number;
+	safety: number;
+	tempo: number;
+	action_bias: number;
+	competitive_pressure: number;
+	card_value: number;
+	lookahead: number;
+	total: number;
 }
 
 export interface AnalysisImmediateEffect {

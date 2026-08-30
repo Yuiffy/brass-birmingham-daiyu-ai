@@ -151,6 +151,81 @@ class RemoteInferenceTests(unittest.TestCase):
                     },
                 )
 
+    def test_remote_batch_splits_on_total_legal_action_count(self) -> None:
+        requests = []
+
+        def fake_urlopen(request, timeout):
+            requests.append((request, timeout))
+            if len(requests) == 1:
+                return _FakeResponse(_health())
+            payload = json.loads(request.data)
+            evaluations = []
+            for position in payload["positions"]:
+                keys = [
+                    action["key"]
+                    for action in position["legal_actions"]["actions"]
+                ]
+                evaluations.append(
+                    {
+                        "request_id": position["request_id"],
+                        "action_keys": keys,
+                        "policy_probabilities": [1.0 / len(keys)] * len(keys),
+                        "shared_win_rate": 0.5,
+                        "victory_point_margin": 0.0,
+                    }
+                )
+            return _FakeResponse(
+                {
+                    "ok": True,
+                    "model_id": "sha256:remote-model",
+                    "checkpoint_step": 23,
+                    "evaluations": evaluations,
+                }
+            )
+
+        states = [
+            {"feature_version": 1, "features": [1.0, 0.0, 0.5, -0.5]},
+            {"feature_version": 1, "features": [0.0, 1.0, -0.5, 0.5]},
+        ]
+        legal = [
+            {
+                "feature_version": 1,
+                "actions": [
+                    {"index": 0, "key": "action-a", "feature_indices": [0]},
+                    {"index": 1, "key": "action-b", "feature_indices": [1]},
+                ],
+            },
+            {
+                "feature_version": 1,
+                "actions": [
+                    {"index": 0, "key": "action-c", "feature_indices": [0]},
+                    {"index": 1, "key": "action-d", "feature_indices": [1]},
+                ],
+            },
+        ]
+
+        with (
+            patch("training.remote_inference.urlopen", side_effect=fake_urlopen),
+            patch("training.remote_inference.MAX_REMOTE_BATCH_ACTIONS", 3),
+        ):
+            evaluator = RemoteInferenceEvaluator("http://inference.test", SCHEMA)
+            predictions = evaluator.predict_batch(states, legal)
+
+        self.assertEqual(len(predictions), 2)
+        self.assertEqual(
+            [prediction.action_keys for prediction in predictions],
+            [("action-a", "action-b"), ("action-c", "action-d")],
+        )
+        self.assertEqual(len(requests), 3)
+        payloads = [json.loads(request.data) for request, _ in requests[1:]]
+        self.assertEqual(
+            [
+                [position["request_id"] for position in payload["positions"]]
+                for payload in payloads
+            ],
+            [[0], [0]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

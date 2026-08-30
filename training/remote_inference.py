@@ -22,6 +22,10 @@ class RemotePolicyValuePrediction:
     actor_victory_points: float
 
 
+MAX_REMOTE_BATCH_POSITIONS = 256
+MAX_REMOTE_BATCH_ACTIONS = 65_536
+
+
 class RemoteInferenceEvaluator:
     def __init__(
         self,
@@ -107,6 +111,18 @@ class RemoteInferenceEvaluator:
             raise ValueError(
                 "remote inference states and legal actions must have equal lengths"
             )
+        predictions: list[RemotePolicyValuePrediction] = []
+        for batch_states, batch_legal in _split_batches(
+            state_records, legal_records
+        ):
+            predictions.extend(
+                self._predict_batch_chunk(batch_states, batch_legal)
+            )
+        return tuple(predictions)
+
+    def _predict_batch_chunk(
+        self, state_records: list[dict], legal_records: list[dict]
+    ) -> tuple[RemotePolicyValuePrediction, ...]:
         positions = [
             {
                 "request_id": request_id,
@@ -256,6 +272,41 @@ class RemoteInferenceEvaluator:
         if delay > 0.0:
             time.sleep(delay)
         return True
+
+
+def _split_batches(
+    state_records: list[dict], legal_records: list[dict]
+) -> list[tuple[list[dict], list[dict]]]:
+    batches: list[tuple[list[dict], list[dict]]] = []
+    batch_states: list[dict] = []
+    batch_legal: list[dict] = []
+    batch_actions = 0
+
+    for state, legal in zip(state_records, legal_records, strict=True):
+        actions = legal.get("actions") if isinstance(legal, dict) else None
+        if not isinstance(actions, list):
+            raise ValueError("remote inference legal actions must contain an actions array")
+        action_count = len(actions)
+        if action_count > MAX_REMOTE_BATCH_ACTIONS:
+            raise ValueError(
+                "remote inference position contains more than "
+                f"{MAX_REMOTE_BATCH_ACTIONS} legal actions"
+            )
+        if batch_states and (
+            len(batch_states) >= MAX_REMOTE_BATCH_POSITIONS
+            or batch_actions + action_count > MAX_REMOTE_BATCH_ACTIONS
+        ):
+            batches.append((batch_states, batch_legal))
+            batch_states = []
+            batch_legal = []
+            batch_actions = 0
+        batch_states.append(state)
+        batch_legal.append(legal)
+        batch_actions += action_count
+
+    if batch_states:
+        batches.append((batch_states, batch_legal))
+    return batches
 
 
 def _nonempty_string(value: object, name: str) -> str:

@@ -133,6 +133,7 @@ fn successor_value_batch_is_deterministic_complete_and_stably_ordered() {
         assert_eq!(sample.state_index, Some(flat_index));
         assert_eq!(sample.terminal_root_shared_win_rate, None);
         assert_eq!(sample.terminal_root_victory_point_margin, None);
+        assert_eq!(sample.terminal_root_actor_victory_points, None);
         assert_eq!(first.states[flat_index].features.len(), STATE_FEATURE_DIM);
         assert!(first.states[flat_index]
             .features

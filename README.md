@@ -5,9 +5,19 @@
 [`artyom-morozov/fast_brass`](https://github.com/artyom-morozov/fast_brass), extending the Rust
 rules engine with model-guided search, self-play training, and an interactive Svelte interface.
 
-The project currently focuses on transparent two-player analysis: each position can show several
-candidate moves, the search share and model signals behind each move, and contextual answers to
-Chinese follow-up questions such as why the first choice is preferred over the second.
+The project provides transparent analysis for two-, three-, and four-player games: each position
+can show several candidate moves, the search share and model signals behind each move, and
+contextual answers to Chinese follow-up questions such as why the first choice is preferred over
+the second.
+
+> **Development status (2026-08-30): paused.** The current engine, rule AI, neural-training
+> pipeline, tests, and experiment history are preserved, but active AI development has stopped.
+> The strongest retained deterministic rule-AI benchmark averaged `84.0083 VP` across 40 local
+> three-player games, with a `56 VP` global minimum and the human-reference seed at
+> `[115,90,91]`. These are same-engine regression results, not a rating against external players.
+> A public-source investigation of BrassForge found no published AI implementation or source maps;
+> its bot decisions appear to be server-side, so there is no quick implementation to transfer. See
+> the [final project handoff](progress.md#2026-08-30-project-closure-and-brassforge-assessment).
 
 ## What This Repo Contains
 
@@ -124,7 +134,7 @@ Set-Location ui
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`, create a two-player game, and enter the `AI 分析` tab. The analysis
+Open `http://127.0.0.1:5173`, create a two-, three-, or four-player game, and enter the `AI 分析` tab. The analysis
 panel can show the Top 3 candidate moves, answer follow-up questions about the selected move, apply
 one recommendation, or advance the AI side one move at a time.
 
@@ -163,8 +173,9 @@ model value is not yet a calibrated real-world win probability.
 
 ## AI Status
 
-- Deep neural search is currently implemented for two-player games. New browser games therefore
-  default to two players.
+- Deep neural search uses hidden-information determinizations and batched multi-layer PUCT for
+  two-, three-, and four-player games. In multiplayer positions, the value head's non-root win
+  mass is distributed across the other seats as an explicit approximation.
 - Search visit share, policy prior, and backed-up model value are different signals. The UI keeps
   them separate instead of presenting them as one probability.
 - Training now uses separate self-play shards for optimization and validation. This prevents
@@ -201,8 +212,9 @@ with `--inference-url http://HOST:PORT`. Remote inference is schema-checked, mod
 retried on bounded transient transport failures.
 
 For CUDA generation, use independent local processes so Rust search and Torch inference overlap
-without HTTP/JSON transport. Stop the browser inference service first so its CUDA allocator does
-not retain training memory, then restore it after generation:
+without HTTP/JSON transport. Stop the optional inference service first so its CUDA allocator does
+not retain training memory, then restore it after generation. The Rust/CUDA training path does not
+start or require the browser, Svelte, or Playwright:
 
 ```powershell
 docker compose --file docker/training-gpu.compose.yaml stop inference
@@ -214,6 +226,79 @@ This writes one atomic JSONL shard per worker, such as `iter3-train-000.jsonl`. 
 are assigned before work is split, so changing `--workers` does not change which deterministic games
 the requested index range represents. Use a different `--seed` for validation data. Four workers
 are the measured default for an RTX 5080 with 16 GB VRAM; lower the count on smaller GPUs.
+
+### Produce high-quality expert data (fast path)
+
+The faster route than repeatedly fine-tuning on a tiny human replay is **human-prior-guided
+self-play plus expert iteration**. The checkpoint (already adapted to audited human choices) and the
+versioned strategy prior act as a teacher. The producer runs several temperatures/prior strengths,
+then applies rejection sampling: incomplete games, zero-score games, unhealthy income/cash, and
+known lifecycle violations are discarded; only top actors above the declared VP/margin threshold
+become teacher trajectories. This is also called quality-filtered trajectory generation or
+Best-of-N self-play.
+
+One command creates raw shards, filtered teacher shards, an untouched-seed validation partition, and
+an audit manifest that can be passed directly to `training.train`:
+
+```bash
+python -m training.produce_expert_data \
+  --checkpoint output/champion-iter3-mixed-v5-v6.pt \
+  --output-dir output/iter19-expert \
+  --train-games 128 \
+  --validation-games 16 \
+  --workers 4 \
+  --players 2 \
+  --simulations 256 \
+  --search-determinizations 4 \
+  --strategy-prior-version human-strategy-v6-resource-aware \
+  --strategy-prior-strengths 0.65 0.85 \
+  --selection-temperatures 0.35 0.70 \
+  --demonstration-shards output/human-replay-game6-audited.jsonl \
+  --demonstration-prior-strengths 0.25 0.40 \
+  --minimum-actor-vp 80 \
+  --minimum-vp-margin 0 \
+  --device cuda
+```
+
+The command is local Rust/Python/CUDA only. It never starts the inference service, browser, Svelte,
+or Playwright. Inspect `output/iter19-expert/manifest.json` before training; use its `train` shards
+as the teacher pool, its `validation` shards only for validation, and keep the old champion as the
+replay pool. Raise `--minimum-actor-vp` only after a pilot shows that the acceptance rate leaves
+enough diverse positions; a single spectacular score is not a reliable label.
+
+`--demonstration-shards` enables the optional human-demonstration prior. It learns smoothed
+phase/round/action-intent frequencies from confirmed policy-only positions, blends them into the
+checkpoint root prior, and never bypasses Rust legality or search. Use a small strength (for example
+`0.25`--`0.40`) first; include `0.0` as a control recipe when comparing the effect. The shard's
+terminal value labels are not used by this prior, so a replay with contaminated turn markers can
+still provide policy guidance while remaining value-masked during learner training.
+
+### Fast expert-iteration fine-tune
+
+Use the current PUCT teacher as `--shards`, retain older champion trajectories with
+`--replay-shards`, and add audited human-policy positions with `--human-shards`. The loader uses
+replacement sampling to keep the requested source fractions visible in every epoch; contaminated
+human replay automatically contributes policy loss only. This command runs entirely in the local
+Python/Rust/CUDA training container:
+
+```bash
+python -m training.train \
+  --shards output/iter18-guided4e-v6-quality-000.jsonl output/iter18-guided4e-v6-quality-001.jsonl output/iter18-guided4e-v6-quality-002.jsonl output/iter18-guided4e-v6-quality-003.jsonl \
+  --replay-shards output/iter15-champion-v5-train-000.jsonl output/iter15-champion-v5-train-001.jsonl output/iter15-champion-v5-train-002.jsonl output/iter15-champion-v5-train-003.jsonl \
+  --human-shards output/human-replay-game6-audited.jsonl \
+  --replay-fraction 0.30 \
+  --human-fraction 0.05 \
+  --validation-shards output/iter18-champion-v6-256-val-000.jsonl output/iter18-champion-v6-256-val-001.jsonl output/iter18-champion-v6-256-val-002.jsonl output/iter18-champion-v6-256-val-003.jsonl \
+  --resume output/champion-iter3-mixed-v5-v6.pt \
+  --output output/candidate-expert-iteration.pt \
+  --epochs 4 \
+  --early-stopping-patience 2 \
+  --learning-rate 1e-5 \
+  --device cuda
+```
+
+Keep the champion immutable until the staged Rust evaluation gate passes. Playwright is reserved
+for an optional UI release smoke test after a model is selected; it is never a training dependency.
 
 ### Train with an independent validation partition
 
@@ -241,17 +326,33 @@ promotion standards, top-human evidence requirements, and the reusable cross-gam
 ### Run a seat-rotated promotion gate
 
 ```bash
-python -m training.evaluate \
-  --candidate-inference-url http://HOST:8766 \
-  --champion-inference-url http://HOST:8765 \
+python -m training.parallel_evaluate \
+  --candidate output/candidate.pt \
+  --champion output/champion.pt \
   --players 2 \
   --rounds 20 \
   --minimum-games 40 \
-  --search-simulations 64
+  --search-simulations 64 \
+  --workers 4 \
+  --device cuda \
+  --output output/candidate-formal-gate.json
 ```
 
 Every seed rotates the candidate through both seats. The Student-t confidence interval treats each
 seat-rotated seed group, rather than each correlated game, as one independent observation.
+After all earlier quality gates also pass, promote through the checked atomic path:
+
+```bash
+python -m training.promote \
+  --candidate output/candidate.pt \
+  --champion output/champion.pt \
+  --report output/candidate-formal-gate.json \
+  --confirm
+```
+
+The promotion command recomputes both checkpoint hashes, rejects a failed or inconsistent report,
+keeps a pre-promotion backup, and writes an audit manifest. It cannot turn the current failed pilot
+into a champion merely because validation loss or one score statistic improved.
 
 ## Repo Layout
 

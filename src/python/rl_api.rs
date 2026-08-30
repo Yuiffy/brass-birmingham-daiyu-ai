@@ -550,6 +550,10 @@ impl BrassRLGame {
                 "terminal_root_victory_point_margin",
                 sample.terminal_root_victory_point_margin,
             )?;
+            row.set_item(
+                "terminal_root_actor_victory_points",
+                sample.terminal_root_actor_victory_points,
+            )?;
             samples.append(row)?;
         }
         let out = PyDict::new(py);
@@ -690,7 +694,9 @@ impl BrassRLGame {
         victory_point_margin,
         simulations=2000,
         seed=None,
-        exploration_constant=1.5
+        exploration_constant=1.5,
+        action_actor_victory_points=None,
+        final_vp_utility_weight=0.0
     ))]
     #[allow(clippy::too_many_arguments)]
     fn search_legal_actions_with_policy_and_action_values(
@@ -708,6 +714,8 @@ impl BrassRLGame {
         simulations: u64,
         seed: Option<u64>,
         exploration_constant: f64,
+        action_actor_victory_points: Option<Vec<f64>>,
+        final_vp_utility_weight: f64,
     ) -> PyResult<PyObject> {
         if simulations == 0 || simulations > 1_000_000 {
             return Err(PyValueError::new_err(
@@ -751,13 +759,17 @@ impl BrassRLGame {
             victory_point_margin,
             actor_victory_points: 0.0,
         };
+        let action_actor_victory_points =
+            action_actor_victory_points.unwrap_or_else(|| vec![0.0; action_count]);
         let action_values = RootActionValueEvaluation {
             model_id,
             action_keys,
             shared_win_rates: action_shared_win_rates,
             victory_point_margins: action_victory_point_margins,
+            actor_victory_points: action_actor_victory_points,
             shared_win_standard_errors: action_shared_win_standard_errors,
             sample_counts: action_value_sample_counts,
+            final_vp_utility_weight,
         };
         let report = search_top_actions_with_policy_and_action_values(
             &self.runner,
@@ -780,7 +792,8 @@ impl BrassRLGame {
         determinizations=4,
         score_utility_weight=0.0,
         actor_victory_points=0.0,
-        group_card_choices=false
+        group_card_choices=false,
+        final_vp_utility_weight=0.0
     ))]
     #[allow(clippy::too_many_arguments)]
     fn start_batched_neural_search(
@@ -796,6 +809,7 @@ impl BrassRLGame {
         score_utility_weight: f64,
         actor_victory_points: f64,
         group_card_choices: bool,
+        final_vp_utility_weight: f64,
     ) -> PyResult<BrassNeuralSearch> {
         if simulations == 0 || simulations > 1_000_000 {
             return Err(PyValueError::new_err(
@@ -810,6 +824,11 @@ impl BrassRLGame {
         if !score_utility_weight.is_finite() || !(0.0..=1.0).contains(&score_utility_weight) {
             return Err(PyValueError::new_err(
                 "score_utility_weight must be finite and in [0, 1]",
+            ));
+        }
+        if !final_vp_utility_weight.is_finite() || !(0.0..=1.0).contains(&final_vp_utility_weight) {
+            return Err(PyValueError::new_err(
+                "final_vp_utility_weight must be finite and in [0, 1]",
             ));
         }
         if !actor_victory_points.is_finite() || actor_victory_points < 0.0 {
@@ -858,6 +877,7 @@ impl BrassRLGame {
                 },
                 determinizations,
                 score_utility_weight,
+                final_vp_utility_weight,
                 group_card_choices,
             },
             policy,
@@ -995,6 +1015,11 @@ impl BrassRLGame {
     ) -> PyResult<PyObject> {
         self.legal_action_cache.clear();
         let mut forced_passes = self.advance_to_next_decision()?;
+        let defer_end_turn = action
+            .get_item("defer_end_turn")?
+            .map(|value| value.extract::<bool>())
+            .transpose()?
+            .unwrap_or(false);
         let decision_mode_before = self.current_decision_mode();
         let acting_player = self.current_decision_player();
         let phase_before = self.runner.game_phase;
@@ -1116,12 +1141,14 @@ impl BrassRLGame {
                 .map(|idx| idx as i32)
                 .unwrap_or(-1);
 
-            if self.runner.actions_remaining_in_turn == 0 {
+            if self.runner.actions_remaining_in_turn == 0 && !defer_end_turn {
                 self.runner.end_turn();
             }
         }
 
-        forced_passes += self.advance_to_next_decision()?;
+        if !defer_end_turn {
+            forced_passes += self.advance_to_next_decision()?;
+        }
         let out = self.build_step_delta(
             py,
             acting_player,
@@ -1137,6 +1164,22 @@ impl BrassRLGame {
             shortfall_before,
         )?;
         Ok(out)
+    }
+
+    /// Advance exactly one persisted `EndTurn` event while reconstructing a
+    /// browser replay. Normal self-play uses the automatic turn advancement in
+    /// `step_composite_action` and should not call this method.
+    fn end_turn_for_replay(&mut self) -> PyResult<()> {
+        if self.current_shortfall.is_some() {
+            return Err(PyValueError::new_err(
+                "cannot end a replay turn while an income shortfall is pending",
+            ));
+        }
+        if !self.runner.is_game_finished() {
+            self.runner.end_turn_for_replay();
+        }
+        self.legal_action_cache.clear();
+        Ok(())
     }
 }
 
@@ -1743,6 +1786,10 @@ fn search_report_to_py(
             .root_action_model_victory_point_margins
             .as_ref()
             .and_then(|values| values.get(index).copied());
+        let model_actor_victory_points = report
+            .root_action_model_actor_victory_points
+            .as_ref()
+            .and_then(|values| values.get(index).copied());
         let model_standard_error = report
             .root_action_model_shared_win_standard_errors
             .as_ref()
@@ -1800,7 +1847,7 @@ fn search_report_to_py(
             row.set_item("estimated_shared_win_rate", model_shared_win_rate)?;
             row.set_item("estimated_outright_win_rate", py.None())?;
             row.set_item("estimated_tied_first_rate", py.None())?;
-            row.set_item("average_final_victory_points", py.None())?;
+            row.set_item("average_final_victory_points", model_actor_victory_points)?;
             row.set_item("average_victory_point_margin", model_victory_point_margin)?;
             row.set_item("shared_win_rate_standard_error", model_standard_error)?;
         }
@@ -2747,6 +2794,8 @@ mod tests {
                     8,
                     Some(4_322),
                     0.0,
+                    None,
+                    0.0,
                 )
                 .expect("action-value search should complete");
             let search = search_obj.bind(py).downcast::<PyDict>().unwrap();
@@ -2834,6 +2883,7 @@ mod tests {
                     0.0,
                     70.0,
                     false,
+                    0.0,
                 )
                 .expect("deep search should start");
 

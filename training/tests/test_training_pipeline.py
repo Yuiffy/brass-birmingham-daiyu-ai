@@ -6,13 +6,23 @@ import unittest
 from pathlib import Path
 
 import torch
+from torch.nn import functional as F
 
 from training.checkpoint import (
     LEGACY_ACTOR_VP_HEAD_MARKER,
     load_model_checkpoint,
     save_checkpoint,
 )
-from training.data import SelfPlayDataset, collate_positions
+from training.data import (
+    ACTOR_VP_TARGET_PHASE_REMAINING,
+    ACTOR_VP_TARGET_REMAINING,
+    POLICY_TARGET_EXPONENT_DEFAULT,
+    SEARCH_POLICY_TARGET_FIELD,
+    SelfPlayDataset,
+    actor_vp_target_scales,
+    collate_positions,
+    normalize_policy_targets,
+)
 from training.inference import (
     BatchValuePrediction,
     CheckpointEvaluator,
@@ -24,8 +34,11 @@ from training.model import (
     ModelConfig,
     compute_losses,
     expand_with_policy_adapter,
+    final_vp_quality_position_weights,
     fuse_policy_and_value_models,
+    with_actor_vp_target_mode,
 )
+from training.schema import FeatureSchema
 
 
 class TrainingPipelineTests(unittest.TestCase):
@@ -54,6 +67,140 @@ class TrainingPipelineTests(unittest.TestCase):
         )
         dataset.close()
 
+    def test_policy_loss_weight_changes_policy_only(self) -> None:
+        dataset = SelfPlayDataset([self.shard])
+        batch = collate_positions([dataset[0], dataset[1]])
+        config = ModelConfig(
+            state_dim=4,
+            action_dim=10,
+            state_hidden_dim=16,
+            action_embedding_dim=8,
+            trunk_dim=12,
+        )
+        model = BrassPolicyValueNet(config)
+        output = model(batch)
+        baseline = compute_losses(output, batch, vp_margin_scale=config.vp_margin_scale)
+        batch.policy_loss_weights = torch.tensor([1.0, 100.0])
+        weighted = compute_losses(output, batch, vp_margin_scale=config.vp_margin_scale)
+        self.assertNotEqual(
+            baseline.policy_cross_entropy.item(), weighted.policy_cross_entropy.item()
+        )
+        self.assertNotEqual(baseline.total.item(), weighted.total.item())
+        self.assertTrue(
+            torch.equal(baseline.shared_win_bce, weighted.shared_win_bce)
+        )
+        self.assertTrue(
+            torch.equal(
+                baseline.victory_point_margin_huber,
+                weighted.victory_point_margin_huber,
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                baseline.actor_victory_points_huber,
+                weighted.actor_victory_points_huber,
+            )
+        )
+        dataset.close()
+
+    def test_human_replay_value_mask_is_preserved_in_batches(self) -> None:
+        records = [json.loads(line) for line in self.shard.read_text().splitlines()]
+        records[0]["source_type"] = "human_replay"
+        records[0]["value_target_usable"] = False
+        masked_shard = self.root / "masked-human.jsonl"
+        with masked_shard.open("w", encoding="utf-8", newline="\n") as handle:
+            for record in records:
+                record.pop("value_loss_weight", None)
+                handle.write(json.dumps(record, separators=(",", ":")))
+                handle.write("\n")
+
+        dataset = SelfPlayDataset([masked_shard])
+        self.assertEqual(dataset[0].value_loss_weight, 0.0)
+        self.assertEqual(dataset[1].value_loss_weight, 0.0)
+        batch = collate_positions([dataset[0], dataset[1]])
+        self.assertTrue(torch.equal(batch.value_loss_weights, torch.zeros(2)))
+        config = ModelConfig(
+            state_dim=4,
+            action_dim=10,
+            state_hidden_dim=16,
+            action_embedding_dim=8,
+            trunk_dim=12,
+        )
+        model = BrassPolicyValueNet(config)
+        output = model(batch)
+        losses = compute_losses(output, batch, vp_margin_scale=config.vp_margin_scale)
+        self.assertEqual(losses.shared_win_bce.item(), 0.0)
+        self.assertEqual(losses.victory_point_margin_huber.item(), 0.0)
+        self.assertEqual(losses.actor_victory_points_huber.item(), 0.0)
+        dataset.close()
+
+    def test_remaining_vp_target_subtracts_current_observer_score(self) -> None:
+        shard = self.root / "remaining-vp.jsonl"
+        schema = {
+            "version": 1,
+            "state_dim": 16,
+            "action_dim": 10,
+            "card_type_dim": 2,
+            "max_players": 2,
+            "state_blocks": [{"name": "players", "offset": 0, "size": 16}],
+            "action_blocks": [{"name": "all", "offset": 0, "size": 10}],
+        }
+        first_state = [0.0] * 16
+        first_state[7] = 0.3
+        second_state = [0.0] * 16
+        second_state[7] = 0.5
+        records = [
+            {
+                "record_type": "metadata",
+                "format": "fast_brass_self_play_jsonl",
+                "format_version": 1,
+                "engine_revision": "synthetic-test-engine",
+                "feature_schema": schema,
+            },
+            {
+                "record_type": "game",
+                "format_version": 1,
+                "game_index": 0,
+                "victory_points": [40, 80],
+            },
+            _position(1, 0, first_state, [([0, 2], 1)], 0.5, 4),
+            _position(1, 1, second_state, [([0, 2], 1)], 1.0, 12),
+        ]
+        with shard.open("w", encoding="utf-8", newline="\n") as handle:
+            for record in records:
+                handle.write(json.dumps(record, separators=(",", ":")))
+                handle.write("\n")
+
+        dataset = SelfPlayDataset(
+            [shard], actor_vp_target_mode=ACTOR_VP_TARGET_REMAINING
+        )
+        self.assertEqual(
+            [dataset[index].actor_victory_points_target.item() for index in range(2)],
+            [10.0, 30.0],
+        )
+        dataset.close()
+
+        phase_dataset = SelfPlayDataset(
+            [shard], actor_vp_target_mode=ACTOR_VP_TARGET_PHASE_REMAINING
+        )
+        self.assertEqual(
+            [
+                phase_dataset[index].actor_victory_points_target.item()
+                for index in range(2)
+            ],
+            [10.0, 30.0],
+        )
+        phase_dataset.close()
+
+    def test_actor_vp_target_mode_conversion_preserves_weights(self) -> None:
+        torch.manual_seed(1240)
+        model = BrassPolicyValueNet(ModelConfig(state_dim=4, action_dim=10))
+        converted = with_actor_vp_target_mode(model, ACTOR_VP_TARGET_REMAINING)
+        self.assertEqual(converted.config.actor_vp_target_mode, ACTOR_VP_TARGET_REMAINING)
+        self.assertEqual(model.state_dict().keys(), converted.state_dict().keys())
+        for name, value in model.state_dict().items():
+            self.assertTrue(torch.equal(value, converted.state_dict()[name]), name)
+
     def test_dataset_keeps_strategy_behavior_target_separate_from_search_visits(self) -> None:
         records = [
             json.loads(line)
@@ -75,6 +222,82 @@ class TrainingPipelineTests(unittest.TestCase):
         self.assertTrue(
             torch.allclose(dataset[0].policy_target, torch.tensor([0.9, 0.1]))
         )
+        dataset.close()
+
+        raw_dataset = SelfPlayDataset(
+            [guided_shard], policy_target_field=SEARCH_POLICY_TARGET_FIELD
+        )
+        self.assertTrue(
+            torch.allclose(raw_dataset[0].policy_target, torch.tensor([0.75, 0.25]))
+        )
+        raw_dataset.close()
+
+        mixed_dataset = SelfPlayDataset(
+            [guided_shard], search_policy_target_mix=0.25
+        )
+        self.assertTrue(
+            torch.allclose(
+                mixed_dataset[0].policy_target,
+                torch.tensor([0.8625, 0.1375]),
+            )
+        )
+        mixed_dataset.close()
+
+        sharp_dataset = SelfPlayDataset(
+            [guided_shard], policy_target_exponent=2.0
+        )
+        self.assertTrue(
+            torch.allclose(
+                sharp_dataset[0].policy_target,
+                torch.tensor([0.9878049, 0.0121951]),
+                atol=1e-6,
+            )
+        )
+        sharp_dataset.close()
+
+    def test_policy_target_normalization_exponent_and_boundaries(self) -> None:
+        self.assertEqual(POLICY_TARGET_EXPONENT_DEFAULT, 1.0)
+        self.assertEqual(
+            normalize_policy_targets([3.0, 1.0]), [0.75, 0.25]
+        )
+        sharpened = normalize_policy_targets([3.0, 1.0], exponent=2.0)
+        self.assertAlmostEqual(sharpened[0], 0.9)
+        self.assertAlmostEqual(sharpened[1], 0.1)
+        self.assertAlmostEqual(sum(sharpened), 1.0)
+        for exponent in (0.0, -1.0, float("nan"), float("inf")):
+            with self.assertRaisesRegex(ValueError, "finite and positive"):
+                normalize_policy_targets([1.0, 1.0], exponent=exponent)
+
+    def test_final_vp_quality_position_weights_are_normalized_and_monotonic(self) -> None:
+        targets = torch.tensor([0.0, 50.0, 100.0, 140.0])
+        weights = final_vp_quality_position_weights(targets, quality_weight=1.0)
+
+        self.assertTrue(torch.all(weights[1:] >= weights[:-1]))
+        self.assertAlmostEqual(weights.mean().item(), 1.0)
+        self.assertEqual(
+            final_vp_quality_position_weights(targets).tolist(),
+            [1.0, 1.0, 1.0, 1.0],
+        )
+
+    def test_final_vp_quality_weight_requires_absolute_targets(self) -> None:
+        dataset = SelfPlayDataset([self.shard])
+        batch = collate_positions([dataset[0], dataset[1]])
+        config = ModelConfig(
+            state_dim=4,
+            action_dim=10,
+            state_hidden_dim=16,
+            action_embedding_dim=8,
+            trunk_dim=12,
+        )
+        model = BrassPolicyValueNet(config)
+        with self.assertRaisesRegex(ValueError, "requires absolute_final_vp"):
+            compute_losses(
+                model(batch),
+                batch,
+                vp_margin_scale=config.vp_margin_scale,
+                actor_vp_target_mode=ACTOR_VP_TARGET_REMAINING,
+                final_vp_quality_weight=1.0,
+            )
         dataset.close()
 
     def test_model_forward_loss_backward_and_checkpoint_round_trip(self) -> None:
@@ -139,6 +362,51 @@ class TrainingPipelineTests(unittest.TestCase):
             )
         )
         self.assertEqual(payload["metadata"]["training"]["global_step"], 7)
+        dataset.close()
+
+    def test_phase_conditioned_remaining_vp_uses_era_specific_scales(self) -> None:
+        dataset = SelfPlayDataset([self.shard])
+        batch = collate_positions([dataset[0], dataset[1]])
+        batch.states[:, :3] = torch.tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+        )
+        scales = actor_vp_target_scales(
+            batch.states,
+            target_mode=ACTOR_VP_TARGET_PHASE_REMAINING,
+            actor_vp_scale=140.0,
+            actor_vp_railroad_scale=100.0,
+        )
+        self.assertTrue(torch.equal(scales, torch.tensor([140.0, 100.0])))
+
+        config = ModelConfig(
+            state_dim=4,
+            action_dim=10,
+            state_hidden_dim=16,
+            action_embedding_dim=8,
+            trunk_dim=12,
+            actor_vp_target_mode=ACTOR_VP_TARGET_PHASE_REMAINING,
+            actor_vp_scale=140.0,
+            actor_vp_railroad_scale=100.0,
+        )
+        model = BrassPolicyValueNet(config)
+        output = model(batch)
+        losses = compute_losses(
+            output,
+            batch,
+            vp_margin_scale=config.vp_margin_scale,
+            actor_vp_scale=config.actor_vp_scale,
+            actor_vp_railroad_scale=config.actor_vp_railroad_scale,
+            actor_vp_target_mode=config.actor_vp_target_mode,
+        )
+        expected_targets = batch.actor_victory_points_targets / scales
+        self.assertTrue(
+            torch.allclose(
+                losses.actor_victory_points_huber,
+                F.smooth_l1_loss(
+                    output.actor_victory_points_normalized, expected_targets
+                ),
+            )
+        )
         dataset.close()
 
     def test_zero_initialized_policy_adapter_preserves_base_values(self) -> None:
@@ -424,6 +692,59 @@ class TrainingPipelineTests(unittest.TestCase):
             evaluator.predict_values([{**states[0], "feature_version": 99}], dataset.schema)
         dataset.close()
 
+    def test_checkpoint_evaluator_denormalizes_phase_conditioned_remaining_vp(self) -> None:
+        schema = FeatureSchema.from_schema_dict(
+            {
+                "version": 1,
+                "state_dim": 21,
+                "action_dim": 10,
+                "card_type_dim": 2,
+                "max_players": 2,
+                "state_blocks": [
+                    {"name": "global", "offset": 0, "size": 5},
+                    {"name": "players", "offset": 5, "size": 16},
+                ],
+                "action_blocks": [{"name": "all", "offset": 0, "size": 10}],
+            }
+        )
+        model = BrassPolicyValueNet(
+            ModelConfig(
+                state_dim=schema.state_dim,
+                action_dim=schema.action_dim,
+                state_hidden_dim=16,
+                action_embedding_dim=8,
+                trunk_dim=12,
+                actor_vp_target_mode=ACTOR_VP_TARGET_PHASE_REMAINING,
+                actor_vp_scale=140.0,
+                actor_vp_railroad_scale=100.0,
+            )
+        )
+        checkpoint = self.root / "phase-remaining-model.pt"
+        save_checkpoint(checkpoint, model, schema)
+        evaluator = CheckpointEvaluator(checkpoint)
+        first = [0.0] * schema.state_dim
+        first[0] = 1.0
+        first[12] = 0.2
+        second = [0.0] * schema.state_dim
+        second[1] = 1.0
+        second[12] = 0.3
+        states = [
+            {"feature_version": schema.version, "features": first},
+            {"feature_version": schema.version, "features": second},
+        ]
+
+        prediction = evaluator.predict_values(states, schema)
+        dense = build_value_state_batch(states, schema)
+        with torch.inference_mode():
+            _win_logits, _margins, normalized_actor_vps = model.forward_values(dense)
+        expected = (
+            normalized_actor_vps * torch.tensor([140.0, 100.0])
+            + torch.tensor([20.0, 30.0])
+        ).clamp_min(0.0)
+        self.assertTrue(
+            torch.allclose(torch.tensor(prediction.actor_victory_points), expected)
+        )
+
     def test_checkpoint_evaluator_batches_variable_action_policies(self) -> None:
         torch.manual_seed(777)
         dataset = SelfPlayDataset([self.shard])
@@ -526,6 +847,7 @@ class TrainingPipelineTests(unittest.TestCase):
                     "state_index": None,
                     "terminal_root_shared_win_rate": 1.0,
                     "terminal_root_victory_point_margin": 9.0,
+                    "terminal_root_actor_victory_points": 70.0,
                 },
             ],
         }
@@ -544,6 +866,7 @@ class TrainingPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(values.shared_win_rates[1], 0.3)
         self.assertAlmostEqual(values.shared_win_rates[2], 1.0)
         self.assertEqual(values.victory_point_margins, (2.0, -4.0, 9.0))
+        self.assertEqual(values.actor_victory_points, (40.0, 56.0, 70.0))
         self.assertEqual(values.shared_win_standard_errors, (None, None, None))
         self.assertEqual(values.sample_counts, (1, 1, 1))
 

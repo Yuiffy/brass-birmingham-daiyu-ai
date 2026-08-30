@@ -26,6 +26,7 @@ pub struct ReplayTurnCheckpoint {
     personal_turns_taken: Vec<u32>,
     pending_shortfall_sessions: Vec<ShortfallResolutionSession>,
     current_player: usize,
+    turn_started: bool,
     discard_history: Vec<DiscardHistoryEntry>,
 }
 
@@ -45,6 +46,13 @@ pub struct GameRunner {
     pub turn_count: u32,
     pub round_in_phase: u32,
     pub actions_remaining_in_turn: u8,
+    /// Whether the current player's turn has been explicitly started.
+    ///
+    /// `actions_remaining_in_turn == 0` is ambiguous: it is true both before
+    /// a turn starts and after its final action.  Keeping this bit separate
+    /// makes an `end_turn` request idempotent instead of allowing a duplicate
+    /// request to advance the next player.
+    pub turn_started: bool,
     pub personal_turns_taken: Vec<u32>,
     pub pending_shortfall_sessions: Vec<ShortfallResolutionSession>,
     turn_checkpoints: Vec<TurnCheckpoint>,
@@ -70,6 +78,7 @@ impl GameRunner {
             turn_count: 0,
             round_in_phase: 0,
             actions_remaining_in_turn: 0,
+            turn_started: false,
             personal_turns_taken: vec![0; num_players],
             pending_shortfall_sessions: Vec::new(),
             turn_checkpoints: Vec::new(),
@@ -80,14 +89,19 @@ impl GameRunner {
 
     pub fn start_turn(&mut self) -> Vec<ActionType> {
         let player_idx = self.framework.current_player;
-        if self.actions_remaining_in_turn == 0 {
-            self.actions_remaining_in_turn = if self.personal_turns_taken[player_idx] == 0 {
-                1
-            } else {
-                2
-            };
-            self.turn_checkpoints.clear();
-            self.turn_action_history.clear();
+        if !self.turn_started {
+            // A few low-level callers restore a position with a non-zero
+            // action budget directly.  Treat that as an already-open turn.
+            if self.actions_remaining_in_turn == 0 {
+                self.actions_remaining_in_turn = if self.personal_turns_taken[player_idx] == 0 {
+                    1
+                } else {
+                    2
+                };
+                self.turn_checkpoints.clear();
+                self.turn_action_history.clear();
+            }
+            self.turn_started = true;
         }
         self.framework.get_valid_root_actions()
     }
@@ -99,9 +113,64 @@ impl GameRunner {
             .unwrap_or(ChoiceSet::ConfirmOnly)
     }
 
+    /// Strict Web/API entry point for opening an action session.
+    pub fn try_start_action(&mut self, action_type: ActionType) -> Result<ChoiceSet, String> {
+        if self.is_game_finished() {
+            return Err("Game is already finished".to_string());
+        }
+        if !self.turn_started {
+            return Err("Turn has not been started".to_string());
+        }
+        if self.actions_remaining_in_turn == 0 {
+            return Err("No actions remain in this turn".to_string());
+        }
+        if self.has_pending_shortfall() {
+            return Err("Income shortfall must be resolved before an action".to_string());
+        }
+        if self.framework.current_session().is_some() {
+            return Err("An action session is already active".to_string());
+        }
+        let root_action = if action_type == ActionType::BuildDoubleRailroad {
+            ActionType::BuildRailroad
+        } else {
+            action_type
+        };
+        if !self
+            .framework
+            .get_valid_root_actions()
+            .contains(&root_action)
+        {
+            return Err(format!("Action {:?} is not legal", action_type));
+        }
+        Ok(self.start_action(action_type))
+    }
+
     pub fn apply_choice(&mut self, choice: ActionChoice) -> Option<ChoiceSet> {
         let _ = self.framework.apply_action_choice(choice);
         self.framework.get_next_choice_set()
+    }
+
+    /// Strict Web/API entry point that validates the currently advertised
+    /// choice before mutating the action session.
+    pub fn try_apply_choice(&mut self, choice: ActionChoice) -> Result<Option<ChoiceSet>, String> {
+        if self.is_game_finished() {
+            return Err("Game is already finished".to_string());
+        }
+        if !self.turn_started {
+            return Err("Turn has not been started".to_string());
+        }
+        let choice_set = self
+            .framework
+            .get_next_choice_set()
+            .ok_or_else(|| "No active action choice is pending".to_string())?;
+        if !crate::game::legal_actions::choice_set_contains(&choice_set, &choice) {
+            return Err(format!(
+                "Choice {:?} is not legal for the current choice set {:?}",
+                choice, choice_set
+            ));
+        }
+        self.framework.apply_action_choice(choice)?;
+        Ok(self.framework.get_next_choice_set())
     }
 
     pub fn confirm_action(&mut self) -> Result<(), String> {
@@ -187,6 +256,53 @@ impl GameRunner {
     }
 
     pub fn end_turn(&mut self) {
+        // Keep this low-level method safe as well: all normal callers should
+        // have consumed the action budget and opened exactly one turn.
+        if !self.turn_started
+            || self.actions_remaining_in_turn != 0
+            || self.framework.current_session().is_some()
+            || self.has_pending_shortfall()
+        {
+            return;
+        }
+        self.turn_checkpoints.clear();
+        self.turn_action_history.clear();
+        self.finish_turn_and_advance();
+    }
+
+    /// Validate and finish a browser/API turn.  Duplicate calls return an
+    /// error rather than advancing the next seat.
+    pub fn try_end_turn(&mut self) -> Result<(), String> {
+        if self.is_game_finished() {
+            return Err("Game is already finished".to_string());
+        }
+        if !self.turn_started {
+            return Err("No active turn to end".to_string());
+        }
+        if self.actions_remaining_in_turn != 0 {
+            return Err(format!(
+                "Cannot end turn with {} action(s) remaining",
+                self.actions_remaining_in_turn
+            ));
+        }
+        if self.framework.current_session().is_some() {
+            return Err("Finish or cancel the active action before ending the turn".to_string());
+        }
+        if self.has_pending_shortfall() {
+            return Err("Resolve income shortfall before ending the turn".to_string());
+        }
+        self.end_turn();
+        if self.turn_started {
+            return Err("Turn did not advance".to_string());
+        }
+        Ok(())
+    }
+
+    /// Replay-only turn advancement.  Historical logs may contain malformed
+    /// boundary markers; preserve their exact old semantics while the audit
+    /// layer reports the anomaly.  Normal callers must use `try_end_turn`.
+    pub fn end_turn_for_replay(&mut self) {
+        self.turn_started = true;
         self.turn_checkpoints.clear();
         self.turn_action_history.clear();
         self.finish_turn_and_advance();
@@ -202,6 +318,7 @@ impl GameRunner {
             personal_turns_taken: self.personal_turns_taken.clone(),
             pending_shortfall_sessions: self.pending_shortfall_sessions.clone(),
             current_player: self.framework.current_player,
+            turn_started: self.turn_started,
             discard_history: self.discard_history.clone(),
         }
     }
@@ -215,6 +332,7 @@ impl GameRunner {
         self.personal_turns_taken = checkpoint.personal_turns_taken;
         self.pending_shortfall_sessions = checkpoint.pending_shortfall_sessions;
         self.framework.current_player = checkpoint.current_player;
+        self.turn_started = checkpoint.turn_started;
         self.discard_history = checkpoint.discard_history;
         self.framework.cancel_action_session();
         self.turn_checkpoints.clear();
@@ -222,6 +340,7 @@ impl GameRunner {
     }
 
     pub fn finish_turn_and_advance(&mut self) {
+        self.turn_started = false;
         let player_idx = self.framework.current_player;
         self.personal_turns_taken[player_idx] += 1;
         self.turn_count += 1;

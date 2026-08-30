@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from training.data import FeatureSchema, SelfPlayDataset
+from training.demonstration_prior import load_demonstration_prior
 from training.inference import PolicyValuePrediction
 from training.model_self_play import (
     ModelSelfPlayConfig,
@@ -79,6 +80,7 @@ class _FakeNeuralSearch:
         self.model_id = model_id
         self.probabilities = probabilities
         self.submitted = False
+        self.requested_batch_sizes: list[int] = []
 
     def is_complete(self) -> bool:
         return self.submitted
@@ -86,6 +88,7 @@ class _FakeNeuralSearch:
     def next_inference_batch(self, max_batch_size: int) -> dict:
         if max_batch_size <= 0 or self.submitted:
             raise AssertionError("unexpected fake neural batch request")
+        self.requested_batch_sizes.append(max_batch_size)
         return {
             "positions": [
                 {
@@ -160,11 +163,17 @@ class _FakeNeuralSearch:
 
 
 class _FakeGame:
+    last_instance = None
+
     def __init__(self, num_players: int, seed: int) -> None:
-        if num_players != 2:
-            raise AssertionError("fake engine only supports two players")
+        if num_players not in (2, 3, 4):
+            raise AssertionError("fake engine only supports two to four players")
+        self.num_players = num_players
         self.seed = seed
         self.done = False
+        self.last_search = None
+        self.last_search_object = None
+        type(self).last_instance = self
 
     def get_training_feature_schema(self) -> dict:
         return SCHEMA
@@ -201,7 +210,7 @@ class _FakeGame:
         self, determinizations_per_action: int, seed: int
     ) -> dict:
         return {
-            "num_players": 2,
+            "num_players": self.num_players,
             "root_player": 0,
             "action_keys": ["action-a", "action-b"],
             "determinizations_per_action": determinizations_per_action,
@@ -223,6 +232,7 @@ class _FakeGame:
         score_utility_weight: float,
         actor_victory_points: float,
         group_card_choices: bool,
+        final_vp_utility_weight: float,
     ) -> _FakeNeuralSearch:
         self.last_search = {
             "probabilities": probabilities,
@@ -233,8 +243,10 @@ class _FakeGame:
             "score_utility_weight": score_utility_weight,
             "actor_victory_points": actor_victory_points,
             "group_card_choices": group_card_choices,
+            "final_vp_utility_weight": final_vp_utility_weight,
         }
-        return _FakeNeuralSearch(simulations, model_id, probabilities)
+        self.last_search_object = _FakeNeuralSearch(simulations, model_id, probabilities)
+        return self.last_search_object
 
     def search_legal_actions_with_policy_and_action_values(
         self,
@@ -353,13 +365,13 @@ class _FakeGame:
     def get_outcome(self) -> dict:
         return {
             "official_winners": [0],
-            "shared_win_values": [1.0, 0.0],
-            "placements": [1, 2],
-            "finish_order": [0, 1],
-            "victory_points": [12, 7],
-            "victory_point_margins": [5, -5],
-            "income_levels": [4, 2],
-            "money": [9, 3],
+            "shared_win_values": [1.0] + [0.0] * (self.num_players - 1),
+            "placements": [1] + [2] * (self.num_players - 1),
+            "finish_order": list(range(self.num_players)),
+            "victory_points": [12] + [7] * (self.num_players - 1),
+            "victory_point_margins": [5] + [-5] * (self.num_players - 1),
+            "income_levels": [4] + [2] * (self.num_players - 1),
+            "money": [9] + [3] * (self.num_players - 1),
         }
 
 
@@ -405,6 +417,31 @@ class ModelSelfPlayTests(unittest.TestCase):
                 output=self.root / "bad-score-weight.jsonl",
                 checkpoint=self.root / "model.pt",
                 score_utility_weight=1.1,
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "final_vp_utility_weight"):
+            ModelSelfPlayConfig(
+                output=self.root / "bad-final-vp-weight.jsonl",
+                checkpoint=self.root / "model.pt",
+                final_vp_utility_weight=1.1,
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "demonstration_prior_strength"):
+            ModelSelfPlayConfig(
+                output=self.root / "missing-demonstration.jsonl",
+                checkpoint=self.root / "model.pt",
+                demonstration_prior_strength=0.5,
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "valid seat indices"):
+            ModelSelfPlayConfig(
+                output=self.root / "bad-demonstration-seat.jsonl",
+                checkpoint=self.root / "model.pt",
+                num_players=2,
+                demonstration_prior_players=(2,),
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "must be unique"):
+            ModelSelfPlayConfig(
+                output=self.root / "duplicate-demonstration-seats.jsonl",
+                checkpoint=self.root / "model.pt",
+                demonstration_prior_players=(0, 0),
             ).validate()
 
     def test_zero_temperature_selects_stable_highest_visit_action(self) -> None:
@@ -479,6 +516,41 @@ class ModelSelfPlayTests(unittest.TestCase):
         self.assertEqual(records[2]["game_index"], 9)
         self.assertEqual(records[1]["game_seed"], records[2]["game_seed"])
 
+    def test_three_player_export_uses_batched_neural_puct(self) -> None:
+        output = self.root / "three-player-self-play.jsonl"
+        config = ModelSelfPlayConfig(
+            output=output,
+            checkpoint=self.root / "model.pt",
+            games=1,
+            num_players=3,
+            simulations_per_decision=5,
+            search_determinizations=3,
+            inference_batch_size=7,
+            engine_revision="test-engine",
+            selection_temperature=0.0,
+        )
+
+        export_model_self_play(
+            config,
+            engine_module=_FakeEngine,
+            evaluator=_FakeEvaluator(),
+        )
+
+        records = [json.loads(line) for line in output.read_text().splitlines()]
+        self.assertEqual(records[0]["num_players"], 3)
+        self.assertEqual(
+            records[0]["search_method"],
+            "determinized_batched_neural_puct",
+        )
+        self.assertEqual(records[1]["shared_win_values"], [1.0, 0.0, 0.0])
+        self.assertIsNotNone(_FakeGame.last_instance)
+        self.assertEqual(_FakeGame.last_instance.last_search["simulations"], 5)
+        self.assertEqual(_FakeGame.last_instance.last_search["determinizations"], 3)
+        self.assertEqual(
+            _FakeGame.last_instance.last_search_object.requested_batch_sizes,
+            [7],
+        )
+
     def test_export_is_dataset_compatible_and_keeps_model_search_evidence(self) -> None:
         output = self.root / "model-self-play.jsonl"
         config = ModelSelfPlayConfig(
@@ -550,6 +622,103 @@ class ModelSelfPlayTests(unittest.TestCase):
                 evaluator=evaluator,
             )
 
+    def test_demonstration_prior_reaches_root_search_and_export_metadata(self) -> None:
+        demonstration_path = self.root / "human.jsonl"
+        demonstration_path.write_text(
+            "\n".join(
+                json.dumps(record, separators=(",", ":"))
+                for record in (
+                    {"record_type": "metadata"},
+                    {"record_type": "game"},
+                    {
+                        "record_type": "position",
+                        "phase": "canal",
+                        "round_in_phase": 0,
+                        "actions_remaining_in_turn": 1,
+                        "selected_action_key": "action-b",
+                    },
+                    {
+                        "record_type": "position",
+                        "phase": "canal",
+                        "round_in_phase": 0,
+                        "actions_remaining_in_turn": 1,
+                        "selected_action_key": "action-b",
+                    },
+                    {
+                        "record_type": "position",
+                        "phase": "canal",
+                        "round_in_phase": 0,
+                        "actions_remaining_in_turn": 1,
+                        "selected_action_key": "action-a",
+                    },
+                )
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        prior = load_demonstration_prior((demonstration_path,))
+        output = self.root / "demonstration-self-play.jsonl"
+        config = ModelSelfPlayConfig(
+            output=output,
+            checkpoint=self.root / "model.pt",
+            games=1,
+            simulations_per_decision=4,
+            engine_revision="test-engine",
+            selection_temperature=0.0,
+            demonstration_prior=prior,
+            demonstration_prior_strength=1.0,
+        )
+
+        export_model_self_play(
+            config,
+            engine_module=_FakeEngine,
+            evaluator=_FakeEvaluator(),
+        )
+
+        self.assertGreater(
+            _FakeGame.last_instance.last_search["probabilities"][1],
+            _FakeGame.last_instance.last_search["probabilities"][0],
+        )
+        records = [json.loads(line) for line in output.read_text().splitlines()]
+        self.assertEqual(records[0]["demonstration_prior_positions"], 3)
+        self.assertEqual(records[0]["demonstration_prior_strength"], 1.0)
+        self.assertEqual(records[2]["demonstration_prior_positions"], 3)
+        self.assertGreater(
+            records[2]["legal_actions"][1]["demonstration_prior_probability"],
+            records[2]["legal_actions"][0]["demonstration_prior_probability"],
+        )
+
+        # A seat-restricted prior leaves an opponent's root policy untouched.
+        restricted_output = self.root / "restricted-demonstration-self-play.jsonl"
+        restricted_config = ModelSelfPlayConfig(
+            output=restricted_output,
+            checkpoint=self.root / "model.pt",
+            games=1,
+            simulations_per_decision=4,
+            engine_revision="test-engine",
+            selection_temperature=0.0,
+            demonstration_prior=prior,
+            demonstration_prior_strength=1.0,
+            demonstration_prior_players=(1,),
+        )
+        export_model_self_play(
+            restricted_config,
+            engine_module=_FakeEngine,
+            evaluator=_FakeEvaluator(),
+        )
+        self.assertEqual(
+            _FakeGame.last_instance.last_search["probabilities"],
+            [0.75, 0.25],
+        )
+        restricted_records = [
+            json.loads(line) for line in restricted_output.read_text().splitlines()
+        ]
+        self.assertFalse(restricted_records[2]["demonstration_prior_applied"])
+        self.assertIsNone(
+            restricted_records[2]["legal_actions"][0][
+                "demonstration_prior_probability"
+            ]
+        )
 
 if __name__ == "__main__":
     unittest.main()

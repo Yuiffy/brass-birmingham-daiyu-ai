@@ -3,10 +3,12 @@ use serde::Serialize;
 use crate::board::resources::{BeerSellSource, BreweryBeerSource, ResourceSource};
 use crate::core::types::{ActionType, Card, Era};
 use crate::game::framework::{ActionIntent, NetworkMode};
+use crate::game::rule_ai::RuleScoreBreakdown;
 use crate::game::runner::GameRunner;
 use crate::game::search::{
     RootActionEstimate, RootSearchReport, BATCHED_NEURAL_PUCT_METHOD, NEURAL_TREE_VALUE_SOURCE,
-    ROOT_PUCT_ACTION_VALUE_METHOD, ROOT_PUCT_METHOD, SUCCESSOR_MODEL_VALUE_SOURCE,
+    ROOT_PUCT_ACTION_VALUE_METHOD, ROOT_PUCT_METHOD, RULE_DECISION_TREE_METHOD,
+    RULE_IMMEDIATE_SCORE_SOURCE, SUCCESSOR_MODEL_VALUE_SOURCE,
 };
 
 use super::serialize::{format_card_label, industry_str, town_name_for_bl};
@@ -55,6 +57,8 @@ pub struct AnalysisCandidateJson {
     pub shared_win_rate_standard_error: Option<f64>,
     pub policy_probability: Option<f64>,
     pub calibrated_win_rate: Option<f64>,
+    pub rule_score: Option<f64>,
+    pub rule_score_breakdown: Option<RuleScoreBreakdown>,
     pub immediate_effect: ImmediateEffectJson,
     pub highlights: AnalysisHighlightsJson,
     pub sample_random_continuation: SampleContinuationJson,
@@ -138,6 +142,8 @@ pub fn serialize_analysis_for_observer(
         method: report.method.clone(),
         method_label: if report.method == BATCHED_NEURAL_PUCT_METHOD {
             "策略价值网络 · 多层 PUCT · 隐藏牌确定化"
+        } else if report.method == RULE_DECISION_TREE_METHOD {
+            "CPU 规则决策树 · 同回合浅层前瞻（无终局续弈）"
         } else if report.method == ROOT_PUCT_ACTION_VALUE_METHOD {
             "策略网络先验 · 根节点 PUCT · 批量后继价值"
         } else if report.method == ROOT_PUCT_METHOD {
@@ -235,6 +241,7 @@ pub fn explain_analysis_question_for_observer(
     let policy_prior = candidate.policy_probability.map(format_percent);
     let uses_successor_model = candidate.value_source == SUCCESSOR_MODEL_VALUE_SOURCE;
     let uses_neural_tree = candidate.value_source == NEURAL_TREE_VALUE_SOURCE;
+    let uses_rule = candidate.value_source == RULE_IMMEDIATE_SCORE_SOURCE;
     let mut paragraphs = vec![if uses_neural_tree {
         format!(
             "这步排在第 {}：根策略先验为 {}，多层 PUCT 给了它 {} 次访问（占全部模拟的 {}）；{} 次树内价值回传后的共享胜分估计为 {}。{}",
@@ -257,6 +264,15 @@ pub fn explain_analysis_question_for_observer(
             win_rate,
             effect
         )
+    } else if uses_rule {
+        format!(
+            "这步排在第 {}：CPU 规则决策树先评估所有合法动作，再对少量候选检查同回合下一动作；综合 VP、收入、现金、产业、真实路线、资源和弃牌机会成本后的规则评分为 {:+.2}。{}",
+            candidate.rank,
+            candidate
+                .rule_score
+                .unwrap_or(candidate.average_victory_point_margin),
+            effect
+        )
     } else {
         match &policy_prior {
             Some(prior) => format!(
@@ -271,9 +287,16 @@ pub fn explain_analysis_question_for_observer(
     }];
 
     if asks_probability {
-        paragraphs.push(if uses_neural_tree {
+        paragraphs.push(if uses_rule {
             format!(
-                "这里的 {} 是多层 PUCT 沿搜索树回传到根节点的共享胜分均值，当前实际最大深度为 {}，共完成 {} 个神经叶估值；轮到对手时已换回当前玩家视角。它尚未经过实战校准，不能当作精确胜率。",
+                "这里的 {:+.2} 是当前局面的相对规则评分，不是胜率。评分只比较本次合法动作的前后状态，没有滚到结局，也没有使用神经网络或 GPU；真实胜率仍需独立对局校准。",
+                candidate
+                    .rule_score
+                    .unwrap_or(candidate.average_victory_point_margin)
+            )
+        } else if uses_neural_tree {
+            format!(
+                "这里的 {} 是多层 PUCT 沿搜索树回传到根节点的共享胜分均值，当前实际最大深度为 {}，共完成 {} 个神经叶估值；多人局会把非根玩家的模型胜分按其余竞争者平均分配后换回根视角。它尚未经过实战校准，不能当作精确胜率。",
                 win_rate,
                 report.max_search_depth.unwrap_or(0),
                 report.neural_leaf_evaluations.unwrap_or(0),
@@ -326,46 +349,63 @@ pub fn explain_analysis_question_for_observer(
             let other_label = choice_rank_label(other.rank);
             let other_serialized =
                 serialize_candidate(other, runner, report.root_player, reveal_private_cards);
-            paragraphs.push(format!(
-                "与{}“{}”相比，{}的搜索访问数为 {} 对 {}，{}为 {} 对 {}。当前排序先按搜索访问数，再用价值估计打破访问数平局；差距仍受模型误差和隐藏牌样本量影响。",
-                other_label,
-                describe_action(
-                    &other.action.intent,
-                    runner,
-                    report.root_player,
-                    reveal_private_cards,
-                )
-                .0,
-                candidate_label,
-                candidate.visits,
-                other.visits,
-                if uses_neural_tree {
-                    "多层树回传共享胜分估计"
-                } else if uses_successor_model {
-                    "后继模型共享胜分估计"
-                } else {
-                    "随机续弈共享胜分率"
-                },
-                win_rate,
-                format_percent(other.estimated_shared_win_rate),
-            ));
-            if let (Some(candidate_prior), Some(other_prior)) =
-                (candidate.policy_probability, other.policy_probability)
-            {
+            if uses_rule {
                 paragraphs.push(format!(
-                    "模型搜索前给{}和{}的策略先验分别为 {}、{}；访问差异同时反映先验和{}。",
-                    candidate_label,
+                    "与{}“{}”相比，{}的规则评分为 {:+.2} 对 {:+.2}。排序直接来自同一组阶段权重和安全约束，不包含终局续弈或神经网络估值。",
                     other_label,
-                    format_percent(candidate_prior),
-                    format_percent(other_prior),
-                    if uses_neural_tree {
-                        "多层树中的对手应对与叶节点价值反馈"
-                    } else if uses_successor_model {
-                        "后继价值反馈"
-                    } else {
-                        "续弈反馈"
-                    }
+                    describe_action(
+                        &other.action.intent,
+                        runner,
+                        report.root_player,
+                        reveal_private_cards,
+                    )
+                    .0,
+                    candidate_label,
+                    candidate.rule_score.unwrap_or(candidate.average_victory_point_margin),
+                    other.rule_score.unwrap_or(other.average_victory_point_margin),
                 ));
+            } else {
+                paragraphs.push(format!(
+                    "与{}“{}”相比，{}的搜索访问数为 {} 对 {}，{}为 {} 对 {}。当前排序先按搜索访问数，再用价值估计打破访问数平局；差距仍受模型误差和隐藏牌样本量影响。",
+                    other_label,
+                    describe_action(
+                        &other.action.intent,
+                        runner,
+                        report.root_player,
+                        reveal_private_cards,
+                    )
+                    .0,
+                    candidate_label,
+                    candidate.visits,
+                    other.visits,
+                    if uses_neural_tree {
+                        "多层树回传共享胜分估计"
+                    } else if uses_successor_model {
+                        "后继模型共享胜分估计"
+                    } else {
+                        "随机续弈共享胜分率"
+                    },
+                    win_rate,
+                    format_percent(other.estimated_shared_win_rate),
+                ));
+                if let (Some(candidate_prior), Some(other_prior)) =
+                    (candidate.policy_probability, other.policy_probability)
+                {
+                    paragraphs.push(format!(
+                        "模型搜索前给{}和{}的策略先验分别为 {}、{}；访问差异同时反映先验和{}。",
+                        candidate_label,
+                        other_label,
+                        format_percent(candidate_prior),
+                        format_percent(other_prior),
+                        if uses_neural_tree {
+                            "多层树中的对手应对与叶节点价值反馈"
+                        } else if uses_successor_model {
+                            "后继价值反馈"
+                        } else {
+                            "续弈反馈"
+                        }
+                    ));
+                }
             }
             paragraphs.push(format!(
                 "{}的即时结果：{}{}的即时结果：{}",
@@ -377,20 +417,41 @@ pub fn explain_analysis_question_for_observer(
         }
     }
     if paragraphs.len() == 1 {
-        paragraphs.push(format!(
-            "一条随机样例续弈最终得到 {:?} VP，官方胜者为玩家 {:?}；这只是样例，不是主变化。",
-            candidate.sample_random_continuation.final_victory_points,
-            candidate.sample_random_continuation.official_winners
-        ));
+        if uses_rule {
+            paragraphs.push(
+                "这是 CPU 浅层评估：最多检查当前玩家同回合的下一动作，不替对手滚到终局，也不会为当前结论占用 GPU。".to_string(),
+            );
+        } else {
+            paragraphs.push(format!(
+                "一条随机样例续弈最终得到 {:?} VP，官方胜者为玩家 {:?}；这只是样例，不是主变化。",
+                candidate.sample_random_continuation.final_victory_points,
+                candidate.sample_random_continuation.official_winners
+            ));
+        }
     }
 
     let mut evidence = vec![
         format!("动作：{}", serialized.summary),
-        format!(
-            "访问：{}；访问占比：{}；共享胜分率：{}",
-            visits, visit_share, win_rate
-        ),
+        if uses_rule {
+            format!(
+                "规则评分：{:+.2}；相对偏好：{}；已评估全部 {} 个合法动作",
+                candidate
+                    .rule_score
+                    .unwrap_or(candidate.average_victory_point_margin),
+                win_rate,
+                report.evaluated_action_count,
+            )
+        } else {
+            format!(
+                "访问：{}；访问占比：{}；共享胜分率：{}",
+                visits, visit_share, win_rate
+            )
+        },
         match candidate.average_final_victory_points {
+            Some(victory_points) if uses_rule => format!(
+                "动作后当前 VP：{victory_points:.1}；当前 VP 分差：{:+.1}",
+                candidate.average_victory_point_margin
+            ),
             Some(victory_points) => format!(
                 "平均终局 VP：{victory_points:.1}；平均 VP 分差：{:+.1}",
                 candidate.average_victory_point_margin
@@ -414,7 +475,26 @@ pub fn explain_analysis_question_for_observer(
         evidence.push(format!("立即变化：{}", effect));
     }
     if let Some(prior) = policy_prior {
-        evidence.push(format!("策略网络先验：{}", prior));
+        evidence.push(if uses_rule {
+            format!("规则相对偏好：{}", prior)
+        } else {
+            format!("策略网络先验：{}", prior)
+        });
+    }
+    if let Some(breakdown) = candidate.rule_score_breakdown {
+        evidence.push(format!(
+            "规则分量：即时 VP {:+.2}，潜在 VP {:+.2}，收入 {:+.2}，现金 {:+.2}，产业 {:+.2}，网络 {:+.2}，资源 {:+.2}，安全 {:+.2}，弃牌 {:+.2}，下一动作 {:+.2}",
+            breakdown.immediate_vp,
+            breakdown.potential_vp,
+            breakdown.income,
+            breakdown.cash,
+            breakdown.industry,
+            breakdown.network,
+            breakdown.resources,
+            breakdown.safety,
+            breakdown.card_value,
+            breakdown.lookahead,
+        ));
     }
 
     Ok(ExplanationJson {
@@ -430,6 +510,9 @@ pub fn explain_analysis_question_for_observer(
                 report.neural_leaf_evaluations.unwrap_or(0),
                 report.inference_batches.unwrap_or(0),
             )
+        } else if report.method == RULE_DECISION_TREE_METHOD {
+            "当前是 CPU 规则决策树：每个合法动作只评估一次前后状态，综合 VP、收入、现金、产业、网络、资源和安全分量；没有终局续弈、神经网络或胜率校准。"
+                .to_string()
         } else if report.method == ROOT_PUCT_ACTION_VALUE_METHOD {
             "当前是策略先验 + 根节点 PUCT + 批量一步后继价值；价值已参与排序，但仍不是完整深层神经树搜索，也尚未校准。"
                 .to_string()
@@ -478,6 +561,8 @@ fn serialize_candidate(
         shared_win_rate_standard_error: candidate.shared_win_rate_standard_error,
         policy_probability: candidate.policy_probability,
         calibrated_win_rate: candidate.calibrated_win_rate,
+        rule_score: candidate.rule_score,
+        rule_score_breakdown: candidate.rule_score_breakdown,
         immediate_effect: ImmediateEffectJson {
             money_delta: effect.player_money_delta[root_player],
             income_level_delta: effect.player_income_level_delta[root_player],
@@ -501,7 +586,11 @@ fn serialize_candidate(
         },
         highlights: highlights_for_intent(&candidate.action.intent),
         sample_random_continuation: SampleContinuationJson {
-            label: "随机样例续弈（非主变化）",
+            label: if candidate.value_source == RULE_IMMEDIATE_SCORE_SOURCE {
+                "浅层规则评分（同回合前瞻，无终局续弈）"
+            } else {
+                "随机样例续弈（非主变化）"
+            },
             steps: candidate
                 .sample_random_continuation
                 .steps
@@ -735,7 +824,14 @@ fn risk_sentence(candidate: &RootActionEstimate, report: &RootSearchReport) -> S
         .shared_win_rate_standard_error
         .map(format_percent)
         .unwrap_or_else(|| "无法估计".to_string());
-    if candidate.value_source == NEURAL_TREE_VALUE_SOURCE {
+    if candidate.value_source == RULE_IMMEDIATE_SCORE_SOURCE {
+        format!(
+            "主要风险是规则树只看当前动作和同回合一层前瞻，没有显式建模对手应对、隐藏牌分布或终局兑现；{:+.2} 的相对评分不能直接解释为胜率。",
+            candidate
+                .rule_score
+                .unwrap_or(candidate.average_victory_point_margin)
+        )
+    } else if candidate.value_source == NEURAL_TREE_VALUE_SOURCE {
         format!(
             "主要风险是当前这步只有 {} 次树搜索价值回传，标准误为 {}，整次搜索实际最大深度为 {}；隐藏牌确定化抽样、叶节点模型误差和更深层应对仍会影响结果。",
             candidate.value_sample_count,

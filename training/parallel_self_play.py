@@ -9,6 +9,11 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .demonstration_prior import (
+    DEMONSTRATION_PRIOR_VERSION,
+    DemonstrationPrior,
+    load_demonstration_prior,
+)
 from .model_self_play import (
     MASK_64,
     ModelSelfPlayConfig,
@@ -42,6 +47,10 @@ class ParallelSelfPlayConfig:
     group_card_choices: bool = False
     selection_temperature: float = 1.0
     score_utility_weight: float = 0.0
+    final_vp_utility_weight: float = 0.0
+    demonstration_prior: DemonstrationPrior | None = None
+    demonstration_prior_strength: float = 0.0
+    demonstration_prior_players: tuple[int, ...] | None = None
 
     def validate(self) -> None:
         if self.workers <= 0 or self.workers > 64:
@@ -52,6 +61,34 @@ class ParallelSelfPlayConfig:
             raise ValueError("output_prefix must include a file-name prefix")
         if self.output_prefix.suffix == ".jsonl":
             raise ValueError("output_prefix must not end in .jsonl")
+        if (
+            not isinstance(self.demonstration_prior_strength, (int, float))
+            or isinstance(self.demonstration_prior_strength, bool)
+            or not 0.0 <= float(self.demonstration_prior_strength) <= 1.0
+        ):
+            raise ValueError(
+                "demonstration_prior_strength must be between 0 and 1"
+            )
+        if self.demonstration_prior_strength > 0.0 and self.demonstration_prior is None:
+            raise ValueError(
+                "demonstration_prior_strength requires a demonstration_prior"
+            )
+        if self.demonstration_prior_players is not None:
+            if not self.demonstration_prior_players:
+                raise ValueError("demonstration_prior_players must not be empty")
+            if len(set(self.demonstration_prior_players)) != len(
+                self.demonstration_prior_players
+            ):
+                raise ValueError("demonstration_prior_players must be unique")
+            for player in self.demonstration_prior_players:
+                if (
+                    isinstance(player, bool)
+                    or not isinstance(player, int)
+                    or not 0 <= player < self.num_players
+                ):
+                    raise ValueError(
+                        "demonstration_prior_players must contain valid seat indices"
+                    )
         _to_model_config(
             self,
             output=Path(f"{self.output_prefix}-000.jsonl"),
@@ -114,6 +151,21 @@ def main() -> None:
         group_card_choices=args.group_card_choices,
         selection_temperature=args.selection_temperature,
         score_utility_weight=args.score_utility_weight,
+        final_vp_utility_weight=args.final_vp_utility_weight,
+        demonstration_prior=(
+            load_demonstration_prior(
+                args.demonstration_shards,
+                version=args.demonstration_prior_version,
+            )
+            if args.demonstration_shards
+            else None
+        ),
+        demonstration_prior_strength=args.demonstration_prior_strength,
+        demonstration_prior_players=(
+            tuple(args.demonstration_prior_players)
+            if args.demonstration_prior_players is not None
+            else None
+        ),
     )
     summary = export_parallel_self_play(config)
     print(json.dumps(asdict(summary), sort_keys=True))
@@ -175,6 +227,44 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.0,
         help="Blend secured-score progress into neural PUCT exploitation",
+    )
+    parser.add_argument(
+        "--final-vp-utility-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Add a bounded opponent-relative final-VP tie-breaker when shared-win "
+            "values are uncertain"
+        ),
+    )
+    parser.add_argument(
+        "--demonstration-shards",
+        nargs="+",
+        default=(),
+        help="Audited human replay JSONL shards for a context/action-intent prior",
+    )
+    parser.add_argument(
+        "--demonstration-prior-version",
+        default=DEMONSTRATION_PRIOR_VERSION,
+        help="Version tag recorded for the human demonstration prior",
+    )
+    parser.add_argument(
+        "--demonstration-prior-strength",
+        type=float,
+        default=0.0,
+        help="Geometric blend strength for the demonstration prior (0 disables it)",
+    )
+    parser.add_argument(
+        "--demonstration-prior-players",
+        "--demonstration-prior-seats",
+        dest="demonstration_prior_players",
+        nargs="+",
+        type=int,
+        default=None,
+        help=(
+            "Only apply the human demonstration prior to these seat indices; "
+            "omit to apply it to every seat"
+        ),
     )
     return parser
 
@@ -347,6 +437,10 @@ def _to_model_config(
         group_card_choices=config.group_card_choices,
         selection_temperature=config.selection_temperature,
         score_utility_weight=config.score_utility_weight,
+        final_vp_utility_weight=config.final_vp_utility_weight,
+        demonstration_prior=config.demonstration_prior,
+        demonstration_prior_strength=config.demonstration_prior_strength,
+        demonstration_prior_players=config.demonstration_prior_players,
     )
 
 

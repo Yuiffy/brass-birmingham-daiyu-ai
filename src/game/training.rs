@@ -124,6 +124,7 @@ pub struct RootActionSuccessorSample {
     pub state_index: Option<usize>,
     pub terminal_root_shared_win_rate: Option<f64>,
     pub terminal_root_victory_point_margin: Option<f64>,
+    pub terminal_root_actor_victory_points: Option<f64>,
 }
 
 pub fn training_feature_schema() -> TrainingFeatureSchema {
@@ -280,7 +281,7 @@ pub fn encode_root_action_successor_batch(
             advance_successor_to_decision(&mut successor)?;
 
             if successor.is_game_finished() {
-                let (shared_win_rate, victory_point_margin) =
+                let (shared_win_rate, victory_point_margin, actor_victory_points) =
                     terminal_value_for_player(&successor, root_player)?;
                 samples.push(RootActionSuccessorSample {
                     action_index,
@@ -290,6 +291,7 @@ pub fn encode_root_action_successor_batch(
                     state_index: None,
                     terminal_root_shared_win_rate: Some(shared_win_rate),
                     terminal_root_victory_point_margin: Some(victory_point_margin),
+                    terminal_root_actor_victory_points: Some(actor_victory_points),
                 });
             } else {
                 let evaluation_player = successor.framework.current_player;
@@ -306,6 +308,7 @@ pub fn encode_root_action_successor_batch(
                     state_index: Some(state_index),
                     terminal_root_shared_win_rate: None,
                     terminal_root_victory_point_margin: None,
+                    terminal_root_actor_victory_points: None,
                 });
             }
         }
@@ -355,7 +358,10 @@ fn resolve_shortfalls_deterministically(runner: &mut GameRunner) {
     }
 }
 
-fn terminal_value_for_player(runner: &GameRunner, player_idx: usize) -> Result<(f64, f64), String> {
+fn terminal_value_for_player(
+    runner: &GameRunner,
+    player_idx: usize,
+) -> Result<(f64, f64, f64), String> {
     if !runner.is_game_finished() {
         return Err("terminal value requires a finished game".to_string());
     }
@@ -393,6 +399,7 @@ fn terminal_value_for_player(runner: &GameRunner, player_idx: usize) -> Result<(
     Ok((
         shared_win_rate,
         players[player_idx].victory_points as f64 - best_opponent_vp as f64,
+        players[player_idx].victory_points as f64,
     ))
 }
 

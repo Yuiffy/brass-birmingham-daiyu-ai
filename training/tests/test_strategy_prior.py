@@ -3,22 +3,32 @@ from __future__ import annotations
 import unittest
 
 from training.strategy_prior import (
+    ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+    CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
     GROUPED_STRATEGY_PRIOR_VERSION,
     LEGACY_STRATEGY_PRIOR_VERSION,
     LIFECYCLE_STRATEGY_PRIOR_VERSION,
     MAP_AWARE_STRATEGY_PRIOR_VERSION,
+    RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
     STRATEGY_PRIOR_VERSION,
     blend_policy_with_strategy,
     build_strategy_prior,
 )
 
 
-def _building(industry: int, *, resource: float = 1.0, flipped: bool = False) -> list[float]:
+def _building(
+    industry: int,
+    *,
+    resource: float = 1.0,
+    flipped: bool = False,
+    level: int = 0,
+    owner: int = 0,
+) -> list[float]:
     row = [0.0] * 14
     row[0] = 1.0
-    row[1] = 1.0
+    row[1 + owner] = 1.0
     row[5 + industry] = 1.0
-    row[11] = 0.125
+    row[11] = (level + 1) / 8.0
     row[12] = resource
     row[13] = 1.0 if flipped else 0.0
     return row
@@ -31,6 +41,8 @@ def _action(
     industry: int | None = None,
     location: int | None = None,
     sell_targets: list[int] | None = None,
+    choices: list[dict] | None = None,
+    discard_card_types: list[int] | None = None,
 ) -> dict:
     return {
         "key": key,
@@ -38,7 +50,8 @@ def _action(
         "selected_industry": industry,
         "build_location": location,
         "sell_targets": sell_targets or [],
-        "choices": [],
+        "choices": choices or [],
+        "discard_card_types": discard_card_types or [],
     }
 
 
@@ -364,6 +377,218 @@ class StrategyPriorTests(unittest.TestCase):
         self.assertEqual(prior.version, LEGACY_STRATEGY_PRIOR_VERSION)
         self.assertFalse(any(prior.guarded_actions))
         self.assertGreater(prior.probabilities[1], 0.0)
+
+    def test_v6_uses_beer_units_instead_of_brewery_count(self) -> None:
+        actions = [
+            _action("build|beer", "build", industry=2, location=47),
+            _action("build|cotton", "build", industry=5, location=36),
+        ]
+        high_supply = self.observation()
+        high_supply["buildings"] = [_building(2, resource=1.0), _building(5)]
+        low_supply = self.observation()
+        low_supply["buildings"] = [_building(2, resource=0.2), _building(5)]
+
+        high = build_strategy_prior(
+            high_supply,
+            {"actions": actions},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+        low = build_strategy_prior(
+            low_supply,
+            {"actions": actions},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertLess(high.scores[0], low.scores[0])
+        self.assertGreater(low.scores[1], low.scores[0])
+
+    def test_v6_prices_the_selected_market_source(self) -> None:
+        observation = self.observation()
+        observation["global_features"] = [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0 / 14.0,
+            1.0,
+        ]
+        observation["buildings"] = [[0.0] * 14, _building(0, resource=1.0)]
+        market_action = _action(
+            "build|market",
+            "build",
+            industry=3,
+            location=2,
+            choices=[{"kind": "coal_source", "value": 49}],
+        )
+        board_action = _action(
+            "build|board",
+            "build",
+            industry=3,
+            location=2,
+            choices=[{"kind": "coal_source", "value": 1}],
+        )
+
+        prior = build_strategy_prior(
+            observation,
+            {"actions": [market_action, board_action]},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertLess(prior.scores[0], prior.scores[1])
+
+    def test_v6_scout_keeps_wild_cards_for_future_value(self) -> None:
+        actions = [
+            _action(
+                "scout|wild",
+                "scout",
+                discard_card_types=[27, 0, 1],
+            ),
+            _action(
+                "scout|locations",
+                "scout",
+                discard_card_types=[0, 1, 2],
+            ),
+        ]
+
+        prior = build_strategy_prior(
+            self.observation(),
+            {"actions": actions},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertGreater(prior.scores[1], prior.scores[0])
+
+    def test_v6_develop_prefers_a_sellable_industry_path(self) -> None:
+        actions = [
+            _action(
+                "develop|cotton",
+                "develop",
+                industry=5,
+                choices=[{"kind": "iron_source", "value": 49}],
+            ),
+            _action(
+                "develop|coal",
+                "develop",
+                industry=0,
+                choices=[{"kind": "iron_source", "value": 49}],
+            ),
+        ]
+
+        prior = build_strategy_prior(
+            self.observation(),
+            {"actions": actions},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertGreater(prior.scores[0], prior.scores[1])
+
+    def test_v6_double_rail_rewards_cash_backed_route_value(self) -> None:
+        observation = self.observation()
+        observation["global_features"] = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        observation["players_public"][0][3] = 0.8
+        observation["buildings"] = [[0.0] * 20 for _ in range(49)]
+        observation["buildings"][0] = _building(3, flipped=True)
+        observation["roads"] = [_road() for _ in range(39)]
+        observation["roads"][0] = _road(0, 1)
+        observation["roads"][1] = _road(1, 2)
+        observation["roads"][2] = _road(10, 11)
+        double_action = _action(
+            "double_network|r0,r1",
+            "double_network",
+            choices=[
+                {"kind": "coal_source", "value": 49},
+                {"kind": "coal_source", "value": 49},
+                {"kind": "action_beer_source", "value": 0},
+            ],
+        )
+        double_action["road"] = 0
+        double_action["second_road"] = 1
+        single_action = _action(
+            "network|r2",
+            "network",
+            choices=[{"kind": "coal_source", "value": 49}],
+        )
+        single_action["road"] = 2
+
+        prior = build_strategy_prior(
+            observation,
+            {"actions": [double_action, single_action]},
+            version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertGreater(prior.scores[0], prior.scores[1])
+
+    def test_v7_uses_public_beer_supply_when_pricing_a_brewery(self) -> None:
+        actions = [
+            _action("build|beer", "build", industry=2, location=47),
+            _action("build|cotton", "build", industry=5, location=0),
+        ]
+        scarce = self.observation()
+        scarce["buildings"] = [_building(5)]
+        supplied = self.observation()
+        supplied["buildings"] = [_building(5), _building(2, owner=1)]
+
+        scarce_prior = build_strategy_prior(
+            scarce,
+            {"actions": actions},
+            version=ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+        )
+        supplied_prior = build_strategy_prior(
+            supplied,
+            {"actions": actions},
+            version=ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertGreater(scarce_prior.scores[0], supplied_prior.scores[0])
+
+    def test_v7_prices_a_high_value_sale_by_the_tile_not_just_the_action_family(self) -> None:
+        observation = self.observation()
+        observation["buildings"] = [
+            _building(3, level=0),
+            _building(4, level=4),
+        ]
+        actions = [
+            _action("sell|goods", "sell", sell_targets=[0]),
+            _action("sell|pottery", "sell", sell_targets=[1]),
+        ]
+
+        prior = build_strategy_prior(
+            observation,
+            {"actions": actions},
+            version=ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+        )
+
+        self.assertGreater(prior.scores[1], prior.scores[0])
+
+    def test_v8_keeps_action_efficiency_as_a_small_v6_residual(self) -> None:
+        actions = [
+            _action("build|coal", "build", industry=0, location=0),
+            _action("build|cotton", "build", industry=5, location=0),
+            _action("sell|goods", "sell", sell_targets=[0]),
+        ]
+        legal = {"actions": actions}
+        v6 = build_strategy_prior(
+            self.observation(), legal, version=RESOURCE_AWARE_STRATEGY_PRIOR_VERSION
+        )
+        v7 = build_strategy_prior(
+            self.observation(), legal, version=ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION
+        )
+        v8 = build_strategy_prior(
+            self.observation(),
+            legal,
+            version=CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+        )
+
+        for v6_score, v7_score, v8_score in zip(
+            v6.scores, v7.scores, v8.scores, strict=True
+        ):
+            self.assertAlmostEqual(v8_score, v6_score + 0.25 * (v7_score - v6_score))
 
     def test_blend_is_normalized_and_strength_zero_preserves_model(self) -> None:
         model = (0.8, 0.15, 0.05)

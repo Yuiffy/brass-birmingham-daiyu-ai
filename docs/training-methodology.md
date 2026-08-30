@@ -79,6 +79,57 @@ python -m training.train \
 The exact lowest validation-loss state remains the saved checkpoint even when a smaller improvement
 does not reset patience.
 
+For the fast expert-iteration path, pass the current teacher shards as `--shards`, old champion
+trajectories as `--replay-shards`, and audited human positions as `--human-shards`. Set
+`--replay-fraction` and `--human-fraction` to reserve replacement-sampling mass for those pools;
+the remaining mass is assigned to the teacher. This keeps a small human shard visible without
+duplicating it into a permanent corpus. The loader records the source counts and fractions in
+checkpoint metadata, and human shards marked `value_target_usable=false` remain policy-only.
+
+This is a local Python/Rust/CUDA operation. It has no browser, Svelte, or Playwright dependency;
+browser smoke tests belong only to the separate UI release check.
+
+### 2.5. Human-prior-guided expert data production
+
+Small human replays are a prior, not a complete corpus. The efficient production step is to use the
+human-adapted champion plus the versioned strategy prior as a teacher, sample several controlled
+temperatures/strengths, and run many independent Rust games. This is **human-prior-guided
+self-play**. Keeping only complete, healthy, high-scoring trajectories is **quality-filtered
+trajectory generation**, or **Best-of-N/rejection sampling**. The learner then distills the search
+policy in an **expert-iteration** loop.
+
+Use the repository entry point rather than manually composing several shell loops:
+
+```bash
+python -m training.produce_expert_data \
+  --checkpoint output/champion-iter3-mixed-v5-v6.pt \
+  --output-dir output/iter19-expert \
+  --train-games 128 --validation-games 16 --workers 4 \
+  --strategy-prior-version human-strategy-v6-resource-aware \
+  --strategy-prior-strengths 0.65 0.85 \
+  --selection-temperatures 0.35 0.70 \
+  --demonstration-shards output/human-replay-game6-audited.jsonl \
+  --demonstration-prior-strengths 0.25 0.40 \
+  --minimum-actor-vp 80 --minimum-vp-margin 0 --device cuda
+```
+
+The producer writes `raw/`, quality-filtered `train/` and `validation/` shards, and an atomic
+`manifest.json`. The manifest records every recipe, model/engine identity, accepted/rejected counts,
+rejection reasons, and generated game seeds. Training and validation use distinct seed namespaces;
+the producer fails if any seed overlaps. By default it rejects any zero-score player, non-positive
+ending income/cash, a network action before the actor's first build, and an immediately repeated
+loan. Adjust those gates explicitly for a diagnostic run, never silently.
+
+The resulting teacher shards can be mixed with the immutable champion replay buffer and audited
+human policy shards using the source-fraction options shown below. A failed quality gate leaves the
+raw artifacts and manifest for diagnosis but does not alter a checkpoint.
+
+The demonstration flags are an optional **human-prior-guided self-play** layer. The loader extracts
+only confirmed action-intent frequencies, smoothed by phase and round context; it does not treat the
+human terminal score as a value label. The resulting distribution is blended into root PUCT with a
+bounded strength, while the Rust legal-action list and lifecycle guards remain authoritative. Keep a
+`0.0` control recipe in larger runs so the contribution can be measured instead of assumed.
+
 ### 3. Locked absolute-quality gate
 
 Run eight blind, same-seed games at 256 searches, four determinizations, stable argmax, inference
@@ -108,7 +159,9 @@ correlated seat game, as an independent unit. Promote only when the two-sided 95
 bound on candidate score delta is greater than the declared margin (currently zero).
 
 The deployed champion remains unchanged on every failure. Never replace it manually because a
-candidate looks promising.
+candidate looks promising. Use `python -m training.promote` with the full evaluation report for the
+final handoff: it verifies both checkpoint hashes and the passing summary, keeps the old checkpoint
+as a recoverable backup, and writes a promotion manifest.
 
 ### 6. Human-strength and coaching gate
 
@@ -135,6 +188,57 @@ do not use an isolated 100+ score as a substitute for this gate.
 - Keep a result manifest and failed experiments. Negative evidence prevents expensive repetition.
 - Rebenchmark throughput only after changing hardware, process count, model size, transport, or batch
   shape. Optimization without a changed bottleneck is not an experiment.
+
+## Fast path: expert iteration with a league
+
+The shortest reliable route to a strong player is an **expert-iteration** loop rather than a
+sequence of isolated hyperparameter bets. Keep the current champion immutable and run this loop:
+
+```text
+human/teacher games + champion replay buffer
+                |
+                v
+strong teacher = V6/V8 lifecycle prior + batched PUCT
+                |
+                v
+search-policy targets -> learner -> candidate checkpoint
+                |
+                v
+fixed benchmark + checkpoint league + human-position review
+                |
+        pass ----+---- fail
+        |              |
+  promote champion    keep candidate only as an artifact
+```
+
+Operationally, use three independent data pools:
+
+- **Replay buffer:** retain a reservoir of old champion/search positions so a small new human
+  shard cannot erase general play. Add clean human decisions as policy-only labels when the game
+  has replay anomalies; enable value labels only for a complete, audited game.
+- **Teacher pool:** generate fresh positions with the best known search configuration (currently
+  the V6 resource-aware prior plus batched PUCT). Store the search distribution, uncertainty, seed,
+  and engine/model identities, not just the selected move.
+- **Evaluation pool:** never train on the fixed seed groups used for the absolute-quality and direct
+  strength suites. Add a separate expert holdout for Top-k agreement and decision regret.
+
+Use a two-speed schedule. Every candidate first gets a four-game/64-search smoke screen; stop on a
+zero-score trajectory, lifecycle violation, or large regression. Only survivors receive an eight-game
+256-search confirmation and then the seat-rotated league gate. Within a surviving training run,
+validate after every epoch and retain the best validation state. Run multiple candidates from the
+same data snapshot only when they differ in one declared teacher/target variable, so compute is spent
+on breadth rather than repeated long runs.
+
+For human improvement, add DAgger-style collection to the UI: record the human choice, the current
+model's Top-N disagreement, and later outcome/regret. Ask for another human label only at high
+uncertainty or high disagreement positions. A single spectacular score is not a label: replay
+integrity and cross-game agreement come first. The current three-player scalar value backup is a
+useful bridge, but the final multiplayer system should learn a per-player value vector before making
+top-strength claims.
+
+This loop is deliberately asymmetric: use the engineered teacher to obtain immediate playing
+strength, then let the network distill it and gradually reduce the prior/search crutch. That gives a
+usable opponent now while preserving a monotonic, auditable path toward a stronger champion.
 
 ## Highest-value next Brass work
 

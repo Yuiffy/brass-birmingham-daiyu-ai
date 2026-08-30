@@ -25,6 +25,7 @@
 		analysisReport,
 		aiControlsPlayer,
 		gameState,
+		invalidateAnalysis,
 		playerName,
 		selectedAnalysisCandidate,
 		selectedAnalysisKey,
@@ -60,6 +61,9 @@
 	type Exchange = { question: string; response: AnalysisExplanation };
 
 	let simulations = 3000;
+	// Playing and reviewing locally should stay on the explainable CPU policy.
+	// The neural/search path remains available as an explicit user choice.
+	let analysisMode: 'auto' | 'rule' = 'rule';
 	let question = '';
 	let asking = false;
 	let applying = false;
@@ -77,6 +81,7 @@
 	$: report = $analysisReport;
 	$: usesSuccessorValues = report?.value_source === 'batched_successor_model';
 	$: usesNeuralTree = report?.value_source === 'batched_neural_tree_search';
+	$: usesRuleTree = report?.value_source === 'rule_immediate_state_score';
 	$: selected = $selectedAnalysisCandidate;
 	$: phase = $turnPhase;
 	$: gs = $gameState;
@@ -87,7 +92,7 @@
 	$: canAnalyze = phase === 'choosing_action' && !gs?.game_over && !gs?.has_pending_shortfall;
 	$: canRunAi = !controlSyncing && aiCanMove && !gs?.game_over && phase !== 'in_session';
 	$: analysisPositionKey = gs
-		? JSON.stringify([controlMode, humanPlayerIndex, gs])
+		? JSON.stringify([controlMode, humanPlayerIndex, analysisMode, gs])
 		: null;
 	$: canAutoAnalyze = canAnalyze && !aiCanMove && !gs?.game_over;
 	$: aiPositionKey = gs
@@ -129,7 +134,7 @@
 	) {
 		lastAutoAnalysisKey = analysisPositionKey;
 		exchanges = [];
-		void analyzePositionProgressive(simulations);
+		void analyzePositionProgressive(simulations, analysisMode);
 	}
 	$: if (
 		canRunAi &&
@@ -151,12 +156,22 @@
 		if (!canAnalyze || $analysisLoading) return;
 		pauseAutoplay();
 		exchanges = [];
-		await analyzePositionProgressive(simulations);
+		await analyzePositionProgressive(simulations, analysisMode);
 	}
 
 	function toggleAutoAnalysis(event: Event) {
 		lastAutoAnalysisKey = null;
 		analysisAutoEnabled.set((event.currentTarget as HTMLInputElement).checked);
+	}
+
+	function setAnalysisMode(mode: 'auto' | 'rule') {
+		if (analysisMode === mode) return;
+		pauseAutoplay();
+		analysisMode = mode;
+		exchanges = [];
+		lastAutoAnalysisKey = null;
+		lastAutoStartKey = null;
+		invalidateAnalysis();
 	}
 
 	function selectCandidate(candidate: AnalysisCandidate) {
@@ -218,7 +233,7 @@
 	async function analyzeForPlayback(): Promise<AnalysisReport | null> {
 		if (!await prepareAiDecision()) return null;
 		exchanges = [];
-		return analyzePosition(simulations);
+		return analyzePosition(simulations, analysisMode);
 	}
 
 	function waitForPlaybackDelay(): Promise<void> {
@@ -368,6 +383,10 @@
 		return value > 0 ? `+${value}` : String(value);
 	}
 
+	function signedScore(value: number | null): string {
+		return value == null ? '—' : value.toFixed(2).replace(/^-/, '−').replace(/^([0-9])/, '+$1');
+	}
+
 	function immediateEffects(candidate: AnalysisCandidate): { label: string; value: string }[] {
 		const effect = candidate.immediate_effect;
 		const items: { label: string; value: string }[] = [];
@@ -387,18 +406,21 @@
 	}
 
 	function valueSampleLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'rule_immediate_state_score') return '浅树评估';
 		if (candidate.value_source === 'batched_neural_tree_search') return '次树回传';
 		if (candidate.value_source === 'batched_successor_model') return '个后继样本';
 		return '个续弈样本';
 	}
 
 	function valueMetricLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'rule_immediate_state_score') return '浅树评分';
 		if (candidate.value_source === 'batched_neural_tree_search') return '树搜索胜分';
 		if (candidate.value_source === 'batched_successor_model') return '一步模型胜分';
 		return '样本胜分率';
 	}
 
 	function marginMetricLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'rule_immediate_state_score') return '动作后分差';
 		if (candidate.value_source === 'batched_neural_tree_search') return '树搜索分差';
 		if (candidate.value_source === 'batched_successor_model') return '模型分差';
 		return '平均分差';
@@ -436,6 +458,10 @@
 				<span>分析局面</span>
 			{/if}
 		</button>
+	</div>
+	<div class="mode-control" aria-label="分析模式">
+		<button class:active={analysisMode === 'auto'} on:click={() => setAnalysisMode('auto')} disabled={$analysisLoading}>策略搜索</button>
+		<button class:active={analysisMode === 'rule'} on:click={() => setAnalysisMode('rule')} disabled={$analysisLoading}>CPU 规则</button>
 	</div>
 	<label class="auto-analysis-toggle">
 		<input type="checkbox" checked={$analysisAutoEnabled} on:change={toggleAutoAnalysis} />
@@ -501,13 +527,13 @@
 		</div>
 	{:else if report}
 		<div class="coverage-line">
-			<span>{report.completed_simulations.toLocaleString()} 次模拟</span>
+			<span>{usesRuleTree ? `${report.root_action_count.toLocaleString()} 个动作评估` : `${report.completed_simulations.toLocaleString()} 次模拟`}</span>
 			<span>{report.evaluated_action_count}/{report.root_action_count} 估值 · {report.visited_action_count} 访问</span>
 			<span>{(report.elapsed_ms / 1000).toFixed(2)}s</span>
 		</div>
 		<div class="method-line">
 			<span class:model={report.model_id != null} title={report.model_id ?? report.method}>
-				{usesNeuralTree ? '深层 PUCT' : usesSuccessorValues ? '一步价值 PUCT' : report.model_id ? '策略 PUCT' : '随机 UCB'}
+				{usesRuleTree ? 'CPU 规则树' : usesNeuralTree ? '深层 PUCT' : usesSuccessorValues ? '一步价值 PUCT' : report.model_id ? '策略 PUCT' : '随机 UCB'}
 			</span>
 			<strong>{report.method_label}</strong>
 			{#if report.root_model_shared_win_rate != null}
@@ -542,8 +568,8 @@
 						<span>{candidate.visits} 次访问 · {candidate.value_sample_count} {valueSampleLabel(candidate)} · SE {percent(candidate.shared_win_rate_standard_error)}</span>
 					</span>
 					<span class="candidate-score">
-						<strong>{percent(candidate.estimated_shared_win_rate)}</strong>
-						<span>{percent(candidate.visit_share)} 访问</span>
+						<strong>{usesRuleTree ? signedScore(candidate.rule_score) : percent(candidate.estimated_shared_win_rate)}</strong>
+						<span>{usesRuleTree ? '规则评分' : `${percent(candidate.visit_share)} 访问`}</span>
 					</span>
 				</button>
 			{/each}
@@ -573,7 +599,7 @@
 				<div class="metric-grid">
 					<div><span>访问占比</span><strong>{percent(selected.visit_share)}</strong></div>
 					<div><span>{valueMetricLabel(selected)}</span><strong>{percent(selected.estimated_shared_win_rate)}</strong></div>
-					<div><span>策略概率</span><strong>{percent(selected.policy_probability)}</strong></div>
+					<div><span>{usesRuleTree ? '相对偏好' : '策略概率'}</span><strong>{percent(selected.policy_probability)}</strong></div>
 					<div><span>校准胜率</span><strong>{percent(selected.calibrated_win_rate)}</strong></div>
 				</div>
 				<div class="secondary-metrics">
@@ -582,6 +608,18 @@
 					{#if selected.average_final_victory_points != null}<span>平均 VP {selected.average_final_victory_points.toFixed(1)}</span>{/if}
 					<span>{marginMetricLabel(selected)} {signed(Number(selected.average_victory_point_margin.toFixed(1)))}</span>
 				</div>
+				{#if selected.rule_score_breakdown}
+					<div class="rule-breakdown" aria-label="规则评分分量">
+						<div><span>VP</span><strong>{signedScore(selected.rule_score_breakdown.immediate_vp + selected.rule_score_breakdown.potential_vp)}</strong></div>
+						<div><span>收入</span><strong>{signedScore(selected.rule_score_breakdown.income)}</strong></div>
+						<div><span>现金</span><strong>{signedScore(selected.rule_score_breakdown.cash)}</strong></div>
+						<div><span>产业</span><strong>{signedScore(selected.rule_score_breakdown.industry)}</strong></div>
+						<div><span>网络</span><strong>{signedScore(selected.rule_score_breakdown.network)}</strong></div>
+						<div><span>资源/安全</span><strong>{signedScore(selected.rule_score_breakdown.resources + selected.rule_score_breakdown.safety)}</strong></div>
+						<div><span>弃牌价值</span><strong>{signedScore(selected.rule_score_breakdown.card_value)}</strong></div>
+						<div><span>下一动作</span><strong>{signedScore(selected.rule_score_breakdown.lookahead)}</strong></div>
+					</div>
+				{/if}
 
 				<div class="effect-list">
 					<div class="section-label">立即变化</div>
@@ -659,6 +697,10 @@
 	.budget-control button { border: 0; border-right: 1px solid #c9ceca; background: #fff; color: #606662; font-size: 12px; cursor: pointer; min-height: 34px; }
 	.budget-control button:last-child { border-right: 0; }
 	.budget-control button.active { background: #242826; color: #fff; }
+	.mode-control { display: grid; grid-template-columns: 1fr 1fr; margin-top: 8px; border: 1px solid #c9ceca; border-radius: 6px; overflow: hidden; }
+	.mode-control button { min-height: 30px; border: 0; border-right: 1px solid #c9ceca; background: #fff; color: #606662; font-size: 11px; cursor: pointer; }
+	.mode-control button:last-child { border-right: 0; }
+	.mode-control button.active { background: #087f5b; color: #fff; }
 	.analyze-button, .apply-button { border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; font-weight: 700; cursor: pointer; }
 	.analyze-button { color: #fff; background: #087f5b; }
 	.apply-button { color: #fff; background: #b54031; white-space: nowrap; }
@@ -722,6 +764,9 @@
 	.metric-grid span { color: #737975; font-size: 10px; }
 	.metric-grid strong { font-size: 17px; }
 	.secondary-metrics { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 9px; color: #666c68; font-size: 10px; }
+	.rule-breakdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; padding: 8px; border: 1px solid #d5d9d5; background: #fbfcfb; }
+	.rule-breakdown div { display: flex; justify-content: space-between; gap: 5px; color: #737975; font-size: 10px; }
+	.rule-breakdown strong { color: #303632; font-variant-numeric: tabular-nums; }
 	.effect-list { margin-top: 16px; }
 	.effect-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e1e4e1; font-size: 12px; }
 	.effect-row strong { font-variant-numeric: tabular-nums; }

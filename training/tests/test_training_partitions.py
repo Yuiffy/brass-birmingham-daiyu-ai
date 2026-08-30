@@ -22,6 +22,7 @@ from training.schema import FeatureSchema
 from training.train import (
     _evaluate,
     _load_datasets,
+    _make_loader,
     _restore_optimizer_state,
     _should_restore_optimizer_state,
     _validate_args,
@@ -65,6 +66,77 @@ class TrainingPartitionTests(unittest.TestCase):
         self.assertEqual(validation_dataset.game_seeds, {202})
         training_dataset.close()
         validation_dataset.close()
+
+    def test_expert_iteration_source_fractions_use_replacement_sampling(self) -> None:
+        teacher = self.root / "teacher.jsonl"
+        replay = self.root / "replay.jsonl"
+        human = self.root / "human.jsonl"
+        _write_shard(teacher, engine_revision="engine-a", game_seed=101, position_count=2)
+        _write_shard(replay, engine_revision="engine-a", game_seed=202, position_count=3)
+        _write_shard(human, engine_revision="engine-a", game_seed=303, position_count=1)
+        human_records = [json.loads(line) for line in human.read_text().splitlines()]
+        human_records[0]["source_type"] = "human_replay"
+        human_records[0]["value_target_usable"] = False
+        human.write_text(
+            "\n".join(json.dumps(record, separators=(",", ":")) for record in human_records)
+            + "\n",
+            encoding="utf-8",
+        )
+
+        training_dataset, validation_dataset = _load_datasets(
+            [str(teacher)],
+            None,
+            replay_shard_paths=[str(replay)],
+            human_shard_paths=[str(human)],
+            replay_fraction=0.2,
+            human_fraction=0.1,
+        )
+        self.assertIsNone(validation_dataset)
+        self.assertIsNotNone(training_dataset.sampling_weights)
+        assert training_dataset.sampling_weights is not None
+        counts = training_dataset.shard_position_counts
+        by_path = {
+            path: float(training_dataset.sampling_weights[
+                [locator.path for locator in training_dataset._positions].index(path)
+            ]) * count
+            for path, count in counts.items()
+        }
+        self.assertAlmostEqual(by_path[teacher.resolve()], 0.7)
+        self.assertAlmostEqual(by_path[replay.resolve()], 0.2)
+        self.assertAlmostEqual(by_path[human.resolve()], 0.1)
+        groups = training_dataset.sampling_metadata["groups"]
+        self.assertEqual([group["name"] for group in groups], ["teacher", "replay", "human"])
+        self.assertEqual(training_dataset[0].value_loss_weight, 1.0)
+        human_index = next(
+            index
+            for index, locator in enumerate(training_dataset._positions)
+            if locator.path == human.resolve()
+        )
+        self.assertEqual(training_dataset[human_index].value_loss_weight, 0.0)
+
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                str(teacher),
+                "--replay-shards",
+                str(replay),
+                "--human-shards",
+                str(human),
+                "--output",
+                str(self.root / "model.pt"),
+                "--batch-size",
+                "2",
+            ]
+        )
+        loader = _make_loader(
+            training_dataset,
+            args,
+            shuffle=True,
+            generator=torch.Generator().manual_seed(7),
+            device=torch.device("cpu"),
+        )
+        self.assertIsInstance(loader.sampler, torch.utils.data.WeightedRandomSampler)
+        training_dataset.close()
 
     def test_training_and_validation_paths_must_not_overlap(self) -> None:
         shard = self.root / "same.jsonl"
@@ -143,6 +215,89 @@ class TrainingPartitionTests(unittest.TestCase):
                 )
                 with self.assertRaisesRegex(ValueError, expected_error):
                     _validate_args(args)
+
+    def test_source_mixture_fractions_are_bounded(self) -> None:
+        cases = (
+            ("--replay-fraction", "1.0", "between 0 and 1"),
+            ("--human-fraction", "-0.1", "between 0 and 1"),
+        )
+        for option, value, expected in cases:
+            with self.subTest(option=option):
+                args = build_parser().parse_args(
+                    [
+                        "--shards",
+                        "training.jsonl",
+                        "--output",
+                        "model.pt",
+                        option,
+                        value,
+                    ]
+                )
+                with self.assertRaisesRegex(ValueError, expected):
+                    _validate_args(args)
+
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                "training.jsonl",
+                "--replay-shards",
+                "replay.jsonl",
+                "--human-shards",
+                "human.jsonl",
+                "--output",
+                "model.pt",
+                "--replay-fraction",
+                "0.7",
+                "--human-fraction",
+                "0.3",
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "positive teacher fraction"):
+            _validate_args(args)
+
+    def test_policy_target_exponent_must_be_finite_and_positive(self) -> None:
+        for exponent in ("0", "-1", "nan", "inf"):
+            args = build_parser().parse_args(
+                [
+                    "--shards",
+                    "training.jsonl",
+                    "--output",
+                    "model.pt",
+                    "--policy-target-exponent",
+                    exponent,
+                ]
+            )
+            with self.assertRaisesRegex(ValueError, "finite and positive"):
+                _validate_args(args)
+
+    def test_final_vp_quality_weight_validates_target_mode_and_range(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                "training.jsonl",
+                "--output",
+                "model.pt",
+                "--final-vp-quality-weight",
+                "1.0",
+                "--actor-vp-target-mode",
+                "remaining_vp",
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "requires .*absolute_final_vp"):
+            _validate_args(args)
+
+        args = build_parser().parse_args(
+            [
+                "--shards",
+                "training.jsonl",
+                "--output",
+                "model.pt",
+                "--final-vp-quality-weight",
+                "2.1",
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "between 0 and 2"):
+            _validate_args(args)
 
     def test_early_stopping_preserves_exact_best_validation_epoch(self) -> None:
         training = self.root / "training.jsonl"
@@ -383,6 +538,20 @@ class TrainingPartitionTests(unittest.TestCase):
                 full_model_payload,
                 actor_vp_head_only=False,
                 architecture_expanded=True,
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload,
+                actor_vp_head_only=False,
+                policy_target_configuration_changed=True,
+            )
+        )
+        self.assertFalse(
+            _should_restore_optimizer_state(
+                full_model_payload,
+                actor_vp_head_only=False,
+                final_vp_quality_weight_changed=True,
             )
         )
 

@@ -21,10 +21,11 @@ use tokio::sync::Mutex;
 use crate::board::resources::{BeerSellSource, BreweryBeerSource, ResourceSource};
 use crate::core::types::*;
 use crate::game::framework::{ActionChoice, ChoiceSet, NetworkMode};
+use crate::game::rule_ai::{rule_decision_report, RuleDecisionConfig};
 use crate::game::runner::{GameRunner, ReplayTurnCheckpoint};
 use crate::game::search::{
-    search_top_actions, search_top_actions_with_policy, BatchedNeuralPuctConfig,
-    BatchedNeuralPuctSearch, RootSearchConfig, RootSearchReport,
+    search_top_actions, BatchedNeuralPuctConfig, BatchedNeuralPuctSearch, RootSearchConfig,
+    RootSearchReport,
 };
 
 use analysis::{explain_analysis_question_for_observer, serialize_analysis_for_observer};
@@ -325,7 +326,7 @@ fn replay_events(runner: &mut GameRunner, events: &[PersistEvent]) -> Result<(),
                 }
             }
             PersistEvent::EndTurn => {
-                runner.end_turn();
+                runner.end_turn_for_replay();
                 turn_checkpoint = None;
             }
             PersistEvent::ResolveShortfall {
@@ -727,6 +728,7 @@ struct AnalyzeRequest {
     progress_to: Option<u64>,
     top_n: Option<usize>,
     seed: Option<u64>,
+    mode: Option<String>,
 }
 
 const WEB_NEURAL_DETERMINIZATIONS: usize = 4;
@@ -745,6 +747,7 @@ async fn create_model_guided_search(
             search: config.clone(),
             determinizations: WEB_NEURAL_DETERMINIZATIONS,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: false,
         },
         policy,
@@ -777,6 +780,19 @@ async fn api_analyze(
     State(state): State<SharedState>,
     Json(req): Json<AnalyzeRequest>,
 ) -> Json<serde_json::Value> {
+    // CPU rule analysis is the safe default for play. Search/neural modes
+    // remain explicit opt-ins so a missing client field cannot consume GPU
+    // resources or turn an interactive move into a long-running rollout.
+    let use_rule_mode = match req.mode.as_deref().unwrap_or("rule") {
+        "rule" => true,
+        "auto" | "search" | "neural" => false,
+        _ => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": "mode must be one of auto, search, neural, or rule"
+            }))
+        }
+    };
     let simulations = req.simulations.unwrap_or(2_000);
     if !(1..=50_000).contains(&simulations) {
         return Json(serde_json::json!({
@@ -823,76 +839,69 @@ async fn api_analyze(
     let started = Instant::now();
     let mut previous_session = previous_session;
     let mut retained_session = None;
-    let report_result = match inference_client {
-        Some(client) if runner.framework.board.state.players.len() == 2 => {
-            let mut session = match previous_session
-                .take()
-                .filter(|session| session.revision == revision && session.config == config)
-            {
-                Some(session) => session,
-                None => {
-                    let (search, model_id) =
-                        match create_model_guided_search(&client, &runner, &config).await {
-                            Ok(value) => value,
-                            Err(error) => {
-                                return Json(serde_json::json!({"ok": false, "error": error}))
-                            }
-                        };
-                    NeuralAnalysisSession {
-                        revision,
-                        config: config.clone(),
-                        model_id,
-                        search,
+    let report_result = if use_rule_mode {
+        let rule_runner = runner.clone();
+        let rule_config = RuleDecisionConfig {
+            recommendation_count: top_n,
+            ..RuleDecisionConfig::default()
+        };
+        match tokio::task::spawn_blocking(move || rule_decision_report(&rule_runner, &rule_config))
+            .await
+        {
+            Ok(result) => result,
+            Err(error) => Err(format!("rule analysis task failed: {error}")),
+        }
+    } else {
+        match inference_client {
+            Some(client) => {
+                let mut session = match previous_session
+                    .take()
+                    .filter(|session| session.revision == revision && session.config == config)
+                {
+                    Some(session) => session,
+                    None => {
+                        let (search, model_id) =
+                            match create_model_guided_search(&client, &runner, &config).await {
+                                Ok(value) => value,
+                                Err(error) => {
+                                    return Json(serde_json::json!({"ok": false, "error": error}))
+                                }
+                            };
+                        NeuralAnalysisSession {
+                            revision,
+                            config: config.clone(),
+                            model_id,
+                            search,
+                        }
                     }
+                };
+                let result = advance_model_guided_search(
+                    &client,
+                    &mut session.search,
+                    &session.model_id,
+                    progress_to,
+                )
+                .await;
+                if result.is_ok() && !session.search.is_complete() {
+                    retained_session = Some(session);
                 }
-            };
-            let result = advance_model_guided_search(
-                &client,
-                &mut session.search,
-                &session.model_id,
-                progress_to,
-            )
-            .await;
-            if result.is_ok() && !session.search.is_complete() {
-                retained_session = Some(session);
+                result
             }
-            result
-        }
-        Some(client) => {
-            let mut stage_config = config.clone();
-            stage_config.simulations = progress_to;
-            let policy = match client.evaluate(&runner).await {
-                Ok(policy) => policy,
-                Err(error) => return Json(serde_json::json!({"ok": false, "error": error})),
-            };
-            let search_runner = runner.clone();
-            let search_config = stage_config.clone();
-            match tokio::task::spawn_blocking(move || {
-                search_top_actions_with_policy(&search_runner, &search_config, &policy)
-            })
-            .await
-            {
-                Ok(result) => result.map(|mut report| {
-                    report.requested_simulations = simulations;
-                    report
-                }),
-                Err(error) => Err(format!("analysis task failed: {error}")),
-            }
-        }
-        None => {
-            let mut stage_config = config.clone();
-            stage_config.simulations = progress_to;
-            let search_runner = runner.clone();
-            match tokio::task::spawn_blocking(move || {
-                search_top_actions(&search_runner, &stage_config)
-            })
-            .await
-            {
-                Ok(result) => result.map(|mut report| {
-                    report.requested_simulations = simulations;
-                    report
-                }),
-                Err(error) => Err(format!("analysis task failed: {error}")),
+            None => {
+                let mut stage_config = config.clone();
+                stage_config.simulations = progress_to;
+                let search_runner = runner.clone();
+                match tokio::task::spawn_blocking(move || {
+                    search_top_actions(&search_runner, &stage_config)
+                })
+                .await
+                {
+                    Ok(result) => result.map(|mut report| {
+                        report.requested_simulations = simulations;
+                        report
+                    }),
+                    Err(error) => Err(format!("analysis task failed: {error}")),
+                }
             }
         }
     };
@@ -1207,18 +1216,40 @@ async fn api_start_turn(State(state): State<SharedState>) -> Json<serde_json::Va
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
+            if runner.is_game_finished() {
+                return Json(serde_json::json!({"ok": false, "error": "Game is already finished"}));
+            }
+            if runner.framework.current_session().is_some() {
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": "Finish or cancel the active action before starting a turn"
+                }));
+            }
+            if runner.has_pending_shortfall() {
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": "Resolve income shortfall before starting a turn"
+                }));
+            }
+            let before_runner = runner.clone();
+            let was_started = runner.turn_started;
             let _ = runner.start_turn();
             let gs = serialize_state_for_observer(runner, observer_player);
-            if let Some(game_id) = active_game_id {
-                let _ = append_event_and_update_meta(
-                    &db_path,
-                    game_id,
-                    PersistEvent::StartTurn,
-                    runner,
-                );
+            if !was_started {
+                if let Some(game_id) = active_game_id {
+                    if let Err(error) = append_event_and_update_meta(
+                        &db_path,
+                        game_id,
+                        PersistEvent::StartTurn,
+                        runner,
+                    ) {
+                        *runner = before_runner;
+                        return Json(serde_json::json!({"ok": false, "error": error}));
+                    }
+                }
+                guard.mark_position_changed();
             }
-            guard.mark_position_changed();
-            Json(serde_json::json!({"ok": true, "state": gs}))
+            Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
@@ -1247,20 +1278,29 @@ async fn api_start_action(
                     )
                 }
             };
-            let _choice_set = runner.start_action(action);
+            let before_runner = runner.clone();
+            let _choice_set = match runner.try_start_action(action) {
+                Ok(choice_set) => choice_set,
+                Err(error) => {
+                    return Json(serde_json::json!({"ok": false, "error": error}));
+                }
+            };
             let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
-                let _ = append_event_and_update_meta(
+                if let Err(error) = append_event_and_update_meta(
                     &db_path,
                     game_id,
                     PersistEvent::StartAction {
                         action_type: req.action_type.clone(),
                     },
                     runner,
-                );
+                ) {
+                    *runner = before_runner;
+                    return Json(serde_json::json!({"ok": false, "error": error}));
+                }
             }
             guard.mark_position_changed();
-            Json(serde_json::json!({"ok": true, "state": gs}))
+            Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
@@ -1286,24 +1326,27 @@ async fn api_apply_choice(
                 Ok(c) => c,
                 Err(e) => return Json(serde_json::json!({"ok": false, "error": e})),
             };
-            match runner.apply_choice(choice) {
-                _ => {
-                    let gs = serialize_state_for_observer(runner, observer_player);
-                    if let Some(game_id) = active_game_id {
-                        let _ = append_event_and_update_meta(
-                            &db_path,
-                            game_id,
-                            PersistEvent::ApplyChoice {
-                                choice_kind: req.choice_kind.clone(),
-                                value: req.value.clone(),
-                            },
-                            runner,
-                        );
-                    }
-                    guard.mark_position_changed();
-                    Json(serde_json::json!({"ok": true, "state": gs}))
+            let before_runner = runner.clone();
+            if let Err(error) = runner.try_apply_choice(choice) {
+                return Json(serde_json::json!({"ok": false, "error": error}));
+            }
+            let gs = serialize_state_for_observer(runner, observer_player);
+            if let Some(game_id) = active_game_id {
+                if let Err(error) = append_event_and_update_meta(
+                    &db_path,
+                    game_id,
+                    PersistEvent::ApplyChoice {
+                        choice_kind: req.choice_kind.clone(),
+                        value: req.value.clone(),
+                    },
+                    runner,
+                ) {
+                    *runner = before_runner;
+                    return Json(serde_json::json!({"ok": false, "error": error}));
                 }
             }
+            guard.mark_position_changed();
+            Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
@@ -1316,6 +1359,7 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
+            let before_runner = runner.clone();
             let replay_position = replay_position_key(runner);
             let replay_player = runner.framework.current_player;
             let replay_action_type = runner
@@ -1326,10 +1370,11 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
                 match serde_json::to_value(serialize_state_for_observer(runner, observer_player)) {
                     Ok(state) => state,
                     Err(error) => {
+                        *runner = before_runner.clone();
                         return Json(serde_json::json!({
                             "ok": false,
                             "error": format!("serialize replay position: {}", error)
-                        }))
+                        }));
                     }
                 };
             match runner.confirm_action() {
@@ -1343,10 +1388,11 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
                     let replay_after_state = match serde_json::to_value(&gs) {
                         Ok(state) => state,
                         Err(error) => {
+                            *runner = before_runner.clone();
                             return Json(serde_json::json!({
                                 "ok": false,
                                 "error": format!("serialize replay result: {}", error)
-                            }))
+                            }));
                         }
                     };
                     if let Some(game_id) = active_game_id {
@@ -1363,10 +1409,15 @@ async fn api_confirm_action(State(state): State<SharedState>) -> Json<serde_json
                                 after_state: replay_after_state,
                             },
                         ];
-                        let _ = append_events_and_update_meta(&db_path, game_id, &events, runner);
+                        if let Err(error) =
+                            append_events_and_update_meta(&db_path, game_id, &events, runner)
+                        {
+                            *runner = before_runner.clone();
+                            return Json(serde_json::json!({"ok": false, "error": error}));
+                        }
                     }
                     guard.mark_position_changed();
-                    Json(serde_json::json!({"ok": true, "state": gs}))
+                    Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
                 }
                 Err(e) => Json(serde_json::json!({"ok": false, "error": e})),
             }
@@ -1382,18 +1433,28 @@ async fn api_cancel_action(State(state): State<SharedState>) -> Json<serde_json:
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
+            if runner.framework.current_session().is_none() {
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": "No active action session to cancel"
+                }));
+            }
+            let before_runner = runner.clone();
             runner.framework.cancel_action_session();
             let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
-                let _ = append_event_and_update_meta(
+                if let Err(error) = append_event_and_update_meta(
                     &db_path,
                     game_id,
                     PersistEvent::CancelAction,
                     runner,
-                );
+                ) {
+                    *runner = before_runner;
+                    return Json(serde_json::json!({"ok": false, "error": error}));
+                }
             }
             guard.mark_position_changed();
-            Json(serde_json::json!({"ok": true, "state": gs}))
+            Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
@@ -1405,23 +1466,29 @@ async fn api_undo_last_action(State(state): State<SharedState>) -> Json<serde_js
     let active_game_id = guard.active_game_id;
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
-        Some(runner) => match runner.undo_last_confirmed_action() {
-            Ok(()) => {
-                let _ = runner.start_turn();
-                let gs = serialize_state_for_observer(runner, observer_player);
-                if let Some(game_id) = active_game_id {
-                    let _ = append_event_and_update_meta(
-                        &db_path,
-                        game_id,
-                        PersistEvent::UndoLastAction,
-                        runner,
-                    );
+        Some(runner) => {
+            let before_runner = runner.clone();
+            match runner.undo_last_confirmed_action() {
+                Ok(()) => {
+                    let _ = runner.start_turn();
+                    let gs = serialize_state_for_observer(runner, observer_player);
+                    if let Some(game_id) = active_game_id {
+                        if let Err(error) = append_event_and_update_meta(
+                            &db_path,
+                            game_id,
+                            PersistEvent::UndoLastAction,
+                            runner,
+                        ) {
+                            *runner = before_runner;
+                            return Json(serde_json::json!({"ok": false, "error": error}));
+                        }
+                    }
+                    guard.mark_position_changed();
+                    Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
                 }
-                guard.mark_position_changed();
-                Json(serde_json::json!({"ok": true, "state": gs}))
+                Err(e) => Json(serde_json::json!({"ok": false, "error": e})),
             }
-            Err(e) => Json(serde_json::json!({"ok": false, "error": e})),
-        },
+        }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }
 }
@@ -1433,14 +1500,21 @@ async fn api_end_turn(State(state): State<SharedState>) -> Json<serde_json::Valu
     let observer_player = guard.observer_player;
     match guard.runner.as_mut() {
         Some(runner) => {
-            runner.end_turn();
+            let before_runner = runner.clone();
+            if let Err(error) = runner.try_end_turn() {
+                return Json(serde_json::json!({"ok": false, "error": error}));
+            }
             let gs = serialize_state_for_observer(runner, observer_player);
             if let Some(game_id) = active_game_id {
-                let _ =
-                    append_event_and_update_meta(&db_path, game_id, PersistEvent::EndTurn, runner);
+                if let Err(error) =
+                    append_event_and_update_meta(&db_path, game_id, PersistEvent::EndTurn, runner)
+                {
+                    *runner = before_runner;
+                    return Json(serde_json::json!({"ok": false, "error": error}));
+                }
             }
             guard.mark_position_changed();
-            Json(serde_json::json!({"ok": true, "state": gs}))
+            Json(serde_json::json!({"ok": true, "revision": guard.revision, "state": gs}))
         }
         None => Json(serde_json::json!({"ok": false, "error": "No game in progress"})),
     }

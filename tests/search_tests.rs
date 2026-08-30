@@ -308,6 +308,7 @@ fn batched_successor_values_are_converted_to_root_perspective_and_drive_puct() {
         "test-policy-v2".to_string(),
         &raw_win_rates,
         &raw_margins,
+        &vec![40.0; successors.states.len()],
     )
     .unwrap();
     assert_eq!(values.shared_win_rates[selected_index], 0.9);
@@ -350,7 +351,10 @@ fn batched_successor_values_are_converted_to_root_perspective_and_drive_puct() {
     assert_eq!(report.recommendations[0].visits, 32);
     assert_eq!(report.recommendations[0].estimated_shared_win_rate, 0.9);
     assert_eq!(report.recommendations[0].estimated_outright_win_rate, None);
-    assert_eq!(report.recommendations[0].average_final_victory_points, None);
+    assert_eq!(
+        report.recommendations[0].average_final_victory_points,
+        Some(52.0)
+    );
     assert_eq!(report.recommendations[0].value_sample_count, 2);
 }
 
@@ -373,6 +377,7 @@ fn batched_neural_puct_expands_beyond_one_ply_and_backs_up_root_values() {
             },
             determinizations: 1,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: false,
         },
         root_policy(&runner, model_id),
@@ -434,6 +439,7 @@ fn batched_neural_puct_reserves_distinct_leaves_within_a_batch() {
             },
             determinizations: 1,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: false,
         },
         root_policy(&runner, model_id),
@@ -530,6 +536,7 @@ fn batched_neural_puct_groups_card_variants_before_reserving_root_leaves() {
             },
             determinizations: 1,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: true,
         },
         policy,
@@ -573,6 +580,7 @@ fn batched_neural_puct_rejects_invalid_leaf_evaluation_atomically() {
             },
             determinizations: 1,
             score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
             group_card_choices: false,
         },
         root_policy(&runner, model_id),
@@ -592,4 +600,84 @@ fn batched_neural_puct_rejects_invalid_leaf_evaluation_atomically() {
         .submit_inference_batch(vec![leaf_evaluation(&batch[0], model_id, root_player, 0.5)])
         .unwrap();
     assert!(search.is_complete());
+}
+
+#[test]
+fn batched_neural_puct_supports_three_players_end_to_end() {
+    let runner = GameRunner::new(3, Some(8_107));
+    let root_player = runner.framework.current_player;
+    let model_id = "three-player-neural-model";
+    let mut search = BatchedNeuralPuctSearch::new(
+        &runner,
+        BatchedNeuralPuctConfig {
+            search: RootSearchConfig {
+                simulations: 4,
+                exploration_constant: 0.0,
+                recommendation_count: 4,
+                sample_continuation_length: 0,
+                seed: 9_105,
+                ..RootSearchConfig::default()
+            },
+            determinizations: 1,
+            score_utility_weight: 0.0,
+            final_vp_utility_weight: 0.0,
+            group_card_choices: false,
+        },
+        root_policy_for_players(&runner, model_id),
+    )
+    .expect("three-player neural search should initialize");
+
+    while !search.is_complete() {
+        let batch = search
+            .next_inference_batch(4)
+            .expect("three-player search should reserve leaves");
+        assert!(!batch.is_empty());
+        let evaluations = batch
+            .iter()
+            .map(|request| NeuralLeafEvaluation {
+                request_id: request.request_id,
+                model_id: model_id.to_string(),
+                action_keys: request.action_keys.clone(),
+                policy_probabilities: vec![1.0; request.action_keys.len()],
+                shared_win_rate: 0.25,
+                victory_point_margin: 4.0,
+                actor_victory_points: 40.0,
+            })
+            .collect();
+        search
+            .submit_inference_batch(evaluations)
+            .expect("three-player leaf evaluations should submit");
+    }
+
+    let report = search
+        .finish_report()
+        .expect("three-player neural search should finish");
+    assert_eq!(report.method, BATCHED_NEURAL_PUCT_METHOD);
+    assert_eq!(report.completed_simulations, 4);
+    assert_eq!(report.root_player, root_player);
+    assert!(report.max_search_depth.unwrap_or(0) >= 1);
+    assert_eq!(
+        report
+            .recommendations
+            .iter()
+            .map(|candidate| candidate.visits)
+            .sum::<u64>(),
+        4
+    );
+    assert!(report
+        .recommendations
+        .iter()
+        .all(|candidate| candidate.average_final_victory_points.is_some()));
+}
+
+fn root_policy_for_players(runner: &GameRunner, model_id: &str) -> RootPolicyEvaluation {
+    let actions = enumerate_legal_actions(runner).unwrap();
+    RootPolicyEvaluation {
+        model_id: model_id.to_string(),
+        action_keys: actions.iter().map(|action| action.key()).collect(),
+        policy_probabilities: vec![1.0; actions.len()],
+        shared_win_rate: 0.25,
+        victory_point_margin: 0.0,
+        actor_victory_points: 40.0,
+    }
 }

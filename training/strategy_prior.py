@@ -14,6 +14,11 @@ GROUPED_STRATEGY_PRIOR_VERSION = "human-strategy-v2-grouped-canal-guard"
 STRATEGY_PRIOR_VERSION = "human-strategy-v3-balanced-industry-canal-guard"
 LIFECYCLE_STRATEGY_PRIOR_VERSION = "human-strategy-v4-industry-lifecycle"
 MAP_AWARE_STRATEGY_PRIOR_VERSION = "human-strategy-v5-map-aware-lifecycle"
+RESOURCE_AWARE_STRATEGY_PRIOR_VERSION = "human-strategy-v6-resource-aware"
+ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION = "human-strategy-v7-action-efficiency-route"
+CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION = (
+    "human-strategy-v8-conservative-action-efficiency"
+)
 MAP_AWARE_NETWORK_SCORING_VERSION = "network-route-v1"
 SUPPORTED_STRATEGY_PRIOR_VERSIONS = (
     LEGACY_STRATEGY_PRIOR_VERSION,
@@ -22,6 +27,9 @@ SUPPORTED_STRATEGY_PRIOR_VERSIONS = (
     STRATEGY_PRIOR_VERSION,
     LIFECYCLE_STRATEGY_PRIOR_VERSION,
     MAP_AWARE_STRATEGY_PRIOR_VERSION,
+    RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+    ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+    CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
 )
 CANAL_NETWORK_PRODUCTIVE_CAP = 0.18
 CANAL_NETWORK_FALLBACK_CAP = 0.35
@@ -33,6 +41,9 @@ STRATEGY_REFERENCE_SOURCES = (
     "https://rulespal.com/brass-birmingham/rulebook",
     "https://boardgamegeek.com/thread/3100883/brass-strategy-guide-to-score-5vpaction-and-win-th",
     "https://github.com/npow/brass-birmingham",
+    "https://eriktwice.com/en/2021/01/15/brass-birmingham-understanding-the-industries/",
+    "https://eriktwice.com/en/2020/11/06/brass-birmingham-beginner-mistakes/",
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=2539095235",
 )
 HUMAN_REFERENCE_SCORE_SAMPLES = (102, 126, 140, 144, 155, 157, 160, 168, 178)
 HUMAN_REFERENCE_TARGET_RANGE = (100, 140)
@@ -92,6 +103,70 @@ _ROAD_VP = {
     _INDUSTRY_POTTERY: (1, 1, 1, 1, 1),
     _INDUSTRY_COTTON: (1, 2, 1, 1),
 }
+_MARKET_COAL_MAX = 14
+_MARKET_IRON_MAX = 10
+_MARKET_SOURCE = 49
+_COAL_PRICE_TABLE = (1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
+_IRON_PRICE_TABLE = (1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+
+# These compact tables mirror the engine's industry mat. V6 only needs the
+# resource demand and base money cost of the next tile to price an action.
+_BUILDING_COAL_DEMAND = (
+    (0, 0, 0, 0),
+    (1, 1, 1, 1),
+    (0, 0, 0, 0),
+    (1, 0, 2, 0, 1, 0, 1, 0),
+    (0, 1, 0, 0, 2),
+    (0, 1, 1, 1),
+)
+_BUILDING_IRON_DEMAND = (
+    (0, 0, 1, 1),
+    (0, 0, 0, 0),
+    (1, 1, 1, 1),
+    (0, 1, 0, 1, 2, 1, 1, 2),
+    (1, 0, 0, 1, 0),
+    (0, 0, 1, 1),
+)
+_BUILDING_MONEY_COST = (
+    (5, 7, 8, 10),
+    (5, 7, 9, 12),
+    (5, 7, 9, 9),
+    (8, 10, 12, 8, 16, 20, 16, 20),
+    (17, 0, 22, 0, 24),
+    (12, 14, 16, 18),
+)
+_BUILDING_VP = (
+    (1, 2, 3, 4),
+    (3, 5, 7, 9),
+    (4, 5, 7, 10),
+    (3, 5, 4, 3, 8, 7, 9, 11),
+    (10, 1, 11, 1, 20),
+    (5, 5, 9, 12),
+)
+_BUILDING_ROAD_VP = (
+    (2, 1, 1, 1),
+    (1, 1, 1, 1),
+    (2, 2, 2, 2),
+    (2, 1, 0, 1, 2, 1, 0, 1),
+    (1, 1, 1, 1, 1),
+    (1, 2, 1, 1),
+)
+_BUILDING_RESOURCE_OUTPUT = (
+    (2, 3, 4, 5),
+    (4, 4, 5, 6),
+    (1, 1, 1, 1),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0),
+    (0, 0, 0, 0),
+)
+_BUILDING_INCOME = (
+    (4, 7, 6, 5),
+    (3, 3, 2, 1),
+    (4, 5, 5, 5),
+    (5, 0, 4, 6, 2, 6, 4, 1),
+    (5, 1, 5, 1, 5),
+    (5, 4, 3, 2),
+)
 
 
 @dataclass(frozen=True)
@@ -118,6 +193,8 @@ def build_strategy_prior(
     phase = _phase_name(observation)
     context = _build_context(observation, phase)
     action_families = tuple(_action_family(action) for action in actions)
+    context["actions"] = tuple(actions)
+    context["action_families"] = action_families
     context["has_sell_action"] = any(
         family == "sell" for family in action_families
     )
@@ -126,9 +203,22 @@ def build_strategy_prior(
             _score_map_aware_action(action, context)
             if version == MAP_AWARE_STRATEGY_PRIOR_VERSION
             else (
-                _score_lifecycle_action(action, context)
-                if version == LIFECYCLE_STRATEGY_PRIOR_VERSION
-                else _score_action(action, context)
+                _score_resource_aware_action(action, context)
+                if version == RESOURCE_AWARE_STRATEGY_PRIOR_VERSION
+                else (
+                    _score_action_efficiency_action(action, context)
+                    if version == ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION
+                    else (
+                        _score_conservative_action_efficiency_action(action, context)
+                        if version
+                        == CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION
+                        else (
+                            _score_lifecycle_action(action, context)
+                            if version == LIFECYCLE_STRATEGY_PRIOR_VERSION
+                            else _score_action(action, context)
+                        )
+                    )
+                )
             )
         )
         for action in actions
@@ -183,6 +273,9 @@ def build_strategy_prior(
     elif version in {
         LIFECYCLE_STRATEGY_PRIOR_VERSION,
         MAP_AWARE_STRATEGY_PRIOR_VERSION,
+        RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+        ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+        CONSERVATIVE_ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
     }:
         guarded_actions = tuple(
             guard_network and family == "network"
@@ -279,6 +372,8 @@ def _build_context(observation: dict[str, Any], phase: str) -> dict[str, Any]:
     money = _as_float(player[3], 0.0) * 100.0 if len(player) > 3 else 0.0
     income_level = _as_float(player[4], 0.0) * 100.0 if len(player) > 4 else 0.0
     income = _as_float(player[5], 0.0) * 30.0 if len(player) > 5 else 0.0
+    market_coal = _market_remaining(observation, 10, _MARKET_COAL_MAX)
+    market_iron = _market_remaining(observation, 11, _MARKET_IRON_MAX)
 
     industry_mats = observation.get("industry_mats")
     own_mat = (
@@ -357,25 +452,108 @@ def _build_context(observation: dict[str, Any], phase: str) -> dict[str, Any]:
         and building["resource"] > 0.0
         for building in own_buildings
     )
+    unflipped_beer_units = sum(
+        building["resource_units"]
+        for building in own_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_BEER
+    )
+    unflipped_coal_units = sum(
+        building["resource_units"]
+        for building in own_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_COAL
+    )
+    unflipped_iron_units = sum(
+        building["resource_units"]
+        for building in own_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_IRON
+    )
+    sellable_beer_demand = sum(
+        _beer_needed_for_building(building)
+        for building in own_buildings
+        if not building["flipped"]
+        and building["industry"] in _SELLABLE_INDUSTRIES
+    )
+    all_unflipped_beer_units = sum(
+        building["resource_units"]
+        for building in all_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_BEER
+    )
+    all_unflipped_coal_units = sum(
+        building["resource_units"]
+        for building in all_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_COAL
+    )
+    all_unflipped_iron_units = sum(
+        building["resource_units"]
+        for building in all_buildings
+        if not building["flipped"] and building["industry"] == _INDUSTRY_IRON
+    )
+    global_sellable_beer_demand = sum(
+        _beer_needed_for_building(building)
+        for building in all_buildings
+        if not building["flipped"] and building["industry"] in _SELLABLE_INDUSTRIES
+    )
+    industry_remaining = tuple(
+        max(
+            0,
+            int(
+                round(
+                    _as_float(
+                        own_mat[industry * 3 + 1]
+                        if industry * 3 + 1 < len(own_mat)
+                        else 0.0,
+                        0.0,
+                    )
+                    * 3.0
+                )
+            ),
+        )
+        for industry in range(6)
+    )
     industry_building_counts = tuple(
         sum(building["industry"] == industry for building in own_buildings)
         for industry in range(6)
     )
     road_context = _build_road_context(observation, actor, phase, own_buildings)
     self_hand_counts = observation.get("self_hand_counts")
+    merchants = _build_merchant_context(observation)
+    merchant_beer_units = sum(
+        1 for merchant in merchants if merchant.get("has_beer")
+    )
+    global_features = observation.get("global_features")
+    actions_remaining = _as_int(observation.get("actions_remaining"), -1)
+    if actions_remaining < 0 and isinstance(global_features, list) and len(global_features) > 7:
+        actions_remaining = int(round(_as_float(global_features[7], 1.0) * 2.0))
+    round_in_phase = _as_int(observation.get("round_in_phase"), -1)
+    if round_in_phase < 0 and isinstance(global_features, list) and len(global_features) > 6:
+        round_in_phase = int(round(_as_float(global_features[6], 0.0) * 16.0))
 
     return {
         "phase": phase,
         "money": money,
         "income_level": income_level,
         "income": income,
+        "market_coal": market_coal,
+        "market_iron": market_iron,
         "next_levels": next_levels,
         "all_buildings": all_buildings,
         "own_buildings": own_buildings,
         "unflipped_sellable_count": unflipped_sellable_count,
         "unflipped_beer_count": unflipped_beer_count,
+        "unflipped_beer_units": unflipped_beer_units,
+        "unflipped_coal_units": unflipped_coal_units,
+        "unflipped_iron_units": unflipped_iron_units,
+        "sellable_beer_demand": sellable_beer_demand,
+        "all_unflipped_beer_units": all_unflipped_beer_units,
+        "all_unflipped_coal_units": all_unflipped_coal_units,
+        "all_unflipped_iron_units": all_unflipped_iron_units,
+        "global_sellable_beer_demand": global_sellable_beer_demand,
+        "merchant_beer_units": merchant_beer_units,
+        "industry_remaining": industry_remaining,
+        "actions_remaining": max(0, actions_remaining),
+        "round_in_phase": max(0, round_in_phase),
         "industry_building_counts": industry_building_counts,
-        "merchants": _build_merchant_context(observation),
+        "merchants": merchants,
         "open_build_slots": tuple(tuple(slots) for slots in open_build_slots),
         "self_hand_counts": (
             tuple(_as_float(value, 0.0) for value in self_hand_counts)
@@ -675,6 +853,773 @@ def _score_map_aware_action(
     elif sellable_buildings:
         score -= 0.15 * stalled_routes
     return score
+
+
+def _score_resource_aware_action(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    root = _action_root(action)
+
+    if root == "pass":
+        return -4.0
+    if root == "scout":
+        return _score_resource_aware_scout(action, context)
+    if root == "loan":
+        return _score_resource_aware_loan(action, context)
+    if root in ("build", "build_building"):
+        return _score_resource_aware_build(action, context)
+    if root == "sell":
+        return _score_resource_aware_sell(action, context)
+    if root in ("develop", "develop_double"):
+        return _score_resource_aware_develop(action, context)
+    if root in ("network", "double_network"):
+        return _score_resource_aware_network(action, context)
+    return _score_lifecycle_action(action, context)
+
+
+def _score_resource_aware_build(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    industry = _action_industry(action)
+    location = _as_int(action.get("build_location"), -1)
+    next_level = _next_level(context, industry)
+    score = _score_lifecycle_action(action, context)
+    score -= 0.10 * _action_market_cost(action, context)
+    score += _card_alignment_score(action, industry, location)
+
+    if industry in (_INDUSTRY_GOODS, _INDUSTRY_COTTON):
+        if context["phase"] == "canal" and next_level >= 1:
+            score += 0.55
+        if context["phase"] == "canal":
+            score += 0.18
+        if _merchant_locations_for_industry(context, industry):
+            score += 0.12
+    elif industry == _INDUSTRY_POTTERY:
+        if context["phase"] == "canal" and next_level >= 1:
+            score += 0.35
+    elif industry == _INDUSTRY_BEER:
+        demand = int(context["sellable_beer_demand"])
+        supply = int(context["unflipped_beer_units"])
+        if demand > supply:
+            score += min(0.9, 0.30 * (demand - supply))
+        else:
+            score -= min(1.2, 0.25 * (supply - demand + 1))
+        if demand == 0:
+            score -= 0.35
+    elif industry == _INDUSTRY_COAL:
+        score += _coal_production_score(context)
+
+    if context["phase"] == "railroad" and next_level == 0:
+        score -= 0.25
+    return score
+
+
+def _score_resource_aware_sell(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    score = _score_lifecycle_action(action, context)
+    targets = action.get("sell_targets")
+    if not isinstance(targets, list) or not targets:
+        return score
+
+    beer_demand = _action_sell_beer_demand(action, context)
+    beer_sources = sum(
+        1
+        for choice in action.get("choices", ())
+        if isinstance(choice, dict) and choice.get("kind") == "beer_source"
+    )
+    score += min(0.75, 0.20 * beer_demand)
+    if beer_demand > 0 and beer_sources >= beer_demand:
+        score += 0.12
+    for raw_location in targets:
+        building = _building_at(context, _as_int(raw_location, -1))
+        if building is None:
+            continue
+        if building["industry"] in (_INDUSTRY_GOODS, _INDUSTRY_COTTON):
+            score += 0.12
+        if building["level"] >= 1:
+            score += 0.10
+    return score
+
+
+def _score_resource_aware_develop(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    industries = _action_industries(action)
+    if not industries:
+        return _score_lifecycle_action(action, context)
+
+    utilities = tuple(
+        _develop_resource_utility(context, industry) for industry in industries
+    )
+    # Keep the V5 lifecycle scale as the anchor. Summing absolute utilities
+    # makes a double develop dominate all productive actions in the opening.
+    score = _score_lifecycle_action(action, context)
+    score += 0.25 * sum(max(0.0, utility - 0.5) for utility in utilities)
+    score -= 0.10 * _action_market_cost(action, context)
+    if context["has_sell_action"]:
+        score -= 0.65
+    if context["phase"] == "canal" and any(
+        industry in (_INDUSTRY_GOODS, _INDUSTRY_COTTON)
+        and _next_level(context, industry) <= 1
+        for industry in industries
+    ):
+        score += 0.20
+    if any(
+        industry == _INDUSTRY_COAL
+        and context["unflipped_coal_units"] >= 3
+        for industry in industries
+    ):
+        score -= 0.45
+    if any(
+        industry == _INDUSTRY_IRON
+        and context["unflipped_iron_units"] >= 3
+        for industry in industries
+    ):
+        score -= 0.25
+
+    if _action_root(action) == "develop_double":
+        score += 0.10 if len(utilities) == 2 and min(utilities) >= 0.8 else -0.25
+    return score
+
+
+def _score_resource_aware_network(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    score = _score_map_aware_action(action, context)
+    market_cost = _action_market_cost(action, context)
+    score -= 0.10 * market_cost
+
+    candidate_roads = frozenset(_action_road_indices(action))
+    road_locations = context.get("road_locations")
+    if not candidate_roads or not isinstance(road_locations, tuple):
+        return score
+    if any(
+        road < 0 or road >= len(road_locations) or not road_locations[road]
+        for road in candidate_roads
+    ):
+        return score
+
+    candidate_locations = {
+        location
+        for road in candidate_roads
+        for location in road_locations[road]
+    }
+    new_network_locations = candidate_locations.difference(
+        context.get("own_network_locations", frozenset())
+    )
+    road_vp = _candidate_road_vp(context, candidate_roads)
+    build_access = _new_industry_build_access(context, new_network_locations)
+    frontier = _network_frontier_value(context, candidate_locations, candidate_roads)
+    has_merchant_endpoint = any(location >= 22 for location in candidate_locations)
+
+    if context["phase"] == "railroad":
+        score += min(0.75, 0.12 * road_vp)
+        score += min(0.45, 0.08 * frontier)
+        score += min(0.35, 0.10 * build_access)
+        if _action_root(action) == "double_network":
+            has_action_beer = any(
+                isinstance(choice, dict)
+                and choice.get("kind") == "action_beer_source"
+                for choice in action.get("choices", ())
+            )
+            cash_buffer = context["money"] - 15.0 - market_cost
+            score += 0.22 if has_action_beer else -0.45
+            if cash_buffer >= 3.0:
+                score += 0.45
+            elif cash_buffer < 0.0:
+                score -= 0.75
+            if road_vp == 0 and build_access == 0 and not has_merchant_endpoint:
+                score -= 0.65
+    return score
+
+
+def _score_resource_aware_loan(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    score = _score_lifecycle_action(action, context)
+    best = _best_future_action(context)
+    if best is not None:
+        best_value, best_cost = best
+        cash_buffer = context["money"] - best_cost
+        if best_value >= 1.0 and cash_buffer < 0.0:
+            score += 0.75
+        elif best_value >= 1.0 and cash_buffer < 3.0:
+            score += 0.45
+        elif context["money"] > max(20.0, best_cost * 2.5):
+            score -= 0.55
+        if best_value < 0.8:
+            score -= 0.30
+    if context["has_sell_action"]:
+        score -= 0.75
+    if context["income_level"] <= -4.0:
+        score -= 0.55
+    return score
+
+
+def _score_resource_aware_scout(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    card_types = _action_card_types(action)
+    if len(card_types) < 3:
+        return _score_lifecycle_action(action, context)
+    usefulness = tuple(
+        _card_usefulness_resource_aware(context, card_type)
+        for card_type in card_types
+    )
+    dead_count = sum(value < 0.6 for value in usefulness)
+    score = -1.0 + 0.85 * dead_count - 0.18 * sum(usefulness)
+    if dead_count >= 2 and any(
+        family == "build" for family in context.get("action_families", ())
+    ):
+        score += 0.25
+    if any(card_type in (27, 28) for card_type in card_types):
+        score -= 0.75
+    return score
+
+
+def _score_action_efficiency_action(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    """Add small marginal-value signals on top of the V6 resource prior.
+
+    The web references consistently describe Brass as an action-efficiency
+    game. These terms stay deliberately bounded so the model/search policy can
+    still override a heuristic when the board state disagrees with the broad
+    route signal.
+    """
+    root = _action_root(action)
+    score = _score_resource_aware_action(action, context)
+    if root in ("build", "build_building"):
+        industry = _action_industry(action)
+        location = _as_int(action.get("build_location"), -1)
+        return score + _v7_build_efficiency(action, context) + _v7_route_focus(
+            industry, context
+        ) + _v7_build_location_value(industry, location, context) + _v7_resource_scarcity(
+            industry, context
+        )
+    if root == "sell":
+        return score + _v7_sell_efficiency(action, context)
+    if root in ("develop", "develop_double"):
+        return score + _v7_develop_efficiency(action, context)
+    if root in ("network", "double_network"):
+        return score + _v7_network_efficiency(action, context)
+    return score
+
+
+def _score_conservative_action_efficiency_action(
+    action: dict[str, Any], context: dict[str, Any]
+) -> float:
+    """Apply the V7 signal as a small residual on top of the V6 score."""
+    resource_score = _score_resource_aware_action(action, context)
+    action_efficiency_score = _score_action_efficiency_action(action, context)
+    return resource_score + 0.25 * (action_efficiency_score - resource_score)
+
+
+def _v7_build_efficiency(action: dict[str, Any], context: dict[str, Any]) -> float:
+    industry = _action_industry(action)
+    level = _next_level(context, industry)
+    tile = _v7_tile_stats(industry, level)
+    if tile is None:
+        return 0.0
+
+    cash_cost = _action_cash_cost(action, context)
+    gross_value = (
+        0.08 * tile[4]
+        + 0.025 * max(0, tile[7])
+        + 0.045 * tile[5]
+        + 0.035 * tile[6]
+    )
+    if industry in _SELLABLE_INDUSTRIES:
+        gross_value += 0.025 * tile[3]
+    if context["phase"] == "railroad" and not tile[8]:
+        gross_value -= 0.08
+    efficiency = gross_value - 0.018 * cash_cost
+    return max(-0.22, min(0.32, efficiency))
+
+
+def _v7_sell_efficiency(action: dict[str, Any], context: dict[str, Any]) -> float:
+    targets = action.get("sell_targets")
+    if not isinstance(targets, list) or not targets:
+        return 0.0
+    value = 0.0
+    for raw_location in targets:
+        building = _building_at(context, _as_int(raw_location, -1))
+        if building is None:
+            continue
+        tile = _v7_tile_stats(building["industry"], building["level"])
+        if tile is None:
+            continue
+        value += 0.07 * tile[4] + 0.02 * max(0, tile[7]) + 0.035 * tile[5]
+    value += min(0.10, 0.05 * max(0, len(targets) - 1))
+    return min(0.45, value)
+
+
+def _v7_develop_efficiency(action: dict[str, Any], context: dict[str, Any]) -> float:
+    industries = _action_industries(action)
+    if not industries:
+        return 0.0
+    value = 0.0
+    for industry in industries:
+        level = _next_level(context, industry)
+        remaining = _as_int(
+            context.get("industry_remaining", ())[industry]
+            if industry < len(context.get("industry_remaining", ()))
+            else 0,
+            0,
+        )
+        current = _v7_tile_stats(industry, level)
+        next_tile = _v7_tile_stats(industry, level + 1)
+        if current is None or next_tile is None:
+            value -= 0.08
+            continue
+        if remaining <= 1:
+            gain = (
+                0.08 * max(0, next_tile[4] - current[4])
+                + 0.02 * max(0, next_tile[7] - current[7])
+                + 0.03 * max(0, next_tile[5] - current[5])
+            )
+            value += 0.12 + min(0.20, gain)
+        else:
+            # One develop action that does not unlock a better tile has a
+            # meaningful opportunity cost in a short game.
+            value -= 0.08
+        value += 0.04 * _v7_route_focus(industry, context)
+    return max(-0.25, min(0.45, value))
+
+
+def _v7_network_efficiency(action: dict[str, Any], context: dict[str, Any]) -> float:
+    roads = frozenset(_action_road_indices(action))
+    road_locations = context.get("road_locations")
+    if not roads or not isinstance(road_locations, tuple):
+        return -0.05
+    if any(road < 0 or road >= len(road_locations) for road in roads):
+        return -0.05
+    candidate_locations = {
+        location for road in roads for location in road_locations[road]
+    }
+    new_locations = candidate_locations.difference(
+        context.get("own_network_locations", frozenset())
+    )
+    road_vp = _candidate_road_vp(context, roads)
+    frontier = _network_frontier_value(context, candidate_locations, roads)
+    build_access = _new_industry_build_access(context, new_locations)
+    useful = road_vp + frontier + build_access
+    value = 0.08 if len(roads) >= 2 else 0.02
+    value += min(0.18, 0.025 * useful)
+    if useful == 0 and not any(location >= 22 for location in candidate_locations):
+        value -= 0.12
+    if _action_root(action) == "double_network" and context["phase"] == "railroad":
+        has_action_beer = any(
+            isinstance(choice, dict)
+            and choice.get("kind") == "action_beer_source"
+            for choice in action.get("choices", ())
+        )
+        value += 0.06 if has_action_beer else -0.08
+    return max(-0.25, min(0.30, value))
+
+
+def _v7_route_focus(industry: int, context: dict[str, Any]) -> float:
+    if not 0 <= industry < 6:
+        return 0.0
+    counts = context.get("industry_building_counts", ())
+    own_count = _as_int(counts[industry], 0) if industry < len(counts) else 0
+    hand = context.get("self_hand_counts", ())
+    exact_cards = (
+        _as_float(hand[20 + industry], 0.0)
+        if 20 + industry < len(hand)
+        else 0.0
+    )
+    dual_cards = _as_float(hand[26], 0.0) if len(hand) > 26 else 0.0
+    values = []
+    for candidate in range(6):
+        candidate_count = (
+            _as_int(counts[candidate], 0) if candidate < len(counts) else 0
+        )
+        candidate_hand = (
+            _as_float(hand[20 + candidate], 0.0)
+            if 20 + candidate < len(hand)
+            else 0.0
+        )
+        candidate_value = 0.18 * candidate_count + 0.10 * min(2.0, candidate_hand)
+        if candidate in _SELLABLE_INDUSTRIES:
+            candidate_value += 0.10
+        if candidate in (_INDUSTRY_GOODS, _INDUSTRY_COTTON) and dual_cards > 0.0:
+            candidate_value += 0.05
+        values.append(candidate_value)
+    best = max(values, default=0.0)
+    current = values[industry]
+    if best <= 0.0 or best - current <= 0.10:
+        return 0.0
+    if current >= best - 0.10:
+        return 0.14
+    if industry in _SELLABLE_INDUSTRIES and best - current >= 0.35:
+        return -0.12
+    return 0.0
+
+
+def _v7_build_location_value(
+    industry: int, location: int, context: dict[str, Any]
+) -> float:
+    town = _town_for_build_location(location)
+    if town is None:
+        return 0.0
+    value = 0.0
+    if town in context.get("own_network_locations", frozenset()):
+        value += 0.08
+    if town in _merchant_locations_for_industry(context, industry):
+        value += 0.10
+    if any(
+        building["industry"] == industry and building["town"] == town
+        for building in context.get("own_buildings", ())
+    ):
+        value += 0.06
+    return value
+
+
+def _v7_resource_scarcity(industry: int, context: dict[str, Any]) -> float:
+    if industry == _INDUSTRY_BEER:
+        demand = int(context.get("global_sellable_beer_demand", 0))
+        supply = int(context.get("all_unflipped_beer_units", 0)) + int(
+            context.get("merchant_beer_units", 0)
+        )
+        deficit = demand - supply
+        if deficit > 0:
+            return min(0.28, 0.07 * deficit)
+        if supply > demand + 3:
+            return -0.10
+        return 0.0
+
+    resource = "coal" if industry == _INDUSTRY_COAL else "iron"
+    if industry not in (_INDUSTRY_COAL, _INDUSTRY_IRON):
+        return 0.0
+    near_term_demand = _v7_near_term_resource_demand(context, resource)
+    market = int(context["market_coal"] if resource == "coal" else context["market_iron"])
+    public_units = int(
+        context[
+            "all_unflipped_coal_units"
+            if resource == "coal"
+            else "all_unflipped_iron_units"
+        ]
+    )
+    value = 0.0
+    if near_term_demand > 0 and public_units + market <= near_term_demand:
+        value += 0.10
+    if market <= (4 if resource == "coal" else 3) and near_term_demand > 0:
+        value += 0.06
+    return value
+
+
+def _v7_near_term_resource_demand(context: dict[str, Any], resource: str) -> int:
+    seen_intents: set[str] = set()
+    demand = 0
+    for action in context.get("actions", ()):
+        root = _action_root(action)
+        if root not in {"build", "build_building", "network", "double_network", "develop", "develop_double"}:
+            continue
+        intent = card_invariant_action_intent(str(action.get("key") or ""))
+        if intent in seen_intents:
+            continue
+        seen_intents.add(intent)
+        demand += min(2, _action_resource_demand(action, context, resource))
+    return min(4, demand)
+
+
+def _v7_tile_stats(industry: int, level: int) -> tuple[int, ...] | None:
+    if not 0 <= industry < 6:
+        return None
+    if not 0 <= level < len(_BUILDING_MONEY_COST[industry]):
+        return None
+    return (
+        _BUILDING_MONEY_COST[industry][level],
+        _BUILDING_COAL_DEMAND[industry][level],
+        _BUILDING_IRON_DEMAND[industry][level],
+        _BEER_NEEDED.get(industry, (0,) * len(_BUILDING_MONEY_COST[industry]))[
+            level
+        ],
+        _BUILDING_VP[industry][level],
+        _BUILDING_ROAD_VP[industry][level],
+        _BUILDING_RESOURCE_OUTPUT[industry][level],
+        _BUILDING_INCOME[industry][level],
+        int(not (industry in (_INDUSTRY_COAL, _INDUSTRY_IRON, _INDUSTRY_BEER, _INDUSTRY_GOODS, _INDUSTRY_COTTON) and level == 0)),
+    )
+
+
+def _coal_production_score(context: dict[str, Any]) -> float:
+    score = 0.0
+    coal_units = int(context["unflipped_coal_units"])
+    if not any(
+        family == "network" for family in context.get("action_families", ())
+    ):
+        score -= 0.65
+    if coal_units >= 2:
+        score -= min(0.9, 0.28 * (coal_units - 1))
+    if context["phase"] == "railroad" and context["market_coal"] <= 4:
+        score += 0.25
+    return score
+
+
+def _develop_resource_utility(context: dict[str, Any], industry: int) -> float:
+    level = _next_level(context, industry)
+    if industry in (_INDUSTRY_GOODS, _INDUSTRY_COTTON):
+        score = 1.05
+        if context["phase"] == "canal":
+            score += 0.35
+    elif industry == _INDUSTRY_POTTERY:
+        score = 0.95
+    elif industry == _INDUSTRY_BEER:
+        score = 0.45 if context["sellable_beer_demand"] > 0 else 0.05
+    elif industry in (_INDUSTRY_COAL, _INDUSTRY_IRON):
+        score = 0.55
+    else:
+        score = 0.2
+    if level >= 1:
+        score += 0.25
+    if level >= 6:
+        score -= 0.5
+    return score
+
+
+def _card_alignment_score(action: dict[str, Any], industry: int, location: int) -> float:
+    card_types = _action_card_types(action)
+    if not card_types:
+        return 0.0
+    town = _town_for_build_location(location)
+    best = 0.0
+    for card_type in card_types:
+        if 0 <= card_type < 20 and town == card_type:
+            best = max(best, 0.25)
+        elif card_type == 20 + industry:
+            best = max(best, 0.25)
+        elif card_type == 26:
+            best = max(best, 0.16 if industry in (_INDUSTRY_GOODS, _INDUSTRY_COTTON) else 0.08)
+        elif card_type in (27, 28):
+            best = max(best, 0.08)
+    return best
+
+
+def _action_card_types(action: dict[str, Any]) -> tuple[int, ...]:
+    values = action.get("discard_card_types")
+    if not isinstance(values, list):
+        return ()
+    return tuple(_as_int(value, -1) for value in values if _as_int(value, -1) >= 0)
+
+
+def _card_usefulness_resource_aware(context: dict[str, Any], card_type: int) -> float:
+    if card_type in (27, 28):
+        return 5.0
+    if 0 <= card_type < 20:
+        open_slots = context.get("open_build_slots", ())
+        if card_type >= len(open_slots):
+            return 0.2
+        values = [
+            _industry_future_value(context, industry)
+            for industries in open_slots[card_type]
+            for industry in industries
+        ]
+        return max(values, default=0.2)
+    if 20 <= card_type <= 25:
+        return _industry_future_value(context, card_type - 20)
+    if card_type == 26:
+        return max(
+            _industry_future_value(context, _INDUSTRY_GOODS),
+            _industry_future_value(context, _INDUSTRY_COTTON),
+        )
+    return 0.2
+
+
+def _industry_future_value(context: dict[str, Any], industry: int) -> float:
+    if industry not in range(6):
+        return 0.2
+    value = 0.8
+    if industry in (_INDUSTRY_GOODS, _INDUSTRY_COTTON):
+        value += 0.45
+    if industry == _INDUSTRY_BEER and context["sellable_beer_demand"] > 0:
+        value += 0.25
+    if _next_level(context, industry) >= 1:
+        value += 0.35
+    return value
+
+
+def _best_future_action(context: dict[str, Any]) -> tuple[float, float] | None:
+    candidates = []
+    for action in context.get("actions", ()):
+        if _action_root(action) not in {"build", "network", "develop", "develop_double"}:
+            continue
+        candidates.append(
+            (
+                _score_lifecycle_action(action, context),
+                _action_cash_cost(action, context),
+            )
+        )
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: (item[0], -item[1]))
+
+
+def _action_cash_cost(action: dict[str, Any], context: dict[str, Any]) -> float:
+    root = _action_root(action)
+    if root in ("build", "build_building"):
+        industry = _action_industry(action)
+        level = _next_level(context, industry)
+        base = (
+            _BUILDING_MONEY_COST[industry][level]
+            if 0 <= industry < len(_BUILDING_MONEY_COST)
+            and 0 <= level < len(_BUILDING_MONEY_COST[industry])
+            else 0.0
+        )
+        return base + _action_market_cost(action, context)
+    if root in ("network", "double_network"):
+        if root == "double_network":
+            base = 15.0
+        else:
+            base = 5.0 if context["phase"] == "railroad" else 3.0
+        return base + _action_market_cost(action, context)
+    if root in ("develop", "develop_double"):
+        return _action_market_cost(action, context)
+    return 0.0
+
+
+def _action_market_cost(action: dict[str, Any], context: dict[str, Any]) -> float:
+    coal_units = _action_market_units(action, context, "coal")
+    iron_units = _action_market_units(action, context, "iron")
+    return float(
+        _market_cost(
+            int(context["market_coal"]), coal_units, _COAL_PRICE_TABLE, 8
+        )
+        + _market_cost(
+            int(context["market_iron"]), iron_units, _IRON_PRICE_TABLE, 6
+        )
+    )
+
+
+def _action_market_units(
+    action: dict[str, Any], context: dict[str, Any], resource: str
+) -> int:
+    root = _action_root(action)
+    kind = f"{resource}_source"
+    choices = tuple(
+        choice
+        for choice in action.get("choices", ())
+        if isinstance(choice, dict) and choice.get("kind") == kind
+    )
+    market_choices = sum(
+        _as_int(choice.get("value"), -1) == _MARKET_SOURCE for choice in choices
+    )
+    if root in ("network", "double_network"):
+        return market_choices
+
+    demand = _action_resource_demand(action, context, resource)
+    if demand <= 0 or market_choices == 0:
+        return 0
+    capacity = 0
+    buildings = {
+        building["location"]: building
+        for building in context.get("all_buildings", ())
+    }
+    expected_industry = (
+        _INDUSTRY_COAL if resource == "coal" else _INDUSTRY_IRON
+    )
+    seen_sources: set[int] = set()
+    for choice in choices:
+        source = _as_int(choice.get("value"), -1)
+        if source in seen_sources or source == _MARKET_SOURCE:
+            continue
+        seen_sources.add(source)
+        building = buildings.get(source)
+        if (
+            building is not None
+            and building["industry"] == expected_industry
+            and not building["flipped"]
+        ):
+            capacity += building["resource_units"]
+    return max(0, demand - capacity)
+
+
+def _action_resource_demand(
+    action: dict[str, Any], context: dict[str, Any], resource: str
+) -> int:
+    root = _action_root(action)
+    if resource == "coal" and root in ("network", "double_network"):
+        return 2 if root == "double_network" else 1
+    if resource == "iron" and root in ("develop", "develop_double"):
+        industries = _action_industries(action)
+        return len(industries) if root == "develop_double" else 1
+    if root not in ("build", "build_building"):
+        return 0
+    industry = _action_industry(action)
+    level = _next_level(context, industry)
+    table = (
+        _BUILDING_COAL_DEMAND
+        if resource == "coal"
+        else _BUILDING_IRON_DEMAND
+    )
+    if not 0 <= industry < len(table) or not 0 <= level < len(table[industry]):
+        return 0
+    return table[industry][level]
+
+
+def _market_cost(
+    remaining: int, units: int, price_table: Sequence[int], empty_price: int
+) -> int:
+    total = 0
+    remaining = max(0, remaining)
+    for _ in range(max(0, units)):
+        if remaining > 0:
+            index = max(0, len(price_table) - remaining)
+            total += price_table[min(index, len(price_table) - 1)]
+            remaining -= 1
+        else:
+            total += empty_price
+    return total
+
+
+def _action_sell_beer_demand(action: dict[str, Any], context: dict[str, Any]) -> int:
+    targets = action.get("sell_targets")
+    if not isinstance(targets, list):
+        return 0
+    return sum(
+        _beer_needed_for_building(building)
+        for raw_location in targets
+        for building in (_building_at(context, _as_int(raw_location, -1)),)
+        if building is not None
+    )
+
+
+def _beer_needed_for_building(building: dict[str, Any]) -> int:
+    needed_by_level = _BEER_NEEDED.get(building.get("industry"), ())
+    level = _as_int(building.get("level"), 0)
+    if 0 <= level < len(needed_by_level):
+        return needed_by_level[level]
+    return 1
+
+
+def _network_frontier_value(
+    context: dict[str, Any],
+    candidate_locations: set[int],
+    candidate_roads: frozenset[int],
+) -> int:
+    road_locations = context.get("road_locations")
+    if not isinstance(road_locations, tuple):
+        return 0
+    built_roads = context.get("built_roads", frozenset())
+    return sum(
+        1
+        for road, locations in enumerate(road_locations)
+        if road not in built_roads
+        and road not in candidate_roads
+        and candidate_locations.intersection(locations)
+    )
+
+
+def _market_remaining(
+    observation: dict[str, Any], index: int, maximum: int
+) -> int:
+    features = observation.get("global_features")
+    if not isinstance(features, list) or index >= len(features):
+        return maximum
+    normalized = _as_float(features[index], 1.0)
+    return max(0, min(maximum, int(round(normalized * maximum))))
 
 
 def _action_root(action: dict[str, Any]) -> str:

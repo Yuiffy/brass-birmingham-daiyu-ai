@@ -1,5 +1,8 @@
 FROM rust:1.88-bookworm
 
+# This image is deliberately a local Rust/Python/CUDA training runtime.  It
+# does not install Node, a browser, or Playwright; those belong to UI release QA.
+
 ARG TORCH_VERSION=2.11.0+cu128
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
 ARG NUMPY_VERSION=2.3.5

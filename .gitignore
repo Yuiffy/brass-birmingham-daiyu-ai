@@ -74,3 +74,6 @@ docs/_build/
 # Pyenv
 .python-version
 *.sqlite3
+
+# Local AI benchmark traces and sweep artifacts
+/.tmp-*

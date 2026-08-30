@@ -9,9 +9,16 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from .evaluator import PolicyValueEvaluator, PolicyValuePredictionLike
+from .demonstration_prior import (
+    DEMONSTRATION_PRIOR_VERSION,
+    DemonstrationPrior,
+    action_intent_signature,
+    blend_policy_with_demonstration,
+    load_demonstration_prior,
+)
 from .neural_search import BATCHED_NEURAL_PUCT_METHOD, run_batched_neural_puct
 from .policy_normalization import (
     CARD_CHOICE_GROUPING_VERSION,
@@ -27,8 +34,10 @@ from .strategy_prior import (
     HUMAN_REFERENCE_TARGET_RANGE,
     LIFECYCLE_CANAL_NETWORK_CAP,
     LIFECYCLE_STRATEGY_PRIOR_VERSION,
+    ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
     MAP_AWARE_NETWORK_SCORING_VERSION,
     MAP_AWARE_STRATEGY_PRIOR_VERSION,
+    RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
     STRATEGY_PRIOR_VERSION,
     STRATEGY_REFERENCE_SOURCES,
     SUPPORTED_STRATEGY_PRIOR_VERSIONS,
@@ -65,6 +74,13 @@ class ModelSelfPlayConfig:
     group_card_choices: bool = False
     selection_temperature: float = 1.0
     score_utility_weight: float = 0.0
+    final_vp_utility_weight: float = 0.0
+    demonstration_prior: DemonstrationPrior | None = None
+    demonstration_prior_strength: float = 0.0
+    # ``None`` applies the demonstration prior to every seat (the historical
+    # behavior).  A concrete seat list is useful for expert-data generation:
+    # one human-guided seat can play against unchanged champion opponents.
+    demonstration_prior_players: tuple[int, ...] | None = None
 
     def validate(self) -> None:
         if (self.checkpoint is None) == (self.inference_url is None):
@@ -123,6 +139,47 @@ class ModelSelfPlayConfig:
             or not 0.0 <= self.score_utility_weight <= 1.0
         ):
             raise ValueError("score_utility_weight must be between 0 and 1")
+        if (
+            not math.isfinite(self.final_vp_utility_weight)
+            or not 0.0 <= self.final_vp_utility_weight <= 1.0
+        ):
+            raise ValueError("final_vp_utility_weight must be between 0 and 1")
+        if (
+            isinstance(self.demonstration_prior_strength, bool)
+            or not isinstance(self.demonstration_prior_strength, (int, float))
+            or not math.isfinite(float(self.demonstration_prior_strength))
+            or not 0.0 <= float(self.demonstration_prior_strength) <= 1.0
+        ):
+            raise ValueError(
+                "demonstration_prior_strength must be between 0 and 1"
+            )
+        if self.demonstration_prior_strength > 0.0 and self.demonstration_prior is None:
+            raise ValueError(
+                "demonstration_prior_strength requires a demonstration_prior"
+            )
+        if self.demonstration_prior is not None:
+            if (
+                not isinstance(self.demonstration_prior.version, str)
+                or not self.demonstration_prior.version.strip()
+            ):
+                raise ValueError("demonstration prior version must not be empty")
+            if self.demonstration_prior.positions <= 0:
+                raise ValueError("demonstration prior must contain positions")
+        if self.demonstration_prior_players is not None:
+            if not self.demonstration_prior_players:
+                raise ValueError("demonstration_prior_players must not be empty")
+            normalized_players = tuple(self.demonstration_prior_players)
+            if len(set(normalized_players)) != len(normalized_players):
+                raise ValueError("demonstration_prior_players must be unique")
+            for player in normalized_players:
+                if (
+                    isinstance(player, bool)
+                    or not isinstance(player, int)
+                    or not 0 <= player < self.num_players
+                ):
+                    raise ValueError(
+                        "demonstration_prior_players must contain valid seat indices"
+                    )
         if not 0 <= self.base_seed <= MASK_64:
             raise ValueError("base_seed must fit in an unsigned 64-bit integer")
         if not self.engine_revision.strip():
@@ -161,6 +218,21 @@ def main() -> None:
         group_card_choices=args.group_card_choices,
         selection_temperature=args.selection_temperature,
         score_utility_weight=args.score_utility_weight,
+        final_vp_utility_weight=args.final_vp_utility_weight,
+        demonstration_prior=(
+            load_demonstration_prior(
+                args.demonstration_shards,
+                version=args.demonstration_prior_version,
+            )
+            if args.demonstration_shards
+            else None
+        ),
+        demonstration_prior_strength=args.demonstration_prior_strength,
+        demonstration_prior_players=(
+            tuple(args.demonstration_prior_players)
+            if args.demonstration_prior_players is not None
+            else None
+        ),
     )
     summary = export_model_self_play(
         config,
@@ -243,6 +315,47 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Blend secured-score progress into neural PUCT exploitation "
             "(0 keeps win-only search)"
+        ),
+    )
+    parser.add_argument(
+        "--final-vp-utility-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Add a bounded opponent-relative final-VP tie-breaker to neural PUCT "
+            "when shared-win values are uncertain (0 disables it)"
+        ),
+    )
+    parser.add_argument(
+        "--demonstration-shards",
+        nargs="+",
+        default=(),
+        help=(
+            "Audited human replay JSONL shards used as a context/action-intent "
+            "prior during local self-play"
+        ),
+    )
+    parser.add_argument(
+        "--demonstration-prior-version",
+        default=DEMONSTRATION_PRIOR_VERSION,
+        help="Version tag recorded for the human demonstration prior",
+    )
+    parser.add_argument(
+        "--demonstration-prior-strength",
+        type=float,
+        default=0.0,
+        help="Geometric blend strength for the demonstration prior (0 disables it)",
+    )
+    parser.add_argument(
+        "--demonstration-prior-players",
+        "--demonstration-prior-seats",
+        dest="demonstration_prior_players",
+        nargs="+",
+        type=int,
+        default=None,
+        help=(
+            "Only apply the human demonstration prior to these seat indices; "
+            "omit to apply it to every seat"
         ),
     )
     return parser
@@ -367,6 +480,30 @@ def generate_model_self_play_game(
             config.strategy_prior_strength,
             guarded_actions=strategy_prior.guarded_actions,
         )
+        demonstration_applies = (
+            config.demonstration_prior is not None
+            and (
+                config.demonstration_prior_players is None
+                or actor in config.demonstration_prior_players
+            )
+        )
+        demonstration_probabilities = None
+        if demonstration_applies:
+            demonstration_probabilities = config.demonstration_prior.probabilities(
+                observation,
+                legal_record,
+            )
+            if config.demonstration_prior_strength > 0.0:
+                guided_probabilities = blend_policy_with_demonstration(
+                    guided_probabilities,
+                    demonstration_probabilities,
+                    config.demonstration_prior_strength,
+                    guarded_actions=(
+                        strategy_prior.guarded_actions
+                        if config.strategy_prior_strength > 0.0
+                        else None
+                    ),
+                )
         search_probabilities = (
             rebalance_card_choice_groups(
                 prediction.action_keys,
@@ -381,33 +518,22 @@ def generate_model_self_play_game(
         selection_seed = _derive_stream_seed(
             game_seed, SELECTION_SEED_STREAM, position_index
         )
-        if config.num_players == 2:
-            report = run_batched_neural_puct(
-                game,
-                evaluator,
-                schema,
-                prediction,
-                simulations=config.simulations_per_decision,
-                search_seed=search_seed,
-                exploration_constant=config.exploration_constant,
-                determinizations=config.search_determinizations,
-                inference_batch_size=config.inference_batch_size,
-                root_policy_probabilities=search_probabilities,
-                group_leaf_card_choices=config.group_card_choices,
-                score_utility_weight=config.score_utility_weight,
-            )
-            expected_method = BATCHED_NEURAL_PUCT_METHOD
-        else:
-            report = game.search_legal_actions_with_policy(
-                list(search_probabilities),
-                prediction.model_id,
-                prediction.shared_win_rate,
-                prediction.victory_point_margin,
-                config.simulations_per_decision,
-                search_seed,
-                config.exploration_constant,
-            )
-            expected_method = ROOT_PUCT_METHOD
+        report = run_batched_neural_puct(
+            game,
+            evaluator,
+            schema,
+            prediction,
+            simulations=config.simulations_per_decision,
+            search_seed=search_seed,
+            exploration_constant=config.exploration_constant,
+            determinizations=config.search_determinizations,
+            inference_batch_size=config.inference_batch_size,
+            root_policy_probabilities=search_probabilities,
+            group_leaf_card_choices=config.group_card_choices,
+            score_utility_weight=config.score_utility_weight,
+            final_vp_utility_weight=config.final_vp_utility_weight,
+        )
+        expected_method = BATCHED_NEURAL_PUCT_METHOD
         _validate_search_report(
             report,
             prediction,
@@ -422,6 +548,11 @@ def generate_model_self_play_game(
             model_policy_probabilities=prediction.policy_probabilities,
             strategy_prior=strategy_prior,
             strategy_prior_strength=config.strategy_prior_strength,
+            demonstration_prior=(
+                config.demonstration_prior if demonstration_applies else None
+            ),
+            demonstration_probabilities=demonstration_probabilities,
+            demonstration_prior_strength=config.demonstration_prior_strength,
         )
         selected_action_index = _sample_action_index(
             action_targets,
@@ -461,6 +592,23 @@ def generate_model_self_play_game(
                 "strategy_prior_version": strategy_prior.version,
                 "strategy_prior_strength": config.strategy_prior_strength,
                 "strategy_prior_phase": strategy_prior.phase,
+                "demonstration_prior_version": (
+                    config.demonstration_prior.version
+                    if config.demonstration_prior is not None
+                    else None
+                ),
+                "demonstration_prior_strength": config.demonstration_prior_strength,
+                "demonstration_prior_positions": (
+                    config.demonstration_prior.positions
+                    if config.demonstration_prior is not None
+                    else None
+                ),
+                "demonstration_prior_applied": demonstration_applies,
+                "demonstration_prior_players": (
+                    list(config.demonstration_prior_players)
+                    if config.demonstration_prior_players is not None
+                    else None
+                ),
                 "card_choice_grouping_version": (
                     CARD_CHOICE_GROUPING_VERSION
                     if config.group_card_choices
@@ -471,14 +619,8 @@ def generate_model_self_play_game(
                 "root_model_shared_win_rate": prediction.shared_win_rate,
                 "root_model_victory_point_margin": prediction.victory_point_margin,
                 "root_model_actor_victory_points": prediction.actor_victory_points,
-                "search_determinizations": (
-                    config.search_determinizations
-                    if config.num_players == 2
-                    else None
-                ),
-                "inference_batch_size": (
-                    config.inference_batch_size if config.num_players == 2 else None
-                ),
+                "search_determinizations": config.search_determinizations,
+                "inference_batch_size": config.inference_batch_size,
                 "max_search_depth": report.get("max_search_depth"),
                 "neural_leaf_evaluations": report.get("neural_leaf_evaluations"),
                 "inference_batches": report.get("inference_batches"),
@@ -534,16 +676,10 @@ def _build_header(
         "base_seed": config.base_seed,
         "simulations_per_decision": config.simulations_per_decision,
         "exploration_constant": config.exploration_constant,
-        "search_determinizations": (
-            config.search_determinizations if config.num_players == 2 else None
-        ),
-        "inference_batch_size": (
-            config.inference_batch_size if config.num_players == 2 else None
-        ),
+        "search_determinizations": config.search_determinizations,
+        "inference_batch_size": config.inference_batch_size,
         "max_game_actions": config.max_game_actions,
-        "search_method": (
-            BATCHED_NEURAL_PUCT_METHOD if config.num_players == 2 else ROOT_PUCT_METHOD
-        ),
+        "search_method": BATCHED_NEURAL_PUCT_METHOD,
         "model_id": evaluator.model_id,
         "checkpoint_step": evaluator.checkpoint_step,
         "model_source": (
@@ -564,6 +700,28 @@ def _build_header(
         ),
         "selection_temperature": config.selection_temperature,
         "score_utility_weight": config.score_utility_weight,
+        "final_vp_utility_weight": config.final_vp_utility_weight,
+        "demonstration_prior_version": (
+            config.demonstration_prior.version
+            if config.demonstration_prior is not None
+            else None
+        ),
+        "demonstration_prior_strength": config.demonstration_prior_strength,
+        "demonstration_prior_positions": (
+            config.demonstration_prior.positions
+            if config.demonstration_prior is not None
+            else None
+        ),
+        "demonstration_prior_players": (
+            list(config.demonstration_prior_players)
+            if config.demonstration_prior_players is not None
+            else None
+        ),
+        "demonstration_prior_sources": (
+            list(config.demonstration_prior.source_paths)
+            if config.demonstration_prior is not None
+            else []
+        ),
         "card_choice_grouping_version": (
             CARD_CHOICE_GROUPING_VERSION if config.group_card_choices else None
         ),
@@ -590,6 +748,8 @@ def _build_header(
             in {
                 LIFECYCLE_STRATEGY_PRIOR_VERSION,
                 MAP_AWARE_STRATEGY_PRIOR_VERSION,
+                RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+                ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
             }
             else None
         ),
@@ -599,6 +759,8 @@ def _build_header(
                 STRATEGY_PRIOR_VERSION,
                 LIFECYCLE_STRATEGY_PRIOR_VERSION,
                 MAP_AWARE_STRATEGY_PRIOR_VERSION,
+                RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+                ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
             }
         ),
         "strategy_selection_grouping_version": (
@@ -608,12 +770,19 @@ def _build_header(
             in {
                 LIFECYCLE_STRATEGY_PRIOR_VERSION,
                 MAP_AWARE_STRATEGY_PRIOR_VERSION,
+                RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+                ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
             }
             else None
         ),
         "strategy_map_network_scoring_version": (
             MAP_AWARE_NETWORK_SCORING_VERSION
-            if config.strategy_prior_version == MAP_AWARE_STRATEGY_PRIOR_VERSION
+            if config.strategy_prior_version
+            in {
+                MAP_AWARE_STRATEGY_PRIOR_VERSION,
+                RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+                ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
+            }
             else None
         ),
         "strategy_low_income_loan_penalty_threshold": (
@@ -622,6 +791,8 @@ def _build_header(
             in {
                 LIFECYCLE_STRATEGY_PRIOR_VERSION,
                 MAP_AWARE_STRATEGY_PRIOR_VERSION,
+                RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+                ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
             }
             else (
                 -7.0
@@ -694,12 +865,24 @@ def _build_action_targets(
     model_policy_probabilities: tuple[float, ...] | None = None,
     strategy_prior: Any | None = None,
     strategy_prior_strength: float = 0.0,
+    demonstration_prior: DemonstrationPrior | None = None,
+    demonstration_probabilities: Sequence[float] | None = None,
+    demonstration_prior_strength: float = 0.0,
 ) -> list[dict]:
     legal_actions = legal_record["actions"]
     searched_actions = report["actions"]
     completed_simulations = int(report["completed_simulations"])
     if completed_simulations <= 0:
         raise RuntimeError("cannot build targets from zero completed simulations")
+    if demonstration_prior is not None:
+        if demonstration_probabilities is None:
+            raise ValueError(
+                "demonstration probabilities are required with a demonstration prior"
+            )
+        if len(demonstration_probabilities) != len(legal_actions):
+            raise ValueError(
+                "demonstration probabilities must cover every legal action"
+            )
     targets: list[dict] = []
     visit_sum = 0
     for index, (legal, searched) in enumerate(zip(legal_actions, searched_actions)):
@@ -748,6 +931,16 @@ def _build_action_targets(
                     if strategy_prior is not None
                     else False
                 ),
+                "demonstration_prior_probability": (
+                    demonstration_probabilities[index]
+                    if demonstration_prior is not None
+                    else None
+                ),
+                "demonstration_prior_intent": (
+                    _demonstration_intent(target_key=str(legal["key"]))
+                    if demonstration_prior is not None
+                    else None
+                ),
                 "value_source": searched.get("value_source"),
                 "value_sample_count": searched.get("value_sample_count"),
                 "estimated_shared_win_rate": searched[
@@ -767,6 +960,8 @@ def _build_action_targets(
         if strategy_prior.version in {
             LIFECYCLE_STRATEGY_PRIOR_VERSION,
             MAP_AWARE_STRATEGY_PRIOR_VERSION,
+            RESOURCE_AWARE_STRATEGY_PRIOR_VERSION,
+            ACTION_EFFICIENCY_STRATEGY_PRIOR_VERSION,
         }:
             selection_weights = _lifecycle_selection_weights(
                 targets,
@@ -789,7 +984,50 @@ def _build_action_targets(
         for target, weight in zip(targets, selection_weights, strict=True):
             target["selection_weight"] = weight
             target["policy_target"] = weight / total_weight
+    if demonstration_prior is not None and demonstration_prior_strength > 0.0:
+        # Root search already receives the demonstration mixture.  This second,
+        # deliberately mild factor keeps low-simulation visit ties from
+        # discarding the human intent, while preserving the search target as the
+        # primary signal.
+        selection_weights = [
+            float(target.get("selection_weight", target["visits"]))
+            * _demonstration_selection_factor(
+                float(target["demonstration_prior_probability"]),
+                len(targets),
+                demonstration_prior_strength,
+            )
+            for target in targets
+        ]
+        total_weight = sum(selection_weights)
+        if not math.isfinite(total_weight) or total_weight <= 0.0:
+            raise RuntimeError("demonstration-guided action targets have no visit mass")
+        for target, weight in zip(targets, selection_weights, strict=True):
+            target["selection_weight"] = weight
+            target["policy_target"] = weight / total_weight
     return targets
+
+
+def _demonstration_intent(*, target_key: str) -> str:
+    """Keep the generalized intent visible in exported training evidence."""
+    return action_intent_signature(target_key)
+
+
+def _demonstration_selection_factor(
+    probability: float,
+    action_count: int,
+    strength: float,
+) -> float:
+    if not math.isfinite(probability) or probability < 0.0:
+        raise RuntimeError("demonstration prior returned an invalid probability")
+    if action_count <= 0:
+        raise RuntimeError("demonstration selection requires legal actions")
+    if not math.isfinite(strength) or not 0.0 <= strength <= 1.0:
+        raise ValueError("demonstration prior strength must be between 0 and 1")
+    # Compare with a uniform legal-action baseline and cap the multiplier so a
+    # tiny replay cannot turn a soft prior into a hard action mask.
+    relative_log = math.log(max(probability * action_count, 1.0e-12))
+    relative_log = max(-2.0, min(2.0, relative_log))
+    return math.exp(0.35 * strength * relative_log)
 
 
 def _lifecycle_selection_weights(

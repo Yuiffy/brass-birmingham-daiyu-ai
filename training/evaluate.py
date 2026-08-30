@@ -98,8 +98,20 @@ class EvaluationPolicy:
         source_kind: str,
         strategy_prior_strength: float = 0.0,
         strategy_prior_version: str = STRATEGY_PRIOR_VERSION,
+        score_utility_weight: float = 0.0,
+        final_vp_utility_weight: float = 0.0,
     ) -> None:
         evaluator.schema.assert_compatible(schema, source)
+        if (
+            not math.isfinite(score_utility_weight)
+            or not 0.0 <= score_utility_weight <= 1.0
+        ):
+            raise ValueError("score_utility_weight must be between 0 and 1")
+        if (
+            not math.isfinite(final_vp_utility_weight)
+            or not 0.0 <= final_vp_utility_weight <= 1.0
+        ):
+            raise ValueError("final_vp_utility_weight must be between 0 and 1")
         self.evaluator = evaluator
         self.schema = schema
         self.source = source
@@ -108,6 +120,8 @@ class EvaluationPolicy:
         self.checkpoint_step = evaluator.checkpoint_step
         self.strategy_prior_strength = strategy_prior_strength
         self.strategy_prior_version = strategy_prior_version
+        self.score_utility_weight = score_utility_weight
+        self.final_vp_utility_weight = final_vp_utility_weight
 
     def select_action(
         self, observation: dict, state_record: dict, legal_record: dict
@@ -145,31 +159,21 @@ class EvaluationPolicy:
         root_policy_probabilities = self._root_policy_probabilities(
             observation, legal_record, prediction.policy_probabilities
         )
-        if num_players == 2:
-            report = run_batched_neural_puct(
-                game,
-                self.evaluator,
-                self.schema,
-                prediction,
-                simulations=simulations,
-                search_seed=search_seed,
-                exploration_constant=exploration_constant,
-                determinizations=search_determinizations,
-                inference_batch_size=inference_batch_size,
-                root_policy_probabilities=root_policy_probabilities,
-            )
-            expected_method = BATCHED_NEURAL_PUCT_METHOD
-        else:
-            report = game.search_legal_actions_with_policy(
-                list(root_policy_probabilities),
-                prediction.model_id,
-                prediction.shared_win_rate,
-                prediction.victory_point_margin,
-                simulations,
-                search_seed,
-                exploration_constant,
-            )
-            expected_method = ROOT_PUCT_METHOD
+        report = run_batched_neural_puct(
+            game,
+            self.evaluator,
+            self.schema,
+            prediction,
+            simulations=simulations,
+            search_seed=search_seed,
+            exploration_constant=exploration_constant,
+            determinizations=search_determinizations,
+            inference_batch_size=inference_batch_size,
+            root_policy_probabilities=root_policy_probabilities,
+            score_utility_weight=self.score_utility_weight,
+            final_vp_utility_weight=self.final_vp_utility_weight,
+        )
+        expected_method = BATCHED_NEURAL_PUCT_METHOD
         return _select_search_action(
             report,
             prediction.action_keys,
@@ -269,6 +273,36 @@ def build_parser() -> argparse.ArgumentParser:
         choices=SUPPORTED_STRATEGY_PRIOR_VERSIONS,
         default=STRATEGY_PRIOR_VERSION,
     )
+    parser.add_argument(
+        "--candidate-score-utility-weight",
+        type=float,
+        default=0.0,
+        help="Blend secured-score quality into candidate neural PUCT exploitation",
+    )
+    parser.add_argument(
+        "--champion-score-utility-weight",
+        type=float,
+        default=0.0,
+        help="Blend secured-score quality into champion neural PUCT exploitation",
+    )
+    parser.add_argument(
+        "--candidate-final-vp-utility-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Add a bounded opponent-relative final-VP tie-breaker to candidate "
+            "neural PUCT when shared-win values are uncertain"
+        ),
+    )
+    parser.add_argument(
+        "--champion-final-vp-utility-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Add a bounded opponent-relative final-VP tie-breaker to champion "
+            "neural PUCT when shared-win values are uncertain"
+        ),
+    )
     return parser
 
 
@@ -302,6 +336,10 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
     for name in (
         "candidate_strategy_prior_strength",
         "champion_strategy_prior_strength",
+        "candidate_score_utility_weight",
+        "champion_score_utility_weight",
+        "candidate_final_vp_utility_weight",
+        "champion_final_vp_utility_weight",
     ):
         strength = float(getattr(args, name))
         if not math.isfinite(strength) or not 0.0 <= strength <= 1.0:
@@ -337,6 +375,8 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         timeout_seconds=inference_timeout,
         strategy_prior_strength=args.candidate_strategy_prior_strength,
         strategy_prior_version=args.candidate_strategy_prior_version,
+        score_utility_weight=args.candidate_score_utility_weight,
+        final_vp_utility_weight=args.candidate_final_vp_utility_weight,
     )
     champion = _build_evaluation_policy(
         checkpoint=champion_checkpoint,
@@ -347,6 +387,8 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         timeout_seconds=inference_timeout,
         strategy_prior_strength=args.champion_strategy_prior_strength,
         strategy_prior_version=args.champion_strategy_prior_version,
+        score_utility_weight=args.champion_score_utility_weight,
+        final_vp_utility_weight=args.champion_final_vp_utility_weight,
     )
 
     results: list[MatchResult] = []
@@ -395,8 +437,12 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         "champion_checkpoint_step": champion.checkpoint_step,
         "candidate_strategy_prior_strength": candidate.strategy_prior_strength,
         "candidate_strategy_prior_version": candidate.strategy_prior_version,
+        "candidate_score_utility_weight": candidate.score_utility_weight,
+        "candidate_final_vp_utility_weight": candidate.final_vp_utility_weight,
         "champion_strategy_prior_strength": champion.strategy_prior_strength,
         "champion_strategy_prior_version": champion.strategy_prior_version,
+        "champion_score_utility_weight": champion.score_utility_weight,
+        "champion_final_vp_utility_weight": champion.final_vp_utility_weight,
         "players": args.players,
         "rounds": args.rounds,
         "base_seed": args.seed,
@@ -407,14 +453,10 @@ def evaluate_checkpoints(args: argparse.Namespace) -> dict[str, Any]:
         "search_simulations": args.search_simulations,
         "exploration_constant": args.exploration,
         "search_determinizations": (
-            args.search_determinizations
-            if args.search_simulations > 0 and args.players == 2
-            else None
+            args.search_determinizations if args.search_simulations > 0 else None
         ),
         "inference_batch_size": (
-            args.inference_batch_size
-            if args.search_simulations > 0 and args.players == 2
-            else None
+            args.inference_batch_size if args.search_simulations > 0 else None
         ),
         "gate_confidence_unit": "seat_rotated_seed_group",
         "summary": asdict(summary),
@@ -640,8 +682,10 @@ def _build_evaluation_policy(
     schema: FeatureSchema,
     device: str,
     timeout_seconds: float,
-    strategy_prior_strength: float = 0.0,
-    strategy_prior_version: str = STRATEGY_PRIOR_VERSION,
+        strategy_prior_strength: float = 0.0,
+        strategy_prior_version: str = STRATEGY_PRIOR_VERSION,
+        score_utility_weight: float = 0.0,
+        final_vp_utility_weight: float = 0.0,
 ) -> EvaluationPolicy:
     if inference_url is not None:
         from .remote_inference import RemoteInferenceEvaluator
@@ -668,6 +712,8 @@ def _build_evaluation_policy(
         source_kind,
         strategy_prior_strength,
         strategy_prior_version,
+        score_utility_weight,
+        final_vp_utility_weight,
     )
 
 
