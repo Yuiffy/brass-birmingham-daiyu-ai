@@ -1,9 +1,8 @@
 use crate::board::connectivity::Connectivity;
 use crate::board::Board;
 use crate::consts::STARTING_HAND_SIZE;
-use crate::core::locations::LocationName;
 use crate::core::player::Player;
-use crate::core::static_data::{INDUSTRY_MAT, LINK_LOCATIONS};
+use crate::core::static_data::INDUSTRY_MAT;
 use crate::core::types::*;
 use crate::game::framework::{
     ActionChoice, ActionIntent, ChoiceSet, GameFramework, ShortfallResolutionSession,
@@ -242,7 +241,9 @@ impl GameRunner {
         if self.actions_remaining_in_turn > 0 {
             self.actions_remaining_in_turn -= 1;
         }
-        self.draw_cards_for_player(self.framework.current_player);
+        if self.actions_remaining_in_turn == 0 {
+            self.draw_cards_for_player(self.framework.current_player);
+        }
 
         let state = &self.framework.board.state;
         if state.deck.is_empty()
@@ -488,8 +489,7 @@ impl GameRunner {
         let state = &mut self.framework.board.state;
         let num_players = state.players.len();
 
-        // Score roads: for each road, the owner gets VPs equal to the sum
-        // of road_vp for every building present in the road's connected locations.
+        // Score flipped industry icons and printed merchant-location icons.
         let built_road_indices: Vec<usize> = state.built_roads.ones().collect();
         for road_idx in built_road_indices {
             let mut road_owner = None;
@@ -501,21 +501,7 @@ impl GameRunner {
             }
 
             if let Some(owner_idx) = road_owner {
-                let mut road_vps: u16 = 0;
-                for loc_idx in LINK_LOCATIONS[road_idx].locations.ones() {
-                    let bl_set = LocationName::from_usize(loc_idx).to_bl_set();
-                    for bl_idx in bl_set.ones() {
-                        if let Some(building) = state
-                            .bl_to_building
-                            .get(&bl_idx)
-                            .filter(|building| building.flipped)
-                        {
-                            let data = &INDUSTRY_MAT[building.industry as usize]
-                                [building.level.as_usize()];
-                            road_vps += data.road_vp as u16;
-                        }
-                    }
-                }
+                let road_vps = state.link_victory_points(road_idx);
                 state.players[owner_idx].victory_points += road_vps;
                 state.visible_vps[owner_idx] += road_vps;
             }

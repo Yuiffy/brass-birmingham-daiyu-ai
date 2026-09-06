@@ -4,8 +4,7 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 
-use crate::core::locations::LocationName;
-use crate::core::static_data::{INDUSTRY_MAT, LINK_LOCATIONS};
+use crate::core::static_data::INDUSTRY_MAT;
 use crate::core::types::{ActionType, Era};
 use crate::game::framework::{ActionChoice, ActionIntent, ChoiceSet};
 use crate::game::hidden_information::determinize_hidden_information;
@@ -23,6 +22,7 @@ pub const ROOT_PUCT_ACTION_VALUE_METHOD: &str =
 pub const BATCHED_NEURAL_PUCT_METHOD: &str = "determinized_batched_neural_puct";
 /// Lightweight, explainable action ranking based on one-step state deltas.
 pub const RULE_DECISION_TREE_METHOD: &str = "rule_decision_tree_immediate_score";
+pub const RULE_ECONOMIC_METHOD: &str = "rule_economic_conversion_v2";
 pub const RANDOM_ROLLOUT_VALUE_SOURCE: &str = "random_terminal_rollout";
 pub const SUCCESSOR_MODEL_VALUE_SOURCE: &str = "batched_successor_model";
 pub const NEURAL_TREE_VALUE_SOURCE: &str = "batched_neural_tree_search";
@@ -1912,15 +1912,14 @@ pub fn official_winners(runner: &GameRunner) -> Result<Vec<usize>, String> {
     let players = &runner.framework.board.state.players;
     let best_key = players
         .iter()
-        .map(|player| (player.victory_points, player.income_level, player.money))
+        .map(|player| player.final_ranking_key())
         .max()
         .ok_or_else(|| "cannot rank a game with no players".to_string())?;
     Ok(players
         .iter()
         .enumerate()
         .filter_map(|(player_idx, player)| {
-            ((player.victory_points, player.income_level, player.money) == best_key)
-                .then_some(player_idx)
+            (player.final_ranking_key() == best_key).then_some(player_idx)
         })
         .collect())
 }
@@ -2474,20 +2473,8 @@ pub(crate) fn potential_era_victory_points(runner: &GameRunner) -> Vec<u16> {
         let Some(owner_idx) = owner else {
             continue;
         };
-        for location_idx in LINK_LOCATIONS[road_idx].locations.ones() {
-            for building_idx in LocationName::from_usize(location_idx).to_bl_set().ones() {
-                if let Some(building) = state
-                    .bl_to_building
-                    .get(&building_idx)
-                    .filter(|building| building.flipped)
-                {
-                    potential_vps[owner_idx] = potential_vps[owner_idx].saturating_add(
-                        INDUSTRY_MAT[building.industry as usize][building.level.as_usize()].road_vp
-                            as u16,
-                    );
-                }
-            }
-        }
+        potential_vps[owner_idx] =
+            potential_vps[owner_idx].saturating_add(state.link_victory_points(road_idx));
     }
     for building in state
         .bl_to_building
@@ -2644,5 +2631,10 @@ mod tests {
 
         runner.framework.board.state.players[1].money = 30;
         assert_eq!(official_winners(&runner).unwrap(), vec![0, 1]);
+
+        // Spaces 21 and 22 both pay +6: the marker's sub-position is not a tiebreak.
+        runner.framework.board.state.players[1].income_level = 22;
+        runner.framework.board.state.players[0].money = 31;
+        assert_eq!(official_winners(&runner).unwrap(), vec![0]);
     }
 }

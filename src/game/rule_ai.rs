@@ -10,6 +10,9 @@ use std::collections::{HashSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
+mod economy;
+mod economy_v1;
+
 use crate::consts::{MAX_MARKET_COAL, MAX_MARKET_IRON, N_BL, ONE_RAILROAD_PRICE, TOTAL_TOWNS};
 use crate::core::locations::LocationName;
 use crate::core::static_data::{
@@ -23,7 +26,7 @@ use crate::game::legal_actions::{
 use crate::game::runner::{GamePhase, GameRunner};
 use crate::game::search::{
     immediate_effect_between, ImmediateEffect, RootActionEstimate, RootSearchReport,
-    RULE_DECISION_TREE_METHOD, RULE_IMMEDIATE_SCORE_SOURCE,
+    RULE_DECISION_TREE_METHOD, RULE_ECONOMIC_METHOD, RULE_IMMEDIATE_SCORE_SOURCE,
 };
 
 /// Tunable weights for the shallow rule tree.  Values are deliberately kept
@@ -32,6 +35,10 @@ use crate::game::search::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RuleDecisionConfig {
+    /// Evaluate investments in VP and their remaining conversion costs.
+    pub economic_evaluation: bool,
+    /// Retain the September v1 evaluator as a reproducible opponent.
+    pub economic_v1: bool,
     pub recommendation_count: usize,
     pub temperature: f64,
     pub immediate_vp_weight: f64,
@@ -116,6 +123,8 @@ pub struct RuleDecisionConfig {
 impl Default for RuleDecisionConfig {
     fn default() -> Self {
         Self {
+            economic_evaluation: true,
+            economic_v1: false,
             recommendation_count: 3,
             // A small temperature preserves a clear best move while keeping
             // alternatives useful for inspection and future data generation.
@@ -182,23 +191,38 @@ impl Default for RuleDecisionConfig {
             // The smallest screened value removes final-card non-conversion
             // while preserving Beer-funded multi-product batches.
             late_railroad_conversion_stall_weight: 0.9,
-            // The interactive policy evaluates one post-action state.  This
-            // is the measured fast path for a live game; deeper inspection is
-            // available through `deep()` and the benchmark example.
-            lookahead_depth: 1,
-            lookahead_branching: 1,
+            // Plan both actions in this turn with the player's known cards.
+            lookahead_depth: 2,
+            lookahead_branching: 8,
             lookahead_discount: 0.65,
         }
     }
 }
 
 impl RuleDecisionConfig {
-    /// A slower diagnostic profile that expands a small same-turn frontier.
-    /// Keep it explicit so opening a game never silently starts a mini-search.
+    /// Frozen August policy for head-to-head evaluation and replay comparison.
+    pub fn legacy() -> Self {
+        Self {
+            economic_evaluation: false,
+            lookahead_depth: 1,
+            lookahead_branching: 1,
+            ..Self::default()
+        }
+    }
+
+    pub fn economic_v1() -> Self {
+        Self {
+            economic_evaluation: true,
+            economic_v1: true,
+            ..Self::legacy()
+        }
+    }
+
+    /// A wider diagnostic profile for the same-turn frontier.
     pub fn deep() -> Self {
         Self {
             lookahead_depth: 2,
-            lookahead_branching: 3,
+            lookahead_branching: 16,
             ..Self::default()
         }
     }
@@ -415,8 +439,28 @@ pub fn rank_rule_actions(
             .take(config.lookahead_branching)
             .collect::<Vec<_>>();
         for index in frontier {
-            let continuation =
-                best_same_turn_continuation(&evaluated[index].after_runner, actor, config)?;
+            if evaluated[index].after_runner.turn_count != runner.turn_count
+                || evaluated[index].after_runner.game_phase != runner.game_phase
+            {
+                continue;
+            }
+            let known_successor;
+            let successor = if config.economic_evaluation {
+                let continuation = if config.economic_v1 {
+                    economy_v1::known_continuation
+                } else {
+                    economy::known_continuation
+                };
+                known_successor = continuation(
+                    runner,
+                    &evaluated[index].after_runner,
+                    &evaluated[index].action.intent,
+                );
+                &known_successor
+            } else {
+                &evaluated[index].after_runner
+            };
+            let continuation = best_same_turn_continuation(successor, actor, config)?;
             let candidate = &mut evaluated[index];
             candidate.breakdown.lookahead = continuation;
             candidate.breakdown.total += continuation;
@@ -616,7 +660,16 @@ pub fn rule_decision_report(
         .collect::<Vec<_>>();
 
     Ok(RootSearchReport {
-        method: RULE_DECISION_TREE_METHOD.to_string(),
+        method: if config.economic_evaluation {
+            if config.economic_v1 {
+                "rule_economic_conversion_v1"
+            } else {
+                RULE_ECONOMIC_METHOD
+            }
+        } else {
+            RULE_DECISION_TREE_METHOD
+        }
+        .to_string(),
         value_source: RULE_IMMEDIATE_SCORE_SOURCE.to_string(),
         model_id: None,
         root_model_shared_win_rate: None,
@@ -704,6 +757,22 @@ fn score_action_with_card_values(
     card_values: &[f64],
 ) -> (RuleScoreBreakdown, f64) {
     let actor = runner.framework.current_player;
+    if config.economic_evaluation {
+        let scorer = if config.economic_v1 {
+            economy_v1::score_action
+        } else {
+            economy::score_action
+        };
+        return scorer(
+            runner,
+            after_runner,
+            before,
+            after,
+            effect,
+            intent,
+            card_values,
+        );
+    }
     let rounds_remaining = estimate_rounds_remaining(runner);
     let phase_is_railroad = matches!(runner.game_phase, GamePhase::Railroad | GamePhase::GameEnd);
     let late_game = rounds_remaining <= 3.0 || runner.framework.board.state.deck.cards.len() <= 12;
@@ -4843,7 +4912,7 @@ mod tests {
                 free_development_choice: None,
             },
             2,
-            &RuleDecisionConfig::default(),
+            &RuleDecisionConfig::legacy(),
         );
         assert!(network_breakdown.safety < -5.0);
     }
@@ -4886,7 +4955,7 @@ mod tests {
             &effect_canal,
             &intent,
             2,
-            &RuleDecisionConfig::default(),
+            &RuleDecisionConfig::legacy(),
         );
         let (rail_score, _) = score_action(
             &rail_after,
@@ -4896,7 +4965,7 @@ mod tests {
             &effect_rail,
             &intent,
             2,
-            &RuleDecisionConfig::default(),
+            &RuleDecisionConfig::legacy(),
         );
         assert!(rail_score.network >= canal_score.network);
         assert!(rail_score.immediate_vp >= canal_score.immediate_vp);

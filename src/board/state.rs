@@ -117,7 +117,7 @@ impl BoardState {
                 )
             })
             .collect();
-        let discard_pile = deck.draw().into_iter().collect();
+        let discard_pile = deck.draw_n(num_players);
 
         let mut initial_turn_order: Vec<usize> = (0..num_players).collect();
         initial_turn_order.shuffle(&mut rng);
@@ -151,6 +151,34 @@ impl BoardState {
             visible_vps: [0; N_PLAYERS],
             turn_order: initial_turn_order,
         }
+    }
+
+    /// Printed merchant icons score even when that location has no active merchant.
+    pub fn link_victory_points(&self, road_idx: usize) -> u16 {
+        LINK_LOCATIONS[road_idx]
+            .locations
+            .ones()
+            .map(|town| {
+                let location = LocationName::from_usize(town);
+                let merchant_points = if town >= LocationName::Shrewbury.as_usize() {
+                    2
+                } else {
+                    0
+                };
+                merchant_points
+                    + location
+                        .to_bl_set()
+                        .ones()
+                        .filter_map(|bl| {
+                            self.bl_to_building.get(&bl).filter(|b| b.flipped).map(|b| {
+                                u16::from(
+                                    INDUSTRY_MAT[b.industry.as_usize()][b.level.as_usize()].road_vp,
+                                )
+                            })
+                        })
+                        .sum::<u16>()
+            })
+            .sum()
     }
 
     pub fn get_player_building_mask(&self, player_id: PlayerId) -> &BuildLocationSet {

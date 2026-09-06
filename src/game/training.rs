@@ -374,16 +374,13 @@ fn terminal_value_for_player(
     }
     let best_key = players
         .iter()
-        .map(|player| (player.victory_points, player.income_level, player.money))
+        .map(|player| player.final_ranking_key())
         .max()
         .ok_or_else(|| "cannot value a game with no players".to_string())?;
     let winners = players
         .iter()
         .enumerate()
-        .filter_map(|(index, player)| {
-            ((player.victory_points, player.income_level, player.money) == best_key)
-                .then_some(index)
-        })
+        .filter_map(|(index, player)| (player.final_ranking_key() == best_key).then_some(index))
         .collect::<Vec<_>>();
     let shared_win_rate = if winners.contains(&player_idx) {
         1.0 / winners.len() as f64

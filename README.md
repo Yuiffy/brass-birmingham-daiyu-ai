@@ -10,14 +10,13 @@ can show several candidate moves, the search share and model signals behind each
 contextual answers to Chinese follow-up questions such as why the first choice is preferred over
 the second.
 
-> **Development status (2026-08-30): paused.** The current engine, rule AI, neural-training
-> pipeline, tests, and experiment history are preserved, but active AI development has stopped.
-> The strongest retained deterministic rule-AI benchmark averaged `84.0083 VP` across 40 local
-> three-player games, with a `56 VP` global minimum and the human-reference seed at
-> `[115,90,91]`. These are same-engine regression results, not a rating against external players.
-> A public-source investigation of BrassForge found no published AI implementation or source maps;
-> its bot decisions appear to be server-side, so there is no quick implementation to transfer. See
-> the [final project handoff](progress.md#2026-08-30-project-closure-and-brassforge-assessment).
+> **AI update (2026-09-06): economic planning v2.** The default CPU opponent plans both actions
+> of its turn, budgets shared future income and loan capacity, and considers merchant Beer and
+> future link scoring. The rulebook audit also fixes loans, card refill/setup, scouting, merchant
+> link icons and income tiebreaks. Start a fresh game: historical replays used different rules.
+> Both `RuleDecisionConfig::economic_v1()` and `RuleDecisionConfig::legacy()` remain available
+> for comparison. See [strategy and evaluation](docs/rule-ai-economy.md) and the
+> [rules audit](docs/official-rules-audit.md). Self-play scores are not a human skill rating.
 
 ## What This Repo Contains
 
@@ -173,6 +172,10 @@ model value is not yet a calibrated real-world win probability.
 
 ## AI Status
 
+- The default rule policy uses economic conversion evaluation, with exact legal actions and
+  explainable score components. Its development and optional same-turn planning use only known
+  hand cards. No model checkpoint or GPU is required. The old rule policy and neural pipeline
+  remain available for comparison. See [the rule-AI evaluation protocol](docs/rule-ai-economy.md).
 - Deep neural search uses hidden-information determinizations and batched multi-layer PUCT for
   two-, three-, and four-player games. In multiplayer positions, the value head's non-root win
   mass is distributed across the other seats as an explicit approximation.

@@ -2084,3 +2084,58 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
   -v` (126 tests), `npm run build`, and `git diff --check`. Rust and Python checks reused the
   existing training container with bounded CPU threads and CUDA disabled for Python; no training,
   benchmark sweep, browser, Playwright, or new service was started.
+
+## 2026-09-06 economic rule AI restart
+
+- Replaced the default August action-bonus evaluator with `rule_economic_conversion_v1`.
+  Completed VP, Canal carryover, route/Beer conversion work, shared Beer capacities, resource
+  demand, diminishing cash utility and debt reserves now determine the investment score.
+  `RuleDecisionConfig::legacy()` preserves the August policy for comparison.
+- Development checks and optional same-turn continuations exclude unobserved draws. New tests
+  verify invariance to hidden-card permutation, two-era accounting, terminal double-counting,
+  merchant/owned Beer allocation, batch sales and disconnected resource risk.
+- Added `rule_ai_match`, which rotates one candidate against legacy opponents through every seat,
+  reports official wins and VP, and groups confidence intervals by seed. A six-game all-legacy
+  control reproduced identical per-seed score vectors and exactly 1/3 win share.
+- Frozen final policy on untouched seeds `2026092600..2026092623`: 2P 47/48 wins, 134.4375 mean
+  VP, +46.25 margin; 3P 63/72 wins, 118.3889 VP, +26.7083 margin; 4P 64/96 wins, 100.875 VP,
+  +8.8646 margin. Every grouped 95% margin interval is above zero. No games were excluded.
+  The remaining four-player zero at seed `2026092610`, seat 2 is explicitly retained.
+- Economic module SHA-256 is `2A759829AFD6B72ACBEA1ED077DFF5BB7AA505E0A6073A3EB336B8D37AD38395`.
+  Complete reports remain in `output/economy-final-{2,3,4}p.json`; methodology and limitations are
+  in `docs/rule-ai-economy.md`. Final release rebuild reproduced the first six 3P evaluation games.
+- The CPU implementation needs no checkpoint or GPU. Neural weights and rules-engine behavior
+  were not changed. The result demonstrates improvement over the retained policy in this engine;
+  it does not establish expert-human strength or certify official-rule completeness.
+- Local preview is running at `http://127.0.0.1:5175/` with API port 3011 and an independent
+  playtest database. Browser/API smoke passed five analyzed and applied moves in each player
+  count, the economic method label renders correctly, and browser console errors are zero.
+
+## 2026-09-06 rulebook audit and economic planning v2
+
+- User rejected weak-opponent win rates as sufficient evidence of skill. Reproduced the four-player
+  zero at 2026092610/seat 2: isolated Coal/Brewery investments, repeated loans, no conversions,
+  then Railroad passing and liquidation. Read the official rulebook, including its scoring diagram.
+- Corrected loan income-band arithmetic and the -7 loan eligibility floor, end-of-turn card refill,
+  one setup discard per player, Scout with any held Wild, printed merchant link icons, and displayed
+  income tiebreaks. Shared scoring/ranking helpers also serve Python and training consumers.
+  New passing-only tests verify 10/9/8 rounds per era and exact action budgets for 2/3/4 players.
+- V2 combines pending income on one nonlinear track, prices credit exhaustion, discounts disconnected
+  resources, anticipates unflipped link icons and merchant Beer after a planned route. Default search
+  now considers the second action for eight distinct root intents, with strict turn/era boundaries
+  and hidden-card invariance. V1 remains available as RuleDecisionConfig::economic_v1().
+- Independent direct matches, 24 new seeds 2026092800..2026092823 per player count: mean candidate
+  VP 150.0625 / 136.6944 / 120.9583; wins 38/48, 49/72, 41/96; minima 113/101/91; zero shortfall
+  sessions. Four-player margin versus the best of three opponents is -0.125 with CI crossing zero.
+  Five top-score ties were replayed after the income tiebreak correction; scores reproduced, and
+  2026092813/seat 0 correctly changed from a win to a loss. The JSON and documentation reflect it.
+- Independent all-seat self-play, eight new paired seeds 2026092900..2026092907: V1 mean VP
+  120.6875 / 121.75 / 103.875; V2 151.4375 / 133.125 / 116.6875. V2 minima 126/113/81;
+  below-100 counts 0/16, 0/24, 2/32. No zero scores. The three-player paired mean-gain CI crosses
+  zero on eight games; this and the weak four-player tail are explicit limits, not excluded games.
+- The complete Rust suite with Python bindings passed: 128 library tests plus all integration and
+  example targets. API smoke applied ten analyzed actions at each player count; browser smoke
+  created a game, executed an AI turn, and displayed v2 without console warnings/errors.
+- Preview remains on 5175 with API 3011. Use new games: old action-log saves and checkpoints have
+  not been migrated to the corrected engine. No neural training or checkpoint promotion occurred.
+  Details and raw evidence paths are in docs/rule-ai-economy.md and docs/official-rules-audit.md.

@@ -45,8 +45,8 @@ fn advance_to_decision(runner: &mut GameRunner) -> Result<(), String> {
 
 fn profile_name(depth: usize, branching: usize) -> &'static str {
     match (depth, branching) {
-        (1, 1) => "live_default",
-        (2, 3) => "deep_diagnostic",
+        (2, 8) => "live_default",
+        (2, 16) => "deep_diagnostic",
         _ => "custom",
     }
 }
@@ -70,8 +70,8 @@ mod tests {
     #[test]
     fn live_default_profile_matches_rule_config_default() {
         let config = RuleDecisionConfig::default();
-        assert_eq!(config.lookahead_depth, 1);
-        assert_eq!(config.lookahead_branching, 1);
+        assert_eq!(config.lookahead_depth, 2);
+        assert_eq!(config.lookahead_branching, 8);
         assert_eq!(
             profile_name(config.lookahead_depth, config.lookahead_branching),
             "live_default"
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn non_default_profiles_are_explicitly_labeled() {
-        assert_eq!(profile_name(2, 3), "deep_diagnostic");
+        assert_eq!(profile_name(2, 16), "deep_diagnostic");
         assert_eq!(profile_name(2, 1), "custom");
     }
 
@@ -375,15 +375,19 @@ fn main() -> Result<(), String> {
         40
     };
     let detail = args.iter().any(|value| value == "detail");
+    let mut config = if args.iter().any(|value| value == "legacy") {
+        RuleDecisionConfig::legacy()
+    } else {
+        RuleDecisionConfig::default()
+    };
     let lookahead_depth = args
         .iter()
         .find_map(|value| value.strip_prefix("depth=")?.parse::<usize>().ok())
-        .unwrap_or(1);
+        .unwrap_or(config.lookahead_depth);
     let lookahead_branching = args
         .iter()
         .find_map(|value| value.strip_prefix("branching=")?.parse::<usize>().ok())
-        .unwrap_or(1);
-    let mut config = RuleDecisionConfig::default();
+        .unwrap_or(config.lookahead_branching);
     config.lookahead_depth = lookahead_depth;
     config.lookahead_branching = lookahead_branching;
     config.sale_frontier_build_weight =
@@ -526,7 +530,8 @@ fn main() -> Result<(), String> {
     println!(
         "{}",
         json!({
-            "engine": "fast_brass_rule_decision_tree",
+            "engine": if config.economic_evaluation { fast_brass::game::search::RULE_ECONOMIC_METHOD } else { "fast_brass_rule_decision_tree" },
+            "economic_evaluation": config.economic_evaluation,
             "players": players,
             "games": games,
             "seconds": elapsed,

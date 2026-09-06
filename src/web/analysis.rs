@@ -8,7 +8,7 @@ use crate::game::runner::GameRunner;
 use crate::game::search::{
     RootActionEstimate, RootSearchReport, BATCHED_NEURAL_PUCT_METHOD, NEURAL_TREE_VALUE_SOURCE,
     ROOT_PUCT_ACTION_VALUE_METHOD, ROOT_PUCT_METHOD, RULE_DECISION_TREE_METHOD,
-    RULE_IMMEDIATE_SCORE_SOURCE, SUCCESSOR_MODEL_VALUE_SOURCE,
+    RULE_ECONOMIC_METHOD, RULE_IMMEDIATE_SCORE_SOURCE, SUCCESSOR_MODEL_VALUE_SOURCE,
 };
 
 use super::serialize::{format_card_label, industry_str, town_name_for_bl};
@@ -142,6 +142,8 @@ pub fn serialize_analysis_for_observer(
         method: report.method.clone(),
         method_label: if report.method == BATCHED_NEURAL_PUCT_METHOD {
             "策略价值网络 · 多层 PUCT · 隐藏牌确定化"
+        } else if report.method == RULE_ECONOMIC_METHOD {
+            "经济规划 v2 · 回合组合与资金周转"
         } else if report.method == RULE_DECISION_TREE_METHOD {
             "CPU 规则决策树 · 同回合浅层前瞻（无终局续弈）"
         } else if report.method == ROOT_PUCT_ACTION_VALUE_METHOD {
@@ -262,6 +264,13 @@ pub fn explain_analysis_question_for_observer(
             visit_share,
             candidate.value_sample_count,
             win_rate,
+            effect
+        )
+    } else if report.method == RULE_ECONOMIC_METHOD {
+        format!(
+            "这步排在第 {}：根据已兑现分数、跨时代产业收益、出售所需的路线和啤酒、现金储备及弃牌机会成本，经济评分为 {:+.2}。{}",
+            candidate.rank,
+            candidate.rule_score.unwrap_or(candidate.average_victory_point_margin),
             effect
         )
     } else if uses_rule {
@@ -510,6 +519,9 @@ pub fn explain_analysis_question_for_observer(
                 report.neural_leaf_evaluations.unwrap_or(0),
                 report.inference_batches.unwrap_or(0),
             )
+        } else if report.method == RULE_ECONOMIC_METHOD {
+            "产业兑现概率和未来资源需求是启发式估计，评分不是胜率；当前使用已知手牌和公开棋盘，没有展开完整的对手应对与终局搜索。"
+                .to_string()
         } else if report.method == RULE_DECISION_TREE_METHOD {
             "当前是 CPU 规则决策树：每个合法动作只评估一次前后状态，综合 VP、收入、现金、产业、网络、资源和安全分量；没有终局续弈、神经网络或胜率校准。"
                 .to_string()
@@ -921,6 +933,30 @@ mod tests {
     #[test]
     fn percentages_use_the_same_half_up_rounding_as_the_browser() {
         assert_eq!(format_percent(162.0 / 800.0), "20.3%");
+    }
+
+    #[test]
+    fn economic_rule_report_keeps_its_identity_and_explanation() {
+        let runner = GameRunner::new(2, Some(8_200));
+        let report = crate::game::rule_ai::rule_decision_report(
+            &runner,
+            &crate::game::rule_ai::RuleDecisionConfig::default(),
+        )
+        .unwrap();
+        let serialized = serialize_analysis(&report, &runner, 1, 1);
+        assert_eq!(serialized.method, RULE_ECONOMIC_METHOD);
+        assert!(serialized.method_label.contains("经济规划 v2"));
+        assert!(serialized.recommendations[0].rule_score.is_some());
+        let explanation = explain_analysis_question(
+            &report,
+            &runner,
+            1,
+            &report.recommendations[0].action_key,
+            "选择依据",
+        )
+        .unwrap();
+        assert!(explanation.answer.contains("经济评分"));
+        assert!(explanation.caveat.contains("启发式"));
     }
 
     #[test]

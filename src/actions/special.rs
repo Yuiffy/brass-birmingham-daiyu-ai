@@ -77,7 +77,7 @@ impl SpecialActions {
     pub fn can_take_loan(board_state: &crate::board::BoardState, player_idx: usize) -> bool {
         let income_level = board_state.players[player_idx].income_level;
         let income_val = board_state.players[player_idx].get_income_amount(income_level);
-        income_val > -10
+        income_val >= -7
     }
 
     /// Check if player can scout
@@ -100,7 +100,7 @@ impl SpecialActions {
                 has_wi = true;
             }
         }
-        !(has_wl && has_wi) // Cannot scout if already holding both types
+        !(has_wl || has_wi)
     }
 
     /// Liquidate assets for a player who can't pay debt

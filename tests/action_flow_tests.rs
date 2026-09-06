@@ -769,9 +769,9 @@ fn test_turn_switches_to_other_player_after_two_actions() {
     assert_eq!(runner.actions_remaining_in_turn, 2);
 }
 
-/// Every action refills the acting player's hand immediately.
+/// Refill only after the final action of a player's turn (rulebook p. 6).
 #[test]
-fn test_players_draw_cards_after_each_action() {
+fn test_players_draw_cards_after_all_turn_actions() {
     let mut runner = GameRunner::new(2, Some(42));
 
     let p0 = runner.framework.board.state.turn_order[0];
@@ -848,6 +848,28 @@ fn test_players_draw_cards_after_each_action() {
         "Deck should have lost 2 cards (1 per player). Before: {}, After: {}",
         deck_size_before,
         deck_size_after
+    );
+
+    runner.start_turn();
+    assert_eq!(runner.actions_remaining_in_turn, 2);
+    let actor = runner.framework.current_player;
+    do_pass_action(&mut runner);
+    assert_eq!(
+        runner.framework.board.state.players[actor].hand.cards.len(),
+        7
+    );
+    assert_eq!(
+        runner.framework.board.state.deck.cards_left(),
+        deck_size_after
+    );
+    do_pass_action(&mut runner);
+    assert_eq!(
+        runner.framework.board.state.players[actor].hand.cards.len(),
+        8
+    );
+    assert_eq!(
+        runner.framework.board.state.deck.cards_left(),
+        deck_size_after - 2
     );
 }
 
@@ -1124,8 +1146,9 @@ fn test_sell_confirm_discards_selected_card() {
     board.trade_post_slots[1] = Some(MerchantTile::from_type(MerchantTileType::Cotton));
     board.trade_post_beer.insert(1);
 
-    // Give p2 one discard card for the sell action.
-    board.players[p2].hand.cards = vec![Card::new(CardType::Location(TownName::BurtonUponTrent))];
+    // Two cards remain at the start of this two-action turn.
+    board.players[p2].hand.cards =
+        vec![Card::new(CardType::Location(TownName::BurtonUponTrent)); 2];
     board.players[p2].money = 20;
 
     runner.framework.current_player = p2;
@@ -1159,7 +1182,10 @@ fn test_sell_confirm_discards_selected_card() {
 
     let hand_after = runner.framework.board.state.players[p2].hand.cards.len();
     let discard_after = runner.framework.board.state.discard_pile.len();
-    assert_eq!(hand_after, 8, "Sell should refill the acting player's hand");
+    assert_eq!(
+        hand_after, 1,
+        "The first action must not draw the second action's card"
+    );
     assert_eq!(
         discard_after,
         discard_before + 1,

@@ -84,6 +84,14 @@ impl Player {
         self.money >= cost
     }
 
+    pub fn final_ranking_key(&self) -> (u16, i8, u16) {
+        (
+            self.victory_points,
+            self.get_income_amount(self.income_level),
+            self.money,
+        )
+    }
+
     pub fn pay(&mut self, amount: u16) {
         // Safety against desync/edge-case callers: never underflow player money.
         let paid = amount.min(self.money);
@@ -139,44 +147,17 @@ impl Player {
         }
     }
 
-    fn decrease_level(&mut self) {
-        let income = self.income_level;
-        let decrement = match income {
-            0 => 0,
-            1..=11 => 1,
-            12 => 2,
-            13..=32 => 3 + (income % 2),
-            33 => 4,
-            34..=63 => {
-                if income % 3 == 1 {
-                    3
-                } else if income % 3 == 2 {
-                    4
-                } else {
-                    5
-                }
-            }
-            64 => 6,
-            65..=96 => {
-                if income % 4 == 1 {
-                    4
-                } else if income % 4 == 2 {
-                    5
-                } else if income % 4 == 3 {
-                    6
-                } else {
-                    7
-                }
-            }
-            _ => 93,
-        };
-        self.income_level = income.saturating_sub(decrement);
-    }
-
     pub fn decrease_income_level(&mut self, levels: u8) {
-        for _ in 0..levels {
-            self.decrease_level();
+        if levels == 0 {
+            return;
         }
+        let target = (i16::from(self.get_income_amount(self.income_level)) - i16::from(levels))
+            .max(-10) as i8;
+        // Loans land on the highest space in the target income band (rulebook p. 10).
+        self.income_level = (0..=100)
+            .rev()
+            .find(|space| self.get_income_amount(*space) == target)
+            .unwrap_or(0);
     }
 
     // A location on the board is considered to be

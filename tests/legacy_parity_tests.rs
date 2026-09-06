@@ -28,7 +28,7 @@ fn test_legacy_initial_setup_deck_market_and_players() {
     for (num_players, total_cards, expected_total) in cases {
         assert_eq!(total_cards, expected_total);
         let board = Board::new(num_players, Some(42));
-        let expected_deck_left = total_cards - (num_players * STARTING_HAND_SIZE as usize) - 1;
+        let expected_deck_left = total_cards - num_players * (STARTING_HAND_SIZE as usize + 1);
 
         assert_eq!(
             board.state.deck.cards_left(),
@@ -37,8 +37,8 @@ fn test_legacy_initial_setup_deck_market_and_players() {
         );
         assert_eq!(
             board.state.discard_pile.len(),
-            1,
-            "Setup should place one card face down in the discard pile"
+            num_players,
+            "Each player starts a discard pile with one face-down card"
         );
         assert_eq!(
             board.state.remaining_market_coal, 13,
@@ -194,8 +194,8 @@ fn test_legacy_income_level_mapping_and_decrease() {
     p.income_level = 17;
     p.decrease_income_level(2);
     assert_eq!(
-        p.income_level, 9,
-        "Income-level decrement should follow current Rust ladder semantics"
+        p.income_level, 14,
+        "Income +4 minus two bands lands on the highest +2 space"
     );
 }
 

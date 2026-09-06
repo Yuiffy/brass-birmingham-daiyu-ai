@@ -10,7 +10,6 @@ use crate::consts::{
     MAX_MARKET_COAL, MAX_MARKET_IRON, NUM_TRADE_POSTS, N_BL, N_LOCATIONS, N_PLAYERS,
     N_ROAD_LOCATIONS, TWO_RAILROAD_PRICE,
 };
-use crate::core::locations::LocationName;
 use crate::core::static_data::{BUILD_LOCATION_MASK, INDUSTRY_MAT, LINK_LOCATIONS};
 use crate::core::types::{ActionType, BitSetWrapper, Era, IndustryType};
 use crate::game::framework::{ActionChoice, ChoiceSet, NetworkMode, ShortfallResolutionSession};
@@ -1930,7 +1929,7 @@ fn outcome_to_py(py: Python<'_>, runner: &GameRunner) -> PyResult<PyObject> {
     let ranking_keys = state
         .players
         .iter()
-        .map(|player| (player.victory_points, player.income_level, player.money))
+        .map(|player| player.final_ranking_key())
         .collect::<Vec<_>>();
     let placements = ranking_keys
         .iter()
@@ -2217,21 +2216,7 @@ fn current_potential_vps(runner: &GameRunner) -> Vec<u16> {
         }
 
         if let Some(owner_idx) = road_owner {
-            let mut road_vps: u16 = 0;
-            for loc_idx in LINK_LOCATIONS[road_idx].locations.ones() {
-                let bl_set = LocationName::from_usize(loc_idx).to_bl_set();
-                for bl_idx in bl_set.ones() {
-                    if let Some(building) = state
-                        .bl_to_building
-                        .get(&bl_idx)
-                        .filter(|building| building.flipped)
-                    {
-                        let data =
-                            &INDUSTRY_MAT[building.industry as usize][building.level.as_usize()];
-                        road_vps = road_vps.saturating_add(data.road_vp as u16);
-                    }
-                }
-            }
+            let road_vps = state.link_victory_points(road_idx);
             potential_vps[owner_idx] = potential_vps[owner_idx].saturating_add(road_vps);
         }
     }

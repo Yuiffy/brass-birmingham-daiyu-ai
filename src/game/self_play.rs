@@ -535,7 +535,7 @@ fn build_game_outcome(
     let ranking_keys = state
         .players
         .iter()
-        .map(|player| (player.victory_points, player.income_level, player.money))
+        .map(|player| player.final_ranking_key())
         .collect::<Vec<_>>();
     let placements = ranking_keys
         .iter()
