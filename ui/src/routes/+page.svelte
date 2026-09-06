@@ -9,6 +9,7 @@
 		aiPlayback,
 		aiControlsPlayer,
 		choiceSet,
+		cardPreviewTown,
 		gameState,
 		resetAiPlayback,
 		selectedAnalysisCandidate,
@@ -118,6 +119,8 @@
 			return JSON.stringify({
 				mode: !started ? 'setup' : state?.game_over ? 'game_over' : get(turnPhase),
 				coordinate_system: 'Board image pixels; origin top-left; x right; y down.',
+				card_preview_town: get(cardPreviewTown),
+				board_view: JSON.parse(document.querySelector<HTMLCanvasElement>('.board-canvas')?.dataset.view ?? 'null'),
 				control: state ? {
 					mode: controlMode,
 					human_player_index: controlMode === 'human-vs-ai' ? humanPlayerIndex : null,
@@ -202,7 +205,7 @@
 	<div class="game-layout">
 		<div class="left-col">
 			<div class="board-area">
-				<Board />
+				<Board interactionLocked={aiTurn || controlSyncing} />
 			</div>
 			<div class="bottom-bar" class:card-active={isCardChoice}>
 				{#if $turnPhase === 'in_session' && isCardChoice}
@@ -339,7 +342,8 @@
 	}
 	@media (max-width: 760px) {
 		.game-layout { height: auto; min-height: 100svh; flex-direction: column; overflow: visible; }
-		.left-col { height: 72svh; min-height: 560px; }
+		.left-col { flex: none; height: auto; min-height: 0; }
+		.board-area { flex: none; height: min(100vw, 60svh); min-height: 260px; }
 		.right-col { width: 100%; min-height: 70svh; border-left: 0; border-top: 1px solid #afb5b1; }
 		.inspector-content { overflow: visible; }
 	}

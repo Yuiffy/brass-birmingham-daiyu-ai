@@ -220,7 +220,7 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	{/if}
 
 	{#if phase === 'choosing_action' && actions}
-	<section class="panel">
+	<section class="panel action-panel">
 		<h3>Actions</h3>
 		{#if interactionLocked}
 			<div class="locked-actions"><span class="locked-dot"></span>AI controls {gs.players.find(player => player.index === gs.current_player)?.name}</div>
@@ -453,4 +453,10 @@ let seedCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	.log-panel { flex: 1; min-height: 80px; }
 	.log-scroll { max-height: 200px; overflow-y: auto; font-size: 10px; color: #747a76; line-height: 1.6; }
 	.log-entry { border-bottom: 1px solid #e0e3e0; padding: 2px 0; }
+	@media (max-width: 760px) {
+		.sidebar { height: auto; overflow: visible; }
+		.round-toast { order: -4; }
+		.action-panel, .choice-panel, .hint-panel { order: -3; }
+		.controls { order: -2; }
+	}
 </style>

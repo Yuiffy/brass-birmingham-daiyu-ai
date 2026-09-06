@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { AnalysisReport, GameControlMode, GameState, IndustryLevelData } from './types';
 
 export const gameState = writable<GameState | null>(null);
+export const cardPreviewTown = writable<string | null>(null);
 export type TurnPhase = 'awaiting_start' | 'choosing_action' | 'in_session' | 'turn_done';
 export const turnPhase = writable<TurnPhase>('awaiting_start');
 export const actionsAvailable = writable<string[] | null>(null);

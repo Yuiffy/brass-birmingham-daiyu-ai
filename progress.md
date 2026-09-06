@@ -2139,3 +2139,74 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Preview remains on 5175 with API 3011. Use new games: old action-log saves and checkpoints have
   not been migrated to the corrected engine. No neural training or checkpoint promotion occurred.
   Details and raw evidence paths are in docs/rule-ai-economy.md and docs/official-rules-audit.md.
+
+## 2026-09-06 city card map preview
+
+- Added location-card hover and keyboard-focus previews, resolving the two compact Rust city
+  names to their board coordinate keys. The canvas outlines the whole city's slot group in
+  cyan and labels the city above it, including while action or analysis highlights are visible.
+- Previews clear on pointer leave, focus loss, window blur, hand replacement, and teardown.
+  Industry and wild cards do not point at a single city. Card-face lift preserves the button's
+  hit area, and the preview respects reduced-motion preferences.
+- Exposed card_preview_town through the existing render_game_to_text hook.
+- Screenshot QA caught the existing selection overlay erasing the board along with its mask.
+  It now cuts windows in a separate reusable mask canvas, preserving tiles and overlapping
+  selectable areas underneath the green borders and the new city preview.
+- Validation passed: production build; all 20 city mappings; pointer, keyboard, non-city cards,
+  hand replacement, blur cleanup, legal/illegal card clicks, animation, and reduced motion.
+  Pixel QA confirmed the preview only changes the matching city area and that selection windows
+  preserve the original board pixels, including overlapping slots. Screenshots reviewed at
+  1440x1000, 390x844, and 320x740; no horizontal page overflow or browser console errors.
+- Playwright fixtures intercept game mutations; the running backend game was not changed.
+  Evidence and the bounded browser script are in output/city-card-preview/. The standard
+  develop-web-game client also passed with its state/screenshot artifacts in client-final/.
+- The updated local frontend is available on http://127.0.0.1:5176/ with API port 3011.
+  No remaining TODOs for this hover-preview change.
+
+## 2026-09-06 gameplay UX audit
+
+- Reproduced a cancelled industry animation submitting into a newly started Build action,
+  approximately 972 ms of fixed input delay, missing modal focus/Escape handling, invisible
+  industry art on phones, and a discard Next button outside the 390 px viewport.
+- Industry choices now submit immediately and invalidate continuations on close. Chained
+  development keeps the panel available; explicit projected-tile dependencies prevent a
+  Svelte update error when a development changes the displayed level and stack count.
+- Added a shared native-dialog action for focus, Escape, backdrop dismissal, and body scroll
+  restoration. Industry browsing uses the entire card, with an explicit back control and no
+  nested buttons. Both main and expanded industry views have bounded responsive scrolling.
+- The discard viewer now uses card assets and friendly names, a position counter, boundary
+  states, working keyboard/wheel navigation, and a layout that fits 320 px and 390 px screens.
+- Actual UI/API verification on independent port 3012 passed Build, Undo, Loan, End Turn,
+  Develop x2, slow-response cancellation/restart, retry after a deliberate failure, focus,
+  and mobile layout checks. Final local request dispatch: 2 ms; browser console errors: zero.
+- Evidence is in output/ux-audit/. See docs/ui-playtest-2026-09-06.md for reproduced issues
+  and the remaining design opportunities: board details, touch zoom, mobile action placement,
+  and consistent language.
+- Final production build passed without warnings; the 20-city hover regression and standard
+  web-game client startup check passed. Cross-level pending development counts and live
+  expanded-view updates were also verified. Temporary test backend 3012 is stopped; the
+  updated preview remains available at http://127.0.0.1:5176/ using the normal API on 3011.
+
+## 2026-09-06 board inspection and navigation
+
+- Added board-object details for built industries, links, merchants, and legal empty slots.
+  Details use current game state and existing industry data; they do not estimate link scoring.
+- Added a bounded 1x-4x camera, wheel and button zoom, pointer drag, pinch gestures, fit reset,
+  and keyboard target selection. Pointer release submits only a stationary, single-pointer
+  gesture in the same choice state. Replay and AI-controlled views explicitly lock mutation.
+- Canvas rendering, highlight masks, hit testing, and the game text hook now share camera
+  coordinates. City-card previews reveal off-screen towns while preserving the zoom level.
+- Mobile board height follows available width and action panels precede player/market details.
+- Browser verification passed: zoomed mouse/keyboard/touch selection, drag and pinch
+  suppression, detail pin/close, pointer-anchored zoom, reset, zoomed city reveal, replay and
+  AI locks, desktop/mobile canvas pixels, and action placement. Native Chromium touch input
+  covered the two-finger gesture. Screenshots at 1440x1000, 390x844, and 320x740 were reviewed.
+- The actual-game regression passed Build, Undo, Loan, End Turn, and Develop x2 with the new
+  camera mapping. The 20-city preview regression also passed. All browser runs had zero
+  console errors. Evidence: output/map-navigation/, output/ux-audit/, and output/city-card-preview/.
+- Fixed explicit Svelte dependency ordering after card-driven camera movement so the canvas,
+  detail anchors, and render_game_to_text camera state update in the same render.
+- Full industry data also loads when inspecting a replay directly. Keyboard target details
+  are announced through the existing live status region; closing pinned details restores focus.
+- Final production build and standard web-game startup client passed. Temporary backend 3012
+  is stopped, and the normal preview remains on http://127.0.0.1:5176/ with API port 3011.

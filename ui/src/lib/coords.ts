@@ -1,5 +1,7 @@
 /** Board coordinate data from the original pygame render.py. */
 
+import type { Card } from './types';
+
 export const BOARD_W = 1200;
 export const BOARD_H = 1200;
 
@@ -82,6 +84,27 @@ export const ROAD_COORDS: [number, number][] = [
 	[604, 1025], // 36: Redditch–Gloucester
 	[526, 1101], // 37: Worcester–Gloucester
 	[407, 996],  // 38: Worcester–LoneBrewery2–Kidderminster
+];
+
+/** Same link ordering as ROAD_COORDS and Rust LINK_LOCATIONS. */
+export const ROAD_TOWNS: string[][] = [
+	['Warrington', 'Stoke-On-Trent'], ['Stoke-On-Trent', 'Leek'],
+	['Leek', 'Belper'], ['Belper', 'Derby'], ['Derby', 'Nottingham'],
+	['Derby', 'Uttoxeter'], ['Derby', 'Burton-Upon-Trent'],
+	['Birmingham', 'Tamworth'], ['Stoke-On-Trent', 'Stone'],
+	['Stone', 'Uttoxeter'], ['Stone', 'Stafford'], ['Stone', 'Burton-Upon-Trent'],
+	['Stafford', 'Cannock'], ['Cannock', 'Burton-Upon-Trent'],
+	['Tamworth', 'Burton-Upon-Trent'], ['Walsall', 'Burton-Upon-Trent'],
+	['Rural brewery 1', 'Cannock'], ['Wolverhampton', 'Cannock'],
+	['Walsall', 'Cannock'], ['Wolverhampton', 'Coalbrookdale'],
+	['Shrewsbury', 'Coalbrookdale'], ['Kidderminster', 'Coalbrookdale'],
+	['Kidderminster', 'Dudley'], ['Wolverhampton', 'Walsall'],
+	['Wolverhampton', 'Dudley'], ['Tamworth', 'Walsall'],
+	['Tamworth', 'Nuneaton'], ['Nuneaton', 'Coventry'], ['Birmingham', 'Walsall'],
+	['Birmingham', 'Nuneaton'], ['Birmingham', 'Coventry'], ['Birmingham', 'Oxford'],
+	['Birmingham', 'Redditch'], ['Birmingham', 'Worcester'], ['Birmingham', 'Dudley'],
+	['Redditch', 'Oxford'], ['Redditch', 'Gloucester'], ['Worcester', 'Gloucester'],
+	['Worcester', 'Rural brewery 2', 'Kidderminster']
 ];
 
 /** Trade post tile coordinates: slot_index → [x, y] for the merchant tile image */
@@ -201,6 +224,17 @@ export const TOWN_COLOR_MAP: Record<string, string> = {
 
 export function isLocationCard(cardType: string): boolean {
 	return cardType.startsWith('Location');
+}
+
+const CARD_TOWN_ALIASES: Record<string, string> = {
+	StokeOnTrent: 'Stoke-On-Trent',
+	BurtonUponTrent: 'Burton-Upon-Trent'
+};
+
+export function locationCardTown(card: Card): string | null {
+	if (!isLocationCard(card.card_type)) return null;
+	const town = CARD_TOWN_ALIASES[card.label] ?? card.label;
+	return Object.prototype.hasOwnProperty.call(TOWN_BL_RANGES, town) ? town : null;
 }
 
 export function townCardColor(label: string): string {

@@ -112,7 +112,7 @@
 					</div>
 					<span class="era-label">{position.state.era} Era · Turn {position.state.turn_count + 1}</span>
 				</div>
-				<div class="replay-board"><Board /></div>
+				<div class="replay-board"><Board interactionLocked /></div>
 				<div class="stepbar">
 					<button on:click={() => selectPosition(selectedIndex - 1)} disabled={selectedIndex === 0} title="上一手" aria-label="上一手"><ChevronLeft size={18} /></button>
 					<input type="range" min="0" max={(replay?.positions.length ?? 1) - 1} value={selectedIndex} on:input={onSlider} aria-label="选择棋谱局面" />
@@ -211,7 +211,6 @@
 	.pane-heading h1 { margin: 3px 0 0; font-size: 18px; letter-spacing: 0; }
 	.era-label { color: #68706b; font-size: 11px; white-space: nowrap; }
 	.replay-board { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #c9cecb; border: 1px solid #b8bfba; }
-	.replay-board :global(canvas) { pointer-events: none; }
 	.stepbar { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 8px; align-items: center; margin-top: 10px; }
 	.stepbar button { width: 34px; height: 30px; display: grid; place-items: center; border: 1px solid #c4cac5; border-radius: 5px; background: #fff; color: #343a36; cursor: pointer; }
 	.stepbar button:hover:not(:disabled) { border-color: #087f5b; color: #087f5b; }

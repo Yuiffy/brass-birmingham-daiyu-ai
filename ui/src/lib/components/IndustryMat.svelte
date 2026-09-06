@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, tick } from 'svelte';
+	import { ArrowLeft, Expand, LoaderCircle, X } from 'lucide-svelte';
+	import { modalDialog } from '$lib/dialog';
 	import { choiceSet, currentPlayer, allIndustryData, gameState, currentAction, pendingDevelopments } from '$lib/store';
 	import { applyChoice, cancelAction } from '$lib/api';
 	import { INDUSTRY_COLORS } from '$lib/coords';
-	import type { IndustryTile, IndustryLevelData } from '$lib/types';
+	import type { IndustryTile, IndustryLevelData, PendingDevelopment } from '$lib/types';
 
 	const dispatch = createEventDispatcher();
 
@@ -47,12 +49,18 @@
 	$: industryMat = cp?.industry_mat ?? [];
 	$: allData = $allIndustryData;
 	$: pendingDevs = $pendingDevelopments;
+	$: projectedTiles = INDUSTRIES.map(name => projectedTileForMain(name, industryMat, pendingDevs, allData));
 
 	let suppressAutoOpen = false;
 	let lastChoiceKind: string | null = null;
 	let expandedIndustry: string | null = null;
-	let animatingIndustry: string | null = null;
-	let previewAfterSelect: { industry: string; level: number; tiles: number; maxTiles: number } | null = null;
+	$: expandedLevels = allData?.[expandedIndustry ?? ''] ?? [];
+	$: expandedTile = industryMat.find(tile => tile.industry === expandedIndustry) ?? null;
+	let selectingIndustry: string | null = null;
+	let selectionVersion = 0;
+	let selectionError = '';
+	let dialog: HTMLDialogElement;
+	let expandedBack: HTMLButtonElement;
 
 	$: if (isSelecting && !open && !suppressAutoOpen) {
 		open = true;
@@ -69,10 +77,10 @@
 	}
 
 	async function close() {
-		// User explicitly closed the modal: keep it closed immediately.
+		selectionVersion++;
 		suppressAutoOpen = true;
-		animatingIndustry = null;
-		previewAfterSelect = null;
+		selectingIndustry = null;
+		selectionError = '';
 		open = false;
 		expandedIndustry = null;
 		dispatch('close');
@@ -84,34 +92,47 @@
 	}
 
 	async function selectIndustry(name: string) {
-		if (!isSelecting || !availableIndustries.has(name) || animatingIndustry) return;
-		animatingIndustry = name;
-		// Fly-away animation runs via CSS
-		await new Promise(r => setTimeout(r, 450));
-		animatingIndustry = null;
-		previewAfterSelect = previewForSelection(name);
-		// Brief display of resulting tile state
-		await new Promise(r => setTimeout(r, 500));
-		previewAfterSelect = null;
-		suppressAutoOpen = true;
-		open = false;
-		expandedIndustry = null;
-		dispatch('close');
-		const kind = isFreeDev ? 'free_development' : isSecondIndustry ? 'second_industry' : 'industry';
-		const data = await applyChoice(kind, name);
+		if (!isSelecting || !cs || !availableIndustries.has(name) || selectingIndustry) return;
+		const version = ++selectionVersion;
+		selectingIndustry = name;
+		selectionError = '';
+		const data = await applyChoice(cs.kind, name);
+		// A closed or replaced dialog must not change a later action's UI.
+		if (version !== selectionVersion) return;
+		selectingIndustry = null;
 		if (!data) {
-			// If request failed and choice kind did not advance, allow reopening for retry.
+			selectionError = 'Industry selection failed.';
+			return;
+		}
+		const nextKind = data.state?.choice_set?.kind;
+		if (nextKind === 'industry' || nextKind === 'free_development' || nextKind === 'second_industry') {
 			suppressAutoOpen = false;
+			open = true;
+		} else {
+			suppressAutoOpen = true;
+			open = false;
+			expandedIndustry = null;
+			dispatch('close');
 		}
 	}
 
-	function expand(name: string) {
+	async function expand(name: string) {
 		if (isSelecting) return;
 		expandedIndustry = name;
+		await tick();
+		expandedBack?.focus();
 	}
 
-	function collapseExpanded() {
+	async function collapseExpanded() {
+		const industry = expandedIndustry;
 		expandedIndustry = null;
+		await tick();
+		dialog?.querySelector<HTMLButtonElement>(`[data-industry="${industry}"]`)?.focus();
+	}
+
+	function dismiss() {
+		if (expandedIndustry) void collapseExpanded();
+		else void close();
 	}
 
 	function levelToRoman(level: number): string {
@@ -123,42 +144,31 @@
 		return `/assets/buildings/icons/${industry.toLowerCase()}.svg`;
 	}
 
-	function tileForIndustry(name: string): IndustryTile | null {
-		return industryMat.find(t => t.industry === name) ?? null;
-	}
-
-	/** Count of pending developments for this industry (optimistic subtraction for display) */
-	function pendingCountForIndustry(name: string): number {
-		return pendingDevs.filter(d => d.industry === name).length;
-	}
-
-	/** Effective tiles remaining when we have pending selections (for visual feedback) */
-	function effectiveTilesRemaining(tile: IndustryTile | null, name: string): number {
-		if (!tile) return 0;
-		const pending = pendingCountForIndustry(name);
-		return Math.max(0, tile.tiles_remaining - pending);
-	}
-
-	function allLevelsFor(name: string): IndustryLevelData[] {
-		return allData?.[name] ?? [];
-	}
-
-	function projectedTileForMain(name: string): IndustryTile | null {
-		const tile = tileForIndustry(name);
+	function projectedTileForMain(
+		name: string,
+		tiles: IndustryTile[],
+		developments: PendingDevelopment[],
+		data: Record<string, IndustryLevelData[]> | null
+	): IndustryTile | null {
+		const tile = tiles.find(tile => tile.industry === name);
 		if (!tile) return null;
-		const remaining = effectiveTilesRemaining(tile, name);
+		const pending = developments.filter(development => development.industry === name).length;
+		let remaining = tile.tiles_remaining - pending;
 		if (remaining > 0) {
 			return { ...tile, tiles_remaining: remaining };
 		}
-		const nextLevel = tile.level + 1;
-		const next = allLevelsFor(name).find(l => l.level === nextLevel);
-		if (!next) {
-			return { ...tile, tiles_remaining: 0, exhausted: true };
+		let nextLevel = tile.level + 1;
+		let next = data?.[name]?.find(level => level.level === nextLevel);
+		while (next && remaining + next.num_tiles <= 0) {
+			remaining += next.num_tiles;
+			nextLevel++;
+			next = data?.[name]?.find(level => level.level === nextLevel);
 		}
+		if (!next) return { ...tile, tiles_remaining: 0, exhausted: true };
 		return {
 			industry: name,
 			level: next.level,
-			tiles_remaining: next.num_tiles,
+			tiles_remaining: remaining + next.num_tiles,
 			money_cost: next.money_cost,
 			coal_cost: next.coal_cost,
 			iron_cost: next.iron_cost,
@@ -173,41 +183,10 @@
 		};
 	}
 
-	function tilesAtLevel(industry: string, level: number): number {
-		const tile = tileForIndustry(industry);
+	function tilesAtLevel(tile: IndustryTile | null, level: IndustryLevelData): number {
 		if (!tile || tile.exhausted) return 0;
-		if (level < tile.level) return 0;
-		if (level === tile.level) return tile.tiles_remaining;
-		const lvl = allLevelsFor(industry).find(l => l.level === level);
-		return lvl?.num_tiles ?? 0;
-	}
-
-	function maxTilesAtLevel(industry: string, level: number): number {
-		return allLevelsFor(industry).find(l => l.level === level)?.num_tiles ?? 0;
-	}
-
-	function previewForSelection(industry: string): { industry: string; level: number; tiles: number; maxTiles: number } | null {
-		const tile = tileForIndustry(industry);
-		if (!tile) return null;
-
-		const levels = allLevelsFor(industry);
-		const maxAt = (lvl: number) => levels.find(l => l.level === lvl)?.num_tiles ?? 0;
-
-		let level = tile.level;
-		let remaining = effectiveTilesRemaining(tile, industry);
-		if (remaining <= 0) {
-			level += 1;
-			remaining = maxAt(level);
-		}
-		if (remaining > 1) {
-			return { industry, level, tiles: remaining - 1, maxTiles: maxAt(level) };
-		}
-		const nextLevel = level + 1;
-		const nextMax = maxAt(nextLevel);
-		if (nextMax > 0) {
-			return { industry, level: nextLevel, tiles: nextMax, maxTiles: nextMax };
-		}
-		return null;
+		if (level.level < tile.level) return 0;
+		return level.level === tile.level ? tile.tiles_remaining : level.num_tiles;
 	}
 
 	function resourceColor(type: 'coal' | 'iron'): string {
@@ -223,31 +202,26 @@
 </script>
 
 {#if open}
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="overlay" on:click|self={close} on:keydown={e => e.key === 'Escape' && close()}>
+<dialog class="overlay" bind:this={dialog} use:modalDialog={{ onClose: dismiss }} aria-label="Industry Mat">
 
 {#if expandedIndustry}
 	<!-- Expanded single-industry view -->
-	<!-- svelte-ignore a11y-click-events-have-key-events -->
-	<div class="expanded-view" on:click={collapseExpanded}>
+	<div class="expanded-view">
 		<div class="expanded-header">
+			<button class="back-btn" bind:this={expandedBack} on:click={collapseExpanded} title="Back to Industry Mat" aria-label="Back to Industry Mat"><ArrowLeft size={20} /></button>
 			<h2 style="color: {INDUSTRY_COLORS[expandedIndustry] ?? '#ccc'}">{expandedIndustry} — All Levels</h2>
-			<span class="back-hint">Click anywhere to go back</span>
 		</div>
-		<div class="expanded-row" on:click|stopPropagation>
-			{#each allLevelsFor(expandedIndustry) as lvl}
+		<div class="expanded-row">
+			{#each expandedLevels as lvl}
 				{@const available = isSelecting && availableIndustries.has(expandedIndustry)}
 				{@const disabled = isSelecting && !available}
-				{@const tile = tileForIndustry(expandedIndustry ?? '')}
-				{@const currentTiles = tilesAtLevel(expandedIndustry ?? '', lvl.level)}
+				{@const currentTiles = tilesAtLevel(expandedTile, lvl)}
 				{@const maxTiles = lvl.num_tiles}
-				<button
+				<div
 					class="card-wrapper expanded-card"
-					class:disabled={disabled || !!animatingIndustry || currentTiles === 0}
-					class:selectable={available && !animatingIndustry}
-					on:click={() => available && !animatingIndustry ? selectIndustry(expandedIndustry ?? '') : null}
+					class:disabled={disabled || currentTiles === 0}
 				>
-					<div class="card" class:depleted-level={currentTiles === 0} class:flying={animatingIndustry === expandedIndustry && tile && lvl.level === tile.level} style="--player-color: {cp?.color ?? '#555'}; --ind-color: {INDUSTRY_COLORS[expandedIndustry] ?? '#666'}">
+					<div class="card" class:depleted-level={currentTiles === 0} style="--player-color: {cp?.color ?? '#555'}; --ind-color: {INDUSTRY_COLORS[expandedIndustry] ?? '#666'}">
 						<!-- Price -->
 						<div class="price-circle">£{lvl.money_cost}</div>
 
@@ -352,7 +326,7 @@
 						<!-- Tile count badge -->
 						<div class="tile-count-badge">{currentTiles}/{maxTiles}</div>
 					</div>
-				</button>
+				</div>
 			{/each}
 		</div>
 	</div>
@@ -378,29 +352,34 @@
 					{/if}
 				</div>
 			{/if}
-			<button class="close-btn" on:click={close} title="Cancel">×</button>
+			<button class="close-btn" on:click={close} title={isSelecting ? 'Cancel action' : 'Close Industry Mat'} aria-label={isSelecting ? 'Cancel action' : 'Close Industry Mat'}><X size={20} /></button>
 		</div>
+		{#if selectingIndustry}<div class="selection-status" role="status"><LoaderCircle size={16} class="spin" /> {selectingIndustry}</div>{/if}
+		{#if selectionError}<div class="selection-error" role="alert">{selectionError}</div>{/if}
 		<div class="industry-grid">
-			{#each INDUSTRIES as name}
-				{@const tile = projectedTileForMain(name)}
-				{@const available = isSelecting && availableIndustries.has(name) && !animatingIndustry}
+			{#each INDUSTRIES as name, i}
+				{@const tile = projectedTiles[i]}
+				{@const available = isSelecting && availableIndustries.has(name) && !selectingIndustry}
 				{@const disabled = isSelecting && !available}
 				{@const exhausted = tile?.exhausted ?? true}
 				{@const tilesLeft = tile?.tiles_remaining ?? 0}
 				<button
 					class="card-wrapper"
+					data-industry={name}
+					aria-label={isSelecting ? `Select ${name}` : `View ${name} industry levels`}
+					disabled={isSelecting && (disabled || exhausted)}
 					class:disabled={disabled || exhausted}
 					class:selectable={available && !exhausted}
 					class:exhausted
 					on:click={() => {
 						if (available && !exhausted) selectIndustry(name);
+						else if (!isSelecting) expand(name);
 					}}
 				>
 					{#if tile && !exhausted}
 						<div
 							class="card"
 							class:hoverable={!isSelecting}
-							class:flying={animatingIndustry === name}
 							style="--player-color: {cp?.color ?? '#555'}; --ind-color: {INDUSTRY_COLORS[name] ?? '#666'}; --stack-count: {tilesLeft}"
 						>
 							<!-- Price circle (top-left, outside color box) -->
@@ -516,11 +495,8 @@
 							<div class="tile-count-badge">&times;{tilesLeft}</div>
 						</div>
 
-						<!-- Expand button (only in browse mode, not selection) -->
 						{#if !isSelecting}
-							<button class="expand-btn" on:click|stopPropagation={() => expand(name)} title="View all levels for {name}">
-								⤢
-							</button>
+							<span class="expand-btn" aria-hidden="true"><Expand size={14} /></span>
 						{/if}
 					{:else}
 						<div class="card exhausted-card">
@@ -538,52 +514,47 @@
 		</div>
 	</div>
 	{/if}
-	{#if previewAfterSelect}
-		<div class="next-level-overlay animate-in">
-			{#if previewAfterSelect.tiles > 0}
-				<div class="next-level-card" style="--ind-color: {INDUSTRY_COLORS[previewAfterSelect.industry] ?? '#666'}">
-					<img src={iconPath(previewAfterSelect.industry)} alt={previewAfterSelect.industry} class="industry-icon" />
-					<span class="next-level-label">{previewAfterSelect.industry} {levelToRoman(previewAfterSelect.level)}</span>
-					<span class="next-level-count">{previewAfterSelect.tiles}/{previewAfterSelect.maxTiles}</span>
-				</div>
-			{:else}
-				<div class="next-level-card" style="--ind-color: #666">
-					<span class="next-level-label">Industry exhausted</span>
-				</div>
-			{/if}
-		</div>
-	{/if}
-</div>
+</dialog>
 {/if}
 
 <style>
 	.overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0,0,0,0.7);
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		margin: 0;
+		padding: 16px;
+		border: 0;
+		background: transparent;
 		z-index: 1000;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		backdrop-filter: blur(2px);
 	}
-	.overlay > .next-level-overlay {
-		position: absolute;
-		inset: 0;
-	}
+	.overlay::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
 
 	.modal {
 		position: relative;
-		background: #1e1e2e;
-		border-radius: 16px;
+		background: #202522;
+		border-radius: 8px;
 		padding: 28px;
 		max-width: 1000px;
-		width: 95vw;
+		width: 100%;
+		max-height: 100%;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 		border: 1px solid #333;
 	}
 
 	.modal-header {
+		position: sticky;
+		top: -28px;
+		background: #202522;
+		z-index: 5;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -594,28 +565,28 @@
 
 	.modal-header h2 {
 		margin: 0;
-		font-size: 1.3rem;
+		font-size: 20px;
 		color: #eee;
 	}
 
 	.mat-player { font-weight: 600; }
 
 	.pick-prompt {
-		background: #2a2a3e;
+		background: #303730;
 		color: #fbbf24;
 		padding: 6px 14px;
 		border-radius: 8px;
 		font-size: 0.85rem;
 		font-weight: 600;
-		animation: pulse-glow 1.5s ease-in-out infinite;
 	}
 
-	@keyframes pulse-glow {
-		0%, 100% { box-shadow: 0 0 4px rgba(251,191,36,0.3); }
-		50% { box-shadow: 0 0 14px rgba(251,191,36,0.6); }
-	}
-
-	.close-btn {
+	.close-btn,
+	.back-btn {
+		width: 32px;
+		height: 32px;
+		flex: 0 0 32px;
+		display: grid;
+		place-items: center;
 		background: none;
 		border: none;
 		color: #888;
@@ -625,15 +596,23 @@
 		line-height: 1;
 	}
 	.close-btn:hover { color: #fff; }
+	.close-btn:focus-visible,
+	.back-btn:focus-visible,
+	.card-wrapper:focus-visible { outline: 2px solid #82e7f3; outline-offset: 3px; }
+	.selection-status { display: flex; align-items: center; gap: 8px; color: #dce7de; font-size: 13px; margin-bottom: 12px; }
+	.selection-error { color: #f5aaa1; font-size: 13px; margin-bottom: 12px; }
+	.selection-status :global(.spin) { animation: spin 1s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
 
 	/* === Industry Grid === */
 	.industry-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 		gap: 24px;
 	}
 
 	.card-wrapper {
+		min-width: 0;
 		background: none;
 		border: none;
 		padding: 0;
@@ -644,69 +623,10 @@
 	.card-wrapper:not(.disabled):not(.exhausted):hover {
 		transform: translateY(-6px);
 	}
-	.card-wrapper.selectable {
-		animation: select-bounce 0.6s ease infinite alternate;
-	}
-	@keyframes select-bounce {
-		from { transform: translateY(0); }
-		to { transform: translateY(-4px); }
-	}
 	.card-wrapper.disabled {
 		cursor: not-allowed;
 		opacity: 0.35;
 		filter: grayscale(0.8);
-	}
-	.card.flying {
-		animation: fly-away 0.45s ease-out forwards;
-		pointer-events: none;
-	}
-	@keyframes fly-away {
-		0% { transform: scale(1); opacity: 1; }
-		50% { transform: translateY(-80px) scale(1.1); opacity: 0.9; }
-		100% { transform: translateY(-200px) scale(0.8); opacity: 0; }
-	}
-
-	.next-level-overlay {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(0,0,0,0.5);
-		border-radius: 16px;
-		z-index: 10;
-	}
-	.next-level-overlay.animate-in {
-		animation: fade-in 0.2s ease-out;
-	}
-	@keyframes fade-in {
-		from { opacity: 0; }
-		to { opacity: 1; }
-	}
-	.next-level-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 12px;
-		padding: 24px 40px;
-		background: #2a2a3e;
-		border: 2px solid var(--ind-color, #666);
-		border-radius: 12px;
-		box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-	}
-	.next-level-card .industry-icon {
-		width: 64px;
-		height: 64px;
-	}
-	.next-level-label {
-		font-size: 1.1rem;
-		font-weight: 700;
-		color: #fbbf24;
-	}
-	.next-level-count {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: #e2e8f0;
 	}
 
 	.card-wrapper.exhausted {
@@ -722,11 +642,11 @@
 	/* === Card === */
 	.card {
 		position: relative;
-		background: #2a2a3a;
-		border-radius: 14px;
+		background: #303631;
+		border-radius: 8px;
 		padding: 8px;
 		display: grid;
-		grid-template-columns: 42px 1fr 42px;
+		grid-template-columns: 42px minmax(80px, 1fr) 42px;
 		grid-template-rows: auto 1fr auto;
 		gap: 3px;
 		min-height: 220px;
@@ -799,7 +719,7 @@
 		grid-column: 2;
 		grid-row: 1 / 3;
 		background: var(--player-color, #555);
-		border-radius: 10px;
+		border-radius: 6px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -925,8 +845,8 @@
 	.stack-shadow {
 		position: absolute;
 		inset: 0;
-		background: #2a2a3a;
-		border-radius: 12px;
+		background: #303631;
+		border-radius: 8px;
 		border: 2px solid #444;
 		transform: translateY(calc(var(--i) * 4px));
 		opacity: 0;
@@ -982,31 +902,54 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 20px;
-		max-width: 95vw;
+		width: min(100%, 1100px);
+		max-height: 100%;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		background: #202522;
+		border-radius: 8px;
+		padding: 20px;
 	}
 
 	.expanded-header {
-		text-align: center;
+		position: sticky;
+		top: -20px;
+		z-index: 5;
+		background: #202522;
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 10px;
 	}
 	.expanded-header h2 {
 		margin: 0 0 4px 0;
-		font-size: 1.5rem;
-	}
-	.back-hint {
-		color: #888;
-		font-size: 0.8rem;
+		font-size: 18px;
 	}
 
 	.expanded-row {
-		display: flex;
+		width: 100%;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 		gap: 16px;
-		flex-wrap: wrap;
-		justify-content: center;
 	}
 	.expanded-card {
-		flex: 0 0 240px;
+		cursor: default;
 	}
 	.expanded-card .card {
 		min-height: 260px;
+	}
+	@media (max-width: 600px) {
+		.overlay { padding: 12px; }
+		.modal { padding: 16px; }
+		.modal-header { top: -16px; }
+		.modal-header h2 { font-size: 18px; flex: 1; }
+		.pick-prompt { order: 3; width: 100%; }
+		.industry-grid { gap: 18px; }
+		.expanded-view { padding: 16px; }
+		.expanded-header { top: -16px; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.card-wrapper, .card, .stack-shadow { transition: none; }
+		.selection-status :global(.spin) { animation: none; }
 	}
 </style>

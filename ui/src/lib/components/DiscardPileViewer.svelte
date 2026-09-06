@@ -1,28 +1,38 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { ChevronLeft, ChevronRight, X } from 'lucide-svelte';
 	import { gameState } from '$lib/store';
-	import type { DiscardEntry } from '$lib/types';
+	import { modalDialog } from '$lib/dialog';
+	import { cardImage, isLocationCard, locationCardTown, townCardColor } from '$lib/coords';
+	import type { Card } from '$lib/types';
 
 	const dispatch = createEventDispatcher();
-
 	export let open = false;
 	export let playerIndex: number | null = null;
 
-	$: gs = $gameState;
-	$: allEntries = (gs?.discard_history ?? []) as DiscardEntry[];
-	$: playerEntries = playerIndex == null
-		? allEntries
-		: allEntries.filter(e => e.player_index === playerIndex);
-	$: player = playerIndex == null
-		? null
-		: gs?.players.find(p => p.index === playerIndex) ?? null;
-
 	let currentIdx = 0;
-	let animDir: 'left' | 'right' | null = null;
+	let previousPlayer: number | null = null;
+	let wasOpen = false;
+	let wheelDelta = 0;
+	let lastWheel = 0;
 
-	$: if (currentIdx > Math.max(0, playerEntries.length - 1)) {
-		currentIdx = Math.max(0, playerEntries.length - 1);
+	$: gs = $gameState;
+	$: allEntries = gs?.discard_history ?? [];
+	$: playerEntries = playerIndex == null ? allEntries : allEntries.filter(entry => entry.player_index === playerIndex);
+	$: player = gs?.players.find(player => player.index === playerIndex) ?? null;
+	$: if (open !== wasOpen || playerIndex !== previousPlayer) {
+		currentIdx = 0;
+		wheelDelta = 0;
+		wasOpen = open;
+		previousPlayer = playerIndex;
 	}
+	$: currentIdx = Math.min(currentIdx, Math.max(0, playerEntries.length - 1));
+	$: entry = playerEntries[currentIdx] ?? null;
+	$: card = entry ? { index: entry.order, label: entry.card_label, card_type: entry.card_type } satisfies Card : null;
+	$: title = card ? locationCardTown(card) ?? card.label : '';
+	$: category = card?.card_type === 'WildLocation' ? 'Wild location'
+		: card?.card_type === 'WildIndustry' ? 'Wild industry'
+		: card && isLocationCard(card.card_type) ? 'Location' : 'Industry';
 
 	function close() {
 		open = false;
@@ -30,193 +40,128 @@
 	}
 
 	function go(delta: number) {
-		if (playerEntries.length <= 1) return;
-		animDir = delta > 0 ? 'right' : 'left';
-		currentIdx = (currentIdx + delta + playerEntries.length) % playerEntries.length;
-		setTimeout(() => (animDir = null), 220);
+		currentIdx = Math.max(0, Math.min(currentIdx + delta, playerEntries.length - 1));
 	}
 
-	function onWheel(evt: WheelEvent) {
-		evt.preventDefault();
-		if (Math.abs(evt.deltaY) < 5) return;
-		go(evt.deltaY > 0 ? 1 : -1);
+	function onKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			go(event.key === 'ArrowRight' ? 1 : -1);
+		}
 	}
 
-	function cardTitle(entry: DiscardEntry): string {
-		return `${entry.card_label}`;
+	function onWheel(event: WheelEvent) {
+		event.preventDefault();
+		const now = performance.now();
+		if (now - lastWheel < 180) return;
+		wheelDelta += event.deltaY;
+		if (Math.abs(wheelDelta) < 40) return;
+		go(wheelDelta > 0 ? 1 : -1);
+		wheelDelta = 0;
+		lastWheel = now;
 	}
 </script>
 
 {#if open}
-	<!-- svelte-ignore a11y-no-static-element-interactions -->
-	<div
-		class="overlay"
-		tabindex="-1"
-		on:click|self={close}
-		on:wheel|passive={onWheel}
-		on:keydown={(e) => e.key === 'Escape' && close()}
-	>
-		<div class="modal" role="dialog" aria-modal="true">
-			<div class="header">
-				<h2>
-					Discard Pile
-					{#if player}
-						<span class="for-player" style="color:{player.color}"> — {player.name}</span>
-					{/if}
-				</h2>
-				<button class="close-btn" on:click={close}>×</button>
-			</div>
-
-			{#if playerEntries.length === 0}
+	<dialog class="overlay" use:modalDialog={{ onClose: close, onKeydown }} aria-label="Discard Pile">
+		<div class="modal">
+			<header class="header">
+				<h2>Discard Pile {#if player}<span class="for-player" style:color={player.color}>{player.name}</span>{/if}</h2>
+				<button class="close-btn" on:click={close} title="Close Discard Pile" aria-label="Close Discard Pile"><X size={20} /></button>
+			</header>
+			{#if !entry || !card}
 				<div class="empty">No discarded cards yet.</div>
 			{:else}
-				<div class="viewer">
-					<button class="nav prev" on:click={() => go(-1)} aria-label="Previous card">◀</button>
-					<div class="track">
-						{#if playerEntries[currentIdx - 1]}
-							<div class="side-card left">
-								<div class="label">{playerEntries[currentIdx - 1].card_label}</div>
-							</div>
-						{/if}
-						<div class="center-card" class:slide-left={animDir === 'left'} class:slide-right={animDir === 'right'}>
-							<div class="card-label">{cardTitle(playerEntries[currentIdx])}</div>
-							<div class="card-type">{playerEntries[currentIdx].card_type}</div>
-							<div class="meta">
-								<span>Round {playerEntries[currentIdx].round_in_phase + 1}</span>
-								<span>Turn {playerEntries[currentIdx].turn_count + 1}</span>
-								<span>#{playerEntries[currentIdx].order + 1}</span>
-							</div>
+				<div class="viewer" on:wheel|nonpassive={onWheel}>
+					<button class="nav prev" on:click={() => go(-1)} disabled={currentIdx === 0} title="Previous card" aria-label="Previous card"><ChevronLeft size={20} /></button>
+					<figure class="discard-entry">
+						<div class="center-card" class:location={isLocationCard(card.card_type)} style:--town-color={townCardColor(card.label)}>
+							{#if isLocationCard(card.card_type)}
+								<span class="town-name">{title}</span>
+							{:else}
+								<img src={cardImage(card.label, card.card_type)} alt={title} />
+							{/if}
 						</div>
-						{#if playerEntries[currentIdx + 1]}
-							<div class="side-card right">
-								<div class="label">{playerEntries[currentIdx + 1].card_label}</div>
-							</div>
-						{/if}
-					</div>
-					<button class="nav next" on:click={() => go(1)} aria-label="Next card">▶</button>
+						<figcaption>
+							<strong>{title}</strong>
+							<span class="card-type">{category}</span>
+							<div class="meta"><span>Round {entry.round_in_phase + 1}</span><span>Turn {entry.turn_count + 1}</span></div>
+						</figcaption>
+					</figure>
+					<button class="nav next" on:click={() => go(1)} disabled={currentIdx === playerEntries.length - 1} title="Next card" aria-label="Next card"><ChevronRight size={20} /></button>
 				</div>
-				<div class="hint">Use arrows or mouse wheel to browse in discard order.</div>
+				<div class="counter" role="status" aria-label="Card position">{currentIdx + 1} / {playerEntries.length}</div>
 			{/if}
 		</div>
-	</div>
+	</dialog>
 {/if}
 
 <style>
 	.overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.7);
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		margin: 0;
+		padding: 12px;
+		border: 0;
+		background: transparent;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1100;
 	}
+	.overlay::backdrop { background: rgba(0, 0, 0, 0.7); }
 	.modal {
-		background: #1e1e2e;
-		border: 1px solid #334155;
-		border-radius: 12px;
-		width: min(840px, 94vw);
+		background: #202522;
+		color: #e6eee8;
+		border: 1px solid #46524a;
+		border-radius: 8px;
+		width: min(480px, 100%);
+		max-height: 100%;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 18px;
 	}
-	.header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 14px;
-	}
-	.header h2 {
-		margin: 0;
-		font-size: 1.2rem;
-		color: #e2e8f0;
-	}
-	.close-btn {
-		background: transparent;
-		color: #94a3b8;
-		border: none;
-		font-size: 1.8rem;
-		cursor: pointer;
-	}
-	.empty {
-		text-align: center;
-		color: #94a3b8;
-		padding: 28px 0;
-	}
-	.viewer {
+	.header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+	.header h2 { flex: 1; min-width: 0; font-size: 18px; line-height: 1.4; }
+	.for-player { display: block; font-size: 13px; font-weight: 500; }
+	.close-btn, .nav {
+		width: 32px;
+		height: 32px;
+		flex: 0 0 32px;
 		display: grid;
-		grid-template-columns: 56px 1fr 56px;
-		gap: 8px;
-		align-items: center;
-	}
-	.track {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		min-height: 220px;
-	}
-	.nav {
-		height: 48px;
-		border-radius: 999px;
-		border: 1px solid #475569;
-		background: #0f172a;
-		color: #cbd5e1;
+		place-items: center;
+		border: 1px solid #546259;
+		border-radius: 50%;
+		background: transparent;
+		color: #dce6df;
 		cursor: pointer;
 	}
+	.close-btn { border: 0; }
+	button:disabled { opacity: .3; cursor: default; }
+	button:hover:not(:disabled) { background: #39463d; }
+	button:focus-visible { outline: 2px solid #82e7f3; outline-offset: 3px; }
+	.empty { text-align: center; color: #a5b5a9; padding: 32px 0; font-size: 14px; }
+	.viewer { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 10px; align-items: center; }
+	.discard-entry { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 	.center-card {
-		width: min(420px, 70vw);
-		min-height: 180px;
-		background: linear-gradient(180deg, #111827, #0f172a);
-		border: 2px solid #7c3aed;
-		border-radius: 12px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 10px;
-		transition: transform 0.2s ease, opacity 0.2s ease;
+		width: min(160px, 100%);
+		aspect-ratio: 5 / 7;
+		flex: 0 0 auto;
+		overflow: hidden;
+		border: 2px solid #7d8d81;
+		border-radius: 6px;
+		background: #303c33;
+		box-shadow: 0 4px 14px rgba(0,0,0,.3);
 	}
-	.center-card.slide-left {
-		transform: translateX(-8px);
-	}
-	.center-card.slide-right {
-		transform: translateX(8px);
-	}
-	.side-card {
-		width: 140px;
-		min-height: 110px;
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 8px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 8px;
-		opacity: 0.65;
-	}
-	.label {
-		font-size: 0.85rem;
-		text-align: center;
-		color: #cbd5e1;
-	}
-	.card-label {
-		font-size: 1.45rem;
-		font-weight: 700;
-		color: #f8fafc;
-	}
-	.card-type {
-		font-size: 0.9rem;
-		color: #a5b4fc;
-	}
-	.meta {
-		display: flex;
-		gap: 10px;
-		font-size: 0.82rem;
-		color: #94a3b8;
-	}
-	.hint {
-		text-align: center;
-		margin-top: 10px;
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
+	.center-card.location { background: var(--town-color); display: grid; place-items: center; }
+	.center-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+	.town-name { padding: 10px; color: white; font-size: 16px; font-weight: 700; text-align: center; overflow-wrap: anywhere; text-shadow: 0 1px 3px #222; }
+	figcaption { width: 100%; margin-top: 12px; text-align: center; }
+	figcaption strong { display: block; font-size: 15px; overflow-wrap: anywhere; }
+	.card-type { display: block; margin-top: 4px; color: #a5b5a9; font-size: 12px; }
+	.meta { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 11px; color: #a5b5a9; }
+	.counter { margin-top: 16px; text-align: center; font-size: 12px; color: #e6eee8; font-variant-numeric: tabular-nums; }
 </style>
