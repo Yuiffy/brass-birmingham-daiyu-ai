@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brass: Birmingham</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ai.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -30,7 +31,12 @@
                     <div class="player-name-inputs"></div>
                 </div>
 
+                <label class="ai-enable"><input id="ai-enabled" type="checkbox" checked> 启用 AI 实验模块</label>
+                <p id="model-status" class="ai-note" role="status">正在加载训练权重…</p>
+                <p class="ai-note">实验 AI 可见所有当前手牌，无法读取未来牌序。世界模型会自动选择对应 2 / 3 / 4 人的训练权重。</p>
                 <button id="start-game-btn" class="btn-primary">Begin Game</button>
+                <button id="ai-demo-btn" class="ai-button">学习增强搜索 / 世界模型自动对战</button>
+                <a href="arena.html" class="ai-link">AI 对战实验室 · 模型评估</a>
             </div>
         </div>
     </div>
@@ -216,6 +222,14 @@
     <script src="js/gameLogic.js"></script>
     <script src="js/boardRenderer.js"></script>
     <script src="js/uiManager.js"></script>
+    <script src="scripts/autorun.js"></script>
+    <script src="world_model/simulator.js"></script>
+    <script src="world_model/encoding.js"></script>
+    <script src="world_model/value_features.js"></script>
+    <script src="world_model/inference.js"></script>
+    <script src="world_model/planner.js"></script>
+    <script src="world_model/runtime_models.js"></script>
+    <script src="js/aiController.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 // Brass: Birmingham - Game State Management
 // ============================================================================
 
+(() => {
 const __gameData = (typeof module !== 'undefined' && module.exports)
     ? require('./gameData.js')
     : globalThis;
@@ -866,3 +867,4 @@ if (typeof globalThis !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = GameState;
 }
+})();

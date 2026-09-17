@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-const path = require('path');
-const fs = require('fs');
+(() => {
+const isNode = typeof module !== 'undefined' && module.exports;
+const path = isNode ? require('path') : null;
+const fs = isNode ? require('fs') : null;
 
-const gameData = require(path.join(__dirname, '..', 'js', 'gameData.js'));
-const GameState = require(path.join(__dirname, '..', 'js', 'gameState.js'));
-const GameLogic = require(path.join(__dirname, '..', 'js', 'gameLogic.js'));
+const gameData = isNode ? require('../js/gameData.js') : globalThis;
+const GameState = isNode ? require('../js/gameState.js') : globalThis.GameState;
+const GameLogic = isNode ? require('../js/gameLogic.js') : globalThis.GameLogic;
 
 const {
     ACTIONS,
@@ -656,6 +658,10 @@ function main() {
     writeLogFile(results, config);
 }
 
-if (require.main === module) {
+const api = { collectCandidates, chooseCandidate, makeRng, actionLabel, applyTurnResult, runGame };
+if (isNode) module.exports = api;
+else globalThis.BrassBaseline = api;
+if (isNode && require.main === module) {
     main();
 }
+})();

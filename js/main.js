@@ -33,7 +33,9 @@ function initSetup() {
         document.querySelectorAll('.player-name-input input').forEach(input => {
             names.push(input.value || input.placeholder);
         });
-        startGame(playerCount, names);
+        const kinds = [...document.querySelectorAll('.player-ai-select')].map(s => s.value);
+        if (!window.BrassAI.readyFor(kinds, playerCount)) return;
+        startGame(playerCount, names, kinds);
     });
 }
 
@@ -49,6 +51,9 @@ function renderPlayerInputs(count) {
         div.innerHTML = `
             <div class="color-swatch" style="background: ${PLAYER_COLORS[i]}"></div>
             <input type="text" placeholder="${defaultNames[i]}" maxlength="20">
+            <select class="player-ai-select" aria-label="Player ${i + 1} AI type">
+                ${Object.entries(BrassPlanner.TYPES).map(([value,label]) => `<option value="${value}" ${value==='guided'&&!window.BrassAI?.getWorld(count)?.valueLayers?'disabled':''}>${label}</option>`).join('')}
+            </select>
         `;
         container.appendChild(div);
     }
@@ -58,7 +63,9 @@ function renderPlayerInputs(count) {
 // Game Initialization
 // ============================================================================
 
-function startGame(numPlayers, playerNames) {
+function startGame(numPlayers, playerNames, kinds = []) {
+    window.brassController?.dispose();
+    uiManager?.events.abort();
     // Switch screens
     document.getElementById('setup-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
@@ -82,6 +89,9 @@ function startGame(numPlayers, playerNames) {
     window.render_game_to_text = () => JSON.stringify(gameState.toJSON(), null, 2);
     window.gameState = gameState;
     window.gameLogic = gameLogic;
+    if (document.getElementById('ai-enabled').checked) {
+        window.brassController = new BrassAI.Controller(gameState, uiManager, kinds);
+    }
 }
 
 // ============================================================================
@@ -90,4 +100,5 @@ function startGame(numPlayers, playerNames) {
 
 document.addEventListener('DOMContentLoaded', () => {
     initSetup();
+    BrassAI.setup();
 });

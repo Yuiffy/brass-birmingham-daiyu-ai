@@ -1,0 +1,750 @@
+{
+  "generatedAt": "2026-09-17T07:55:47.538350+00:00",
+  "status": "corrected-after-active-seat-audit",
+  "protocol": {
+    "depth": 2,
+    "width": 8,
+    "strongTypes": [
+      "guided",
+      "world"
+    ],
+    "seatPatterns": {
+      "two": [
+        "guided",
+        "world"
+      ],
+      "three": [
+        "guided",
+        "world",
+        "guided"
+      ],
+      "four": [
+        "guided",
+        "world",
+        "guided",
+        "world"
+      ]
+    },
+    "notes": [
+      "Only actual players contribute value training examples; padded seats are labels only.",
+      "Rows average per seat of that type; repeated types are intentional.",
+      "VP is the existing engine score; earnedVP removes only its terminal income bonus.",
+      "Different player counts are separate score distributions."
+    ]
+  },
+  "summary": {
+    "2p-default": {
+      "source": "tournament-2p-strong-baseline.json",
+      "config": {
+        "games": 120,
+        "seed": 950000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world"
+        ]
+      },
+      "completedGames": 120,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 120,
+          "averageVP": 137.74166666666667,
+          "winRate": 0.9,
+          "msPerMove": 50.09877085406316,
+          "earnedVP": 108.10833333333333
+        },
+        {
+          "type": "world",
+          "games": 120,
+          "averageVP": 106.48333333333333,
+          "winRate": 0.1,
+          "msPerMove": 66.62256522194319,
+          "earnedVP": 77.625
+        }
+      ]
+    },
+    "2p-specialized-active": {
+      "source": "tournament-2p-specialized-active-60.json",
+      "config": {
+        "games": 60,
+        "players": 2,
+        "seed": 950000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world"
+        ]
+      },
+      "completedGames": 60,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 60,
+          "averageVP": 144,
+          "winRate": 0.9666666666666667,
+          "msPerMove": 53.20737327018175,
+          "earnedVP": 115
+        },
+        {
+          "type": "world",
+          "games": 60,
+          "averageVP": 92.75,
+          "winRate": 0.03333333333333333,
+          "msPerMove": 69.7062581787519,
+          "earnedVP": 66.53333333333333
+        }
+      ]
+    },
+    "3p-default": {
+      "source": "tournament-3p-strong-baseline.json",
+      "config": {
+        "games": 120,
+        "seed": 960000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world",
+          "guided"
+        ]
+      },
+      "completedGames": 120,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 240,
+          "averageVP": 131.07916666666668,
+          "winRate": 0.41458333333333336,
+          "msPerMove": 54.57562495957511,
+          "earnedVP": 101.47083333333333
+        },
+        {
+          "type": "world",
+          "games": 120,
+          "averageVP": 119,
+          "winRate": 0.17083333333333334,
+          "msPerMove": 72.48033391445887,
+          "earnedVP": 89.475
+        }
+      ]
+    },
+    "3p-specialized-active": {
+      "source": "tournament-3p-specialized-active-60.json",
+      "config": {
+        "games": 60,
+        "players": 3,
+        "seed": 960000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world",
+          "guided"
+        ]
+      },
+      "completedGames": 60,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 120,
+          "averageVP": 144.36666666666667,
+          "winRate": 0.49166666666666664,
+          "msPerMove": 49.525140898563905,
+          "earnedVP": 115.675
+        },
+        {
+          "type": "world",
+          "games": 60,
+          "averageVP": 107.43333333333334,
+          "winRate": 0.016666666666666666,
+          "msPerMove": 64.84918538390406,
+          "earnedVP": 81.65
+        }
+      ]
+    },
+    "4p-default": {
+      "source": "tournament-4p-strong-baseline.json",
+      "config": {
+        "games": 120,
+        "seed": 940000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world",
+          "guided",
+          "world"
+        ]
+      },
+      "completedGames": 120,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 240,
+          "averageVP": 133.84166666666667,
+          "winRate": 0.3541666666666667,
+          "msPerMove": 83.26622600417329,
+          "earnedVP": 104.14166666666667
+        },
+        {
+          "type": "world",
+          "games": 240,
+          "averageVP": 122.11666666666666,
+          "winRate": 0.14583333333333334,
+          "msPerMove": 114.07826508060313,
+          "earnedVP": 93.35833333333333
+        }
+      ]
+    },
+    "4p-mixed-active": {
+      "source": "tournament-4p-mixed-active-60.json",
+      "config": {
+        "games": 60,
+        "players": 4,
+        "seed": 940000001,
+        "depth": 2,
+        "width": 8,
+        "types": [
+          "guided",
+          "world",
+          "guided",
+          "world"
+        ]
+      },
+      "completedGames": 60,
+      "rows": [
+        {
+          "type": "guided",
+          "games": 120,
+          "averageVP": 129.78333333333333,
+          "winRate": 0.38333333333333336,
+          "msPerMove": 64.74477064315361,
+          "earnedVP": 101.21666666666667
+        },
+        {
+          "type": "world",
+          "games": 120,
+          "averageVP": 115.96666666666667,
+          "winRate": 0.11666666666666667,
+          "msPerMove": 87.82160081066942,
+          "earnedVP": 88.71666666666667
+        }
+      ]
+    }
+  },
+  "artifacts": {
+    "default": {
+      "world-model.json": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c",
+      "neural-policy.json": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    },
+    "specialized2": {
+      "world-model.json": "37da025e3147b95b75d18c778d4b3643c4124ca628a8517bc81b7af6baa4b2e0",
+      "neural-policy.json": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    },
+    "specialized3": {
+      "world-model.json": "c1df29bee74059d2a083611fa8301c990320eba611e831678de7112f4d0076f0",
+      "neural-policy.json": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    },
+    "mixed": {
+      "world-model.json": "70ad79cd68924386e2ff3e33b787844a8baf1416c51a3b5837e8c0da6907736d",
+      "neural-policy.json": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    }
+  },
+  "formalIndependentSeed": {
+    "status": "active-only-audited",
+    "protocol": {
+      "gamesPerLineup": 120,
+      "seeds": {
+        "2p": 970000001,
+        "3p": 980000001,
+        "4p": 990000001
+      },
+      "depth": 2,
+      "width": 8,
+      "types": {
+        "2p": [
+          "guided",
+          "world"
+        ],
+        "3p": [
+          "guided",
+          "world",
+          "guided"
+        ],
+        "4p": [
+          "guided",
+          "world",
+          "guided",
+          "world"
+        ]
+      }
+    },
+    "results": {
+      "2p-default": {
+        "source": "tournament-2p-default-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 2,
+          "seed": 970000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 120,
+            "averageVP": 136.23333333333332,
+            "earnedVP": 106.49166666666666,
+            "winRate": 0.8333333333333334,
+            "p90": 167,
+            "maxVP": 227
+          },
+          "world": {
+            "games": 120,
+            "averageVP": 106.85,
+            "earnedVP": 78.26666666666667,
+            "winRate": 0.16666666666666666,
+            "p90": 134,
+            "maxVP": 159
+          }
+        }
+      },
+      "2p-specialized-active": {
+        "source": "tournament-2p-specialized-active-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 2,
+          "seed": 970000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 120,
+            "averageVP": 140.78333333333333,
+            "earnedVP": 111.36666666666666,
+            "winRate": 0.9833333333333333,
+            "p90": 164,
+            "maxVP": 199
+          },
+          "world": {
+            "games": 120,
+            "averageVP": 92.86666666666666,
+            "earnedVP": 65.525,
+            "winRate": 0.016666666666666666,
+            "p90": 120,
+            "maxVP": 142
+          }
+        },
+        "pairedComparison": "comparison-2p-active-independent.json"
+      },
+      "3p-default": {
+        "source": "tournament-3p-default-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 3,
+          "seed": 980000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world",
+            "guided"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 240,
+            "averageVP": 132.13333333333333,
+            "earnedVP": 102.39583333333333,
+            "winRate": 0.40208333333333335,
+            "p90": 163,
+            "maxVP": 197
+          },
+          "world": {
+            "games": 120,
+            "averageVP": 119.18333333333334,
+            "earnedVP": 89.76666666666667,
+            "winRate": 0.19583333333333333,
+            "p90": 144,
+            "maxVP": 166
+          }
+        }
+      },
+      "3p-specialized-active": {
+        "source": "tournament-3p-specialized-active-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 3,
+          "seed": 980000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world",
+            "guided"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 240,
+            "averageVP": 139.81666666666666,
+            "earnedVP": 111.3625,
+            "winRate": 0.48333333333333334,
+            "p90": 171,
+            "maxVP": 206
+          },
+          "world": {
+            "games": 120,
+            "averageVP": 108.4,
+            "earnedVP": 82.7,
+            "winRate": 0.03333333333333333,
+            "p90": 136,
+            "maxVP": 179
+          }
+        },
+        "pairedComparison": "comparison-3p-active-independent.json"
+      },
+      "4p-default": {
+        "source": "tournament-4p-default-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 4,
+          "seed": 990000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world",
+            "guided",
+            "world"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 240,
+            "averageVP": 132.25833333333333,
+            "earnedVP": 102.69166666666666,
+            "winRate": 0.3541666666666667,
+            "p90": 157,
+            "maxVP": 189
+          },
+          "world": {
+            "games": 240,
+            "averageVP": 119.81666666666666,
+            "earnedVP": 90.51666666666667,
+            "winRate": 0.14583333333333334,
+            "p90": 141,
+            "maxVP": 153
+          }
+        }
+      },
+      "4p-mixed-active": {
+        "source": "tournament-4p-mixed-active-120-new.json",
+        "config": {
+          "games": 120,
+          "players": 4,
+          "seed": 990000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world",
+            "guided",
+            "world"
+          ]
+        },
+        "completedGames": 120,
+        "rows": {
+          "guided": {
+            "games": 240,
+            "averageVP": 126.79166666666667,
+            "earnedVP": 98.30833333333334,
+            "winRate": 0.325,
+            "p90": 155,
+            "maxVP": 182
+          },
+          "world": {
+            "games": 240,
+            "averageVP": 116.29166666666667,
+            "earnedVP": 88.56666666666666,
+            "winRate": 0.175,
+            "p90": 141,
+            "maxVP": 165
+          }
+        },
+        "pairedComparison": "comparison-4p-active-independent.json"
+      }
+    },
+    "interpretation": "Both entrants changed value weights together. Guided scores increased while world scores decreased; this does not isolate guided strength from weaker opposition. Keep default weights pending a fixed-opponent comparison."
+  },
+  "dynamicsSmallPlayers": {
+    "source": "small-player-dynamics.json",
+    "runs": [
+      {
+        "players": 2,
+        "models": "world_model/experiments/dynamics-2p-active/models",
+        "scores": {
+          "guided": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 132.15,
+              "earnedVP": 102.725,
+              "medianVP": 132.0,
+              "p90VP": 162.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.9583333333333334,
+              "atLeast150": 0.20833333333333334,
+              "winRate": 0.8291666666666667
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 131.60833333333332,
+              "earnedVP": 101.93333333333334,
+              "medianVP": 129.0,
+              "p90VP": 164.0,
+              "maxVP": 192.0,
+              "atLeast100": 0.9166666666666666,
+              "atLeast150": 0.25833333333333336,
+              "winRate": 0.5833333333333334
+            },
+            "gain": {
+              "vp": {
+                "mean": -0.5416666666666666,
+                "ci95": [
+                  -5.708333333333333,
+                  4.716666666666667
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": -0.7916666666666666,
+                "ci95": [
+                  -5.825208333333333,
+                  4.283541666666649
+                ]
+              }
+            }
+          },
+          "world": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 104.05833333333334,
+              "earnedVP": 75.65,
+              "medianVP": 104.0,
+              "p90VP": 135.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.5833333333333334,
+              "atLeast150": 0.041666666666666664,
+              "winRate": 0.17083333333333334
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 123.6,
+              "earnedVP": 94.34166666666667,
+              "medianVP": 121.0,
+              "p90VP": 150.0,
+              "maxVP": 182.0,
+              "atLeast100": 0.9,
+              "atLeast150": 0.10833333333333334,
+              "winRate": 0.4166666666666667
+            },
+            "gain": {
+              "vp": {
+                "mean": 19.541666666666668,
+                "ci95": [
+                  14.316666666666666,
+                  24.675
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 18.691666666666666,
+                "ci95": [
+                  13.6,
+                  23.625
+                ]
+              }
+            }
+          },
+          "all": {
+            "baseline": {
+              "appearances": 240,
+              "averageVP": 118.10416666666667,
+              "earnedVP": 89.1875,
+              "medianVP": 117.0,
+              "p90VP": 154.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.7708333333333334,
+              "atLeast150": 0.125
+            },
+            "candidate": {
+              "appearances": 240,
+              "averageVP": 127.60416666666667,
+              "earnedVP": 98.1375,
+              "medianVP": 125.0,
+              "p90VP": 160.0,
+              "maxVP": 192.0,
+              "atLeast100": 0.9083333333333333,
+              "atLeast150": 0.18333333333333332
+            },
+            "gain": {
+              "vp": {
+                "mean": 9.5,
+                "ci95": [
+                  5.279166666666667,
+                  13.662604166666657
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 8.95,
+                "ci95": [
+                  4.829166666666667,
+                  13.000104166666658
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "players": 3,
+        "models": "world_model/experiments/dynamics-3p-active/models",
+        "scores": {
+          "guided": {
+            "baseline": {
+              "appearances": 240,
+              "averageVP": 130.38333333333333,
+              "earnedVP": 100.74166666666666,
+              "medianVP": 130.0,
+              "p90VP": 158.0,
+              "maxVP": 191.0,
+              "atLeast100": 0.9291666666666667,
+              "atLeast150": 0.19166666666666668,
+              "winRate": 0.42291666666666666
+            },
+            "candidate": {
+              "appearances": 240,
+              "averageVP": 131.925,
+              "earnedVP": 102.25833333333334,
+              "medianVP": 133.0,
+              "p90VP": 159.0,
+              "maxVP": 182.0,
+              "atLeast100": 0.9416666666666667,
+              "atLeast150": 0.20416666666666666,
+              "winRate": 0.34791666666666665
+            },
+            "gain": {
+              "vp": {
+                "mean": 1.5416666666666656,
+                "ci95": [
+                  -2.7458333333333322,
+                  5.833333333333329
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 1.5166666666666686,
+                "ci95": [
+                  -2.6876041666666652,
+                  5.704166666666668
+                ]
+              }
+            }
+          },
+          "world": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 117.25,
+              "earnedVP": 87.95833333333333,
+              "medianVP": 117.0,
+              "p90VP": 142.0,
+              "maxVP": 161.0,
+              "atLeast100": 0.85,
+              "atLeast150": 0.058333333333333334,
+              "winRate": 0.15416666666666667
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 129.38333333333333,
+              "earnedVP": 99.79166666666667,
+              "medianVP": 127.5,
+              "p90VP": 153.0,
+              "maxVP": 183.0,
+              "atLeast100": 0.95,
+              "atLeast150": 0.13333333333333333,
+              "winRate": 0.30416666666666664
+            },
+            "gain": {
+              "vp": {
+                "mean": 12.133333333333331,
+                "ci95": [
+                  6.524999999999997,
+                  17.666666666666664
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 11.833333333333337,
+                "ci95": [
+                  6.2581250000000015,
+                  17.308541666666653
+                ]
+              }
+            }
+          },
+          "all": {
+            "baseline": {
+              "appearances": 360,
+              "averageVP": 126.00555555555556,
+              "earnedVP": 96.48055555555555,
+              "medianVP": 126.0,
+              "p90VP": 155.0,
+              "maxVP": 191.0,
+              "atLeast100": 0.9027777777777778,
+              "atLeast150": 0.14722222222222223
+            },
+            "candidate": {
+              "appearances": 360,
+              "averageVP": 131.07777777777778,
+              "earnedVP": 101.43611111111112,
+              "medianVP": 131.0,
+              "p90VP": 158.0,
+              "maxVP": 183.0,
+              "atLeast100": 0.9444444444444444,
+              "atLeast150": 0.18055555555555555
+            },
+            "gain": {
+              "vp": {
+                "mean": 5.072222222222223,
+                "ci95": [
+                  0.8554861111111123,
+                  9.25
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 4.955555555555556,
+                "ci95": [
+                  0.7944444444444443,
+                  9.069513888888885
+                ]
+              }
+            }
+          }
+        }
+      }
+    ],
+    "default4pUnchanged": true
+  }
+}

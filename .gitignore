@@ -1,7 +1,9 @@
 node_modules/
 package-lock.json
-package.json
 .DS_Store
 *.log
 screenshots/capture.js
 progress.md
+world_model/data*/
+__pycache__/
+.venv/

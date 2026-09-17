@@ -24,6 +24,7 @@ class UIManager {
         this.pendingData = {}; // Data accumulated during multi-step actions
         this.gameLog = []; // Game log entries
         this.previousPlayerId = null; // Track player changes for transitions
+        this.events = new AbortController();
     }
 
     init(gameState, gameLogic, boardRenderer) {
@@ -43,29 +44,30 @@ class UIManager {
     // ========================================================================
 
     bindEvents() {
+        const listen = (element, event, handler) => element.addEventListener(event, handler, { signal: this.events.signal });
         // Action buttons
         document.querySelectorAll('.action-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            listen(btn, 'click', (e) => {
                 const action = btn.dataset.action;
                 this.onActionSelected(action);
             });
         });
 
         // Modal close
-        document.getElementById('modal-close').addEventListener('click', () => this.closeModal());
+        listen(document.getElementById('modal-close'), 'click', () => this.closeModal());
 
         // Board click events (delegated)
-        document.getElementById('game-board').addEventListener('click', (e) => {
+        listen(document.getElementById('game-board'), 'click', (e) => {
             this.onBoardClick(e);
         });
 
         // Phase bar cancel button
-        document.getElementById('phase-cancel-btn').addEventListener('click', () => {
+        listen(document.getElementById('phase-cancel-btn'), 'click', () => {
             this.cancelAction();
         });
 
         // Escape key to cancel action
-        document.addEventListener('keydown', (e) => {
+        listen(document, 'keydown', (e) => {
             if (e.key === 'Escape') {
                 if (this.selectedAction) {
                     this.cancelAction();

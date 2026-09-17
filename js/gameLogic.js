@@ -2,6 +2,7 @@
 // Brass: Birmingham - Game Logic
 // ============================================================================
 
+(() => {
 const __gameLogicData = (typeof module !== 'undefined' && module.exports)
     ? require('./gameData.js')
     : globalThis;
@@ -807,3 +808,4 @@ if (typeof globalThis !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = GameLogic;
 }
+})();

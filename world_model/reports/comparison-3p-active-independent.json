@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-09-17T07:43:26.462032+00:00",
+  "config": {
+    "games": 120,
+    "players": 3,
+    "seed": 980000001,
+    "depth": 2,
+    "width": 8,
+    "types": [
+      "guided",
+      "world",
+      "guided"
+    ]
+  },
+  "independentSeedGroups": 40,
+  "bootstrapSamples": 20000,
+  "bootstrapSeed": 92017,
+  "artifacts": {
+    "baseline": {
+      "world-model.json": {
+        "directory": "world_model/models",
+        "sha256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c"
+      },
+      "neural-policy.json": {
+        "directory": "world_model/models",
+        "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+      }
+    },
+    "candidate": {
+      "world-model.json": {
+        "directory": "world_model/experiments/3p-specialized-active/models",
+        "sha256": "c1df29bee74059d2a083611fa8301c990320eba611e831678de7112f4d0076f0"
+      },
+      "neural-policy.json": {
+        "directory": "world_model/experiments/3p-specialized-active/models",
+        "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+      }
+    }
+  },
+  "results": {
+    "guided": {
+      "baseline": {
+        "appearances": 240,
+        "averageVP": 132.13333333333333,
+        "earnedVP": 102.39583333333333,
+        "medianVP": 132.0,
+        "p90VP": 163.0,
+        "maxVP": 197.0,
+        "atLeast100": 0.9083333333333333,
+        "atLeast150": 0.2125,
+        "winRate": 0.40208333333333335
+      },
+      "candidate": {
+        "appearances": 240,
+        "averageVP": 139.81666666666666,
+        "earnedVP": 111.3625,
+        "medianVP": 141.5,
+        "p90VP": 171.0,
+        "maxVP": 206.0,
+        "atLeast100": 0.9291666666666667,
+        "atLeast150": 0.35833333333333334,
+        "winRate": 0.48333333333333334
+      },
+      "gain": {
+        "vp": {
+          "mean": 7.683333333333332,
+          "ci95": [
+            0.9083333333333321,
+            14.470833333333331
+          ]
+        },
+        "vpWithoutIncomeBonus": {
+          "mean": 8.966666666666667,
+          "ci95": [
+            2.4750000000000014,
+            15.5
+          ]
+        }
+      }
+    },
+    "world": {
+      "baseline": {
+        "appearances": 120,
+        "averageVP": 119.18333333333334,
+        "earnedVP": 89.76666666666667,
+        "medianVP": 121.0,
+        "p90VP": 144.0,
+        "maxVP": 166.0,
+        "atLeast100": 0.8333333333333334,
+        "atLeast150": 0.06666666666666667,
+        "winRate": 0.19583333333333333
+      },
+      "candidate": {
+        "appearances": 120,
+        "averageVP": 108.4,
+        "earnedVP": 82.7,
+        "medianVP": 110.5,
+        "p90VP": 136.0,
+        "maxVP": 179.0,
+        "atLeast100": 0.6583333333333333,
+        "atLeast150": 0.041666666666666664,
+        "winRate": 0.03333333333333333
+      },
+      "gain": {
+        "vp": {
+          "mean": -10.783333333333333,
+          "ci95": [
+            -17.65,
+            -3.8333333333333313
+          ]
+        },
+        "vpWithoutIncomeBonus": {
+          "mean": -7.066666666666667,
+          "ci95": [
+            -13.066666666666666,
+            -0.8916666666666672
+          ]
+        }
+      }
+    },
+    "all": {
+      "baseline": {
+        "appearances": 360,
+        "averageVP": 127.81666666666666,
+        "earnedVP": 98.18611111111112,
+        "medianVP": 127.5,
+        "p90VP": 158.0,
+        "maxVP": 197.0,
+        "atLeast100": 0.8833333333333333,
+        "atLeast150": 0.1638888888888889
+      },
+      "candidate": {
+        "appearances": 360,
+        "averageVP": 129.34444444444443,
+        "earnedVP": 101.80833333333334,
+        "medianVP": 130.0,
+        "p90VP": 167.0,
+        "maxVP": 206.0,
+        "atLeast100": 0.8388888888888889,
+        "atLeast150": 0.25277777777777777
+      },
+      "gain": {
+        "vp": {
+          "mean": 1.527777777777778,
+          "ci95": [
+            -4.541666666666664,
+            7.769444444444443
+          ]
+        },
+        "vpWithoutIncomeBonus": {
+          "mean": 3.6222222222222227,
+          "ci95": [
+            -2.0388888888888888,
+            9.48340277777777
+          ]
+        }
+      }
+    }
+  },
+  "notes": [
+    "95% percentile bootstrap over paired seed groups, retaining all seats and rotations together.",
+    "Repeated entrants and identical lineups are not independent observations.",
+    "When both agents change weights, gains describe the whole lineup; a weaker opponent can raise another agent's score.",
+    "VP without the terminal income bonus is still this simulator's score, not an official-rules correction."
+  ],
+  "sources": {
+    "baseline": "world_model/reports/tournament-3p-default-120-new.json",
+    "candidate": "world_model/reports/tournament-3p-specialized-active-120-new.json"
+  }
+}

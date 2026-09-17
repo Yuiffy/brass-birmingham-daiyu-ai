@@ -1,5 +1,25 @@
 # Brass: Birmingham
 
+## World Model / AI Imagination MVP
+
+This checkout includes five selectable AI types, trained world-model checkpoints,
+an imagination panel, and an AI tournament/evaluation page. Run:
+
+```sh
+npm run worldmodel:demo -- --port 8086
+```
+
+Open `http://127.0.0.1:8086` for the game or `/arena.html` for comparisons.
+See [the implementation, results and reproduction guide](docs/world-model.md).
+See [continued training and the matched-seed comparison](docs/continued-training.md) for model versions and their measured differences.
+The current model was trained with geographic scoring features and additional games against a mixed league of agents, and ranks up to 32 candidates before deeper planning. In 400 fresh games per agent/version, world-model mean engine VP rose from 98.97 to 112.64; guided search rose from 106.67 to 126.33. Gains remain positive after removing the engine-only final income bonus. See [human score references, rules audit and independent results](docs/higher-scores.md). Earlier experiments remain in [score-focused training](docs/score-training.md) and [architecture improvement](docs/improved-world-model.md).
+The latest replay continuation and search ablations are recorded in [next-round training](docs/next-training.md); candidates are kept separate until they pass independent seed groups.
+The game now selects trained dynamics for 2, 3, or 4 players automatically. The demo uses only guided/world agents, and the current strong lineup in the arena supports all three player counts. The 2P/3P models gained 19.54 / 12.13 mean VP with fixed guided opponents in independent paired tournaments; 4P retains the existing weights. See [small-player training and runtime integration](docs/small-player-dynamics.md).
+
+Git includes the current 2P/3P/4P checkpoints, the historical checkpoints selectable in the arena, and their evaluation reports. Raw replay datasets and other local candidate checkpoints are not included; older experiment documents also reference those local artifacts. Playing the game requires only Node.js 18 or newer. Training additionally requires Python and `world_model/requirements.txt`.
+
+The original game and autorun instructions follow below.
+
 [![Docs](https://img.shields.io/badge/docs-mintlify-18a34a?style=flat-square)](https://mintlify.com/npow/brass-birmingham)
 
 A digital adaptation of the award-winning board game by Roxley Games. Build your industrial empire across the English Midlands during the height of the Industrial Revolution (1770-1870).

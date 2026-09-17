@@ -1,0 +1,7798 @@
+{
+  "config": {
+    "games": 80,
+    "seed": 88000001,
+    "depth": 2,
+    "width": 8,
+    "types": [
+      "heuristic",
+      "search",
+      "neural",
+      "guided"
+    ]
+  },
+  "models": {
+    "world": {
+      "kind": "gated-world-model",
+      "epoch": 23,
+      "datasetGames": 10000,
+      "trainingRows": 1024000,
+      "planningValue": "learned",
+      "valueEpoch": 137,
+      "valueObjective": "finalVP[player] - 0.0 * max(finalVP[opponents])",
+      "valueFeatures": "brass-value-v1",
+      "shortlist": "legacy",
+      "candidateSelection": "legacy"
+    },
+    "policy": {
+      "kind": "heuristic-distillation-policy",
+      "epoch": 47,
+      "datasetGames": 10000,
+      "trainingRows": 1024000,
+      "planningValue": "heuristic",
+      "shortlist": "legacy",
+      "candidateSelection": "legacy"
+    }
+  },
+  "completedGames": 80,
+  "cancelled": false,
+  "balancedSeats": true,
+  "rows": [
+    {
+      "type": "heuristic",
+      "games": 80,
+      "wins": 5,
+      "vp": 6198,
+      "moves": 2556,
+      "thinkingMs": 1366.7881999999615,
+      "averageVP": 77.475,
+      "winRate": 0.0625,
+      "millisecondsPerMove": 0.5347371674491243
+    },
+    {
+      "type": "search",
+      "games": 80,
+      "wins": 20.5,
+      "vp": 7142,
+      "moves": 2620,
+      "thinkingMs": 63599.43690000003,
+      "averageVP": 89.275,
+      "winRate": 0.25625,
+      "millisecondsPerMove": 24.27459423664123
+    },
+    {
+      "type": "neural",
+      "games": 80,
+      "wins": 3.5,
+      "vp": 6265,
+      "moves": 2514,
+      "thinkingMs": 2600.0446999998876,
+      "averageVP": 78.3125,
+      "winRate": 0.04375,
+      "millisecondsPerMove": 1.0342262132060014
+    },
+    {
+      "type": "guided",
+      "games": 80,
+      "wins": 51,
+      "vp": 8363,
+      "moves": 2550,
+      "thinkingMs": 84253.2688000001,
+      "averageVP": 104.5375,
+      "winRate": 0.6375,
+      "millisecondsPerMove": 33.040497568627494
+    }
+  ],
+  "games": [
+    {
+      "game": 1,
+      "seed": 88000001,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 4,
+            "railIndustry": 14,
+            "railLinks": 4,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 4,
+              "develop": 4,
+              "network": 3,
+              "scout": 2,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 99,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 44,
+            "railIndustry": 8,
+            "railLinks": 10,
+            "actions": {
+              "network": 17,
+              "build": 6,
+              "sell": 3,
+              "develop": 1,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 87,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 57,
+          "components": {
+            "canalIndustry": 34,
+            "canalLinks": 0,
+            "railIndustry": 10,
+            "railLinks": 6,
+            "actions": {
+              "build": 12,
+              "develop": 8,
+              "sell": 4,
+              "scout": 2,
+              "network": 2,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 88,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 18,
+            "railIndustry": 31,
+            "railLinks": 4,
+            "actions": {
+              "network": 11,
+              "develop": 1,
+              "scout": 2,
+              "build": 11,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 2,
+      "seed": 88000001,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 67,
+          "incomeBonus": 17,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 36,
+            "railIndustry": 0,
+            "railLinks": 9,
+            "actions": {
+              "network": 23,
+              "build": 4,
+              "sell": 1,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 3,
+            "actions": {
+              "build": 18,
+              "loan": 1,
+              "sell": 3,
+              "network": 4,
+              "scout": 1,
+              "develop": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 98,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 23,
+            "railIndustry": 26,
+            "railLinks": 0,
+            "actions": {
+              "network": 7,
+              "develop": 1,
+              "build": 12,
+              "sell": 3,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 52,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 22,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 1,
+            "railIndustry": 0,
+            "railLinks": 5,
+            "actions": {
+              "build": 11,
+              "develop": 9,
+              "loan": 1,
+              "scout": 3,
+              "sell": 1,
+              "network": 4,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 3,
+      "seed": 88000001,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 72,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 7,
+            "railIndustry": 25,
+            "railLinks": 0,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 7,
+              "sell": 3,
+              "network": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 29,
+            "railIndustry": 35,
+            "railLinks": 7,
+            "actions": {
+              "network": 10,
+              "build": 12,
+              "sell": 5,
+              "develop": 1,
+              "pass": 3,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 62,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 32,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 3,
+            "actions": {
+              "build": 12,
+              "develop": 6,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 83,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 25,
+            "railIndustry": 0,
+            "railLinks": 19,
+            "actions": {
+              "scout": 2,
+              "network": 20,
+              "build": 2,
+              "pass": 6,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 4,
+      "seed": 88000001,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 32,
+            "canalLinks": 26,
+            "railIndustry": 23,
+            "railLinks": 4,
+            "actions": {
+              "network": 11,
+              "build": 11,
+              "scout": 3,
+              "sell": 2,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 33,
+            "canalLinks": 0,
+            "railIndustry": 24,
+            "railLinks": 6,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "develop": 3,
+              "sell": 5,
+              "scout": 2,
+              "network": 3,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 79,
+          "incomeBonus": 21,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 29,
+            "railIndustry": 1,
+            "railLinks": 20,
+            "actions": {
+              "network": 21,
+              "build": 4,
+              "sell": 3,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 2,
+            "actions": {
+              "build": 10,
+              "develop": 6,
+              "sell": 4,
+              "scout": 2,
+              "network": 5,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 5,
+      "seed": 88009974,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 65,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 35,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 12,
+            "railLinks": 6,
+            "actions": {
+              "build": 13,
+              "develop": 6,
+              "loan": 1,
+              "sell": 1,
+              "network": 3,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 87,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 57,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 28,
+            "railIndustry": 4,
+            "railLinks": 0,
+            "actions": {
+              "network": 13,
+              "build": 7,
+              "sell": 4,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 70,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 48,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 0,
+            "railIndustry": 21,
+            "railLinks": 6,
+            "actions": {
+              "build": 8,
+              "develop": 8,
+              "loan": 1,
+              "sell": 2,
+              "network": 3,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 79,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 53,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 26,
+            "railIndustry": 16,
+            "railLinks": 0,
+            "actions": {
+              "network": 9,
+              "build": 9,
+              "sell": 1,
+              "develop": 1,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 6,
+      "seed": 88009974,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 70,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 48,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 35,
+            "railIndustry": 0,
+            "railLinks": 0,
+            "actions": {
+              "network": 17,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 38,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 15,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 0,
+            "railIndustry": 2,
+            "railLinks": 4,
+            "actions": {
+              "build": 6,
+              "loan": 1,
+              "develop": 7,
+              "sell": 1,
+              "network": 4,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 43,
+            "canalLinks": 18,
+            "railIndustry": 21,
+            "railLinks": 1,
+            "actions": {
+              "network": 7,
+              "build": 8,
+              "scout": 2,
+              "develop": 1,
+              "sell": 2,
+              "pass": 14
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 55,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 27,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 5,
+            "railIndustry": 0,
+            "railLinks": 0,
+            "actions": {
+              "build": 8,
+              "develop": 4,
+              "loan": 1,
+              "sell": 3,
+              "network": 1,
+              "scout": 1,
+              "pass": 14
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 7,
+      "seed": 88009974,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 8,
+            "railIndustry": 28,
+            "railLinks": 9,
+            "actions": {
+              "build": 11,
+              "develop": 11,
+              "sell": 4,
+              "network": 5,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 1,
+            "canalLinks": 28,
+            "railIndustry": 34,
+            "railLinks": 13,
+            "actions": {
+              "network": 13,
+              "build": 13,
+              "scout": 2,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 0,
+            "railIndustry": 39,
+            "railLinks": 8,
+            "actions": {
+              "build": 13,
+              "develop": 8,
+              "sell": 6,
+              "network": 2,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 92,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 67,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 19,
+            "railIndustry": 11,
+            "railLinks": 13,
+            "actions": {
+              "scout": 1,
+              "network": 19,
+              "build": 6,
+              "sell": 3,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 8,
+      "seed": 88009974,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 101,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 71,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 19,
+            "railIndustry": 21,
+            "railLinks": 12,
+            "actions": {
+              "network": 9,
+              "build": 9,
+              "sell": 4,
+              "develop": 2,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 57,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 7,
+            "railIndustry": 5,
+            "railLinks": 8,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 3,
+              "sell": 2,
+              "scout": 2,
+              "network": 5,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 71,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 51,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 32,
+            "railIndustry": 0,
+            "railLinks": 0,
+            "actions": {
+              "network": 18,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 1,
+            "railIndustry": 8,
+            "railLinks": 7,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "sell": 3,
+              "develop": 5,
+              "network": 3,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 9,
+      "seed": 88019947,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 7,
+            "railIndustry": 24,
+            "railLinks": 3,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 4,
+              "develop": 1,
+              "network": 4,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 83,
+          "incomeBonus": 18,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 36,
+            "railIndustry": 5,
+            "railLinks": 16,
+            "actions": {
+              "network": 16,
+              "build": 4,
+              "sell": 2,
+              "develop": 1,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 57,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 37,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 0,
+            "railIndustry": 10,
+            "railLinks": 6,
+            "actions": {
+              "build": 10,
+              "develop": 8,
+              "loan": 1,
+              "sell": 1,
+              "scout": 1,
+              "network": 2,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 88,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 17,
+            "railIndustry": 14,
+            "railLinks": 3,
+            "actions": {
+              "network": 7,
+              "build": 10,
+              "sell": 2,
+              "develop": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 10,
+      "seed": 88019947,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 29,
+            "railIndustry": 17,
+            "railLinks": 26,
+            "actions": {
+              "network": 17,
+              "build": 8,
+              "sell": 6,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 0,
+            "railIndustry": 49,
+            "railLinks": 7,
+            "actions": {
+              "build": 18,
+              "develop": 5,
+              "loan": 1,
+              "sell": 4,
+              "network": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 11,
+            "railIndustry": 35,
+            "railLinks": 16,
+            "actions": {
+              "network": 12,
+              "build": 13,
+              "sell": 2,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 69,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 4,
+            "railIndustry": 9,
+            "railLinks": 17,
+            "actions": {
+              "build": 9,
+              "develop": 9,
+              "sell": 2,
+              "network": 9,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 11,
+      "seed": 88019947,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 6,
+            "railIndustry": 16,
+            "railLinks": 4,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 4,
+              "develop": 7,
+              "network": 6,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 81,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 51,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 13,
+            "railIndustry": 11,
+            "railLinks": 13,
+            "actions": {
+              "network": 11,
+              "build": 11,
+              "scout": 2,
+              "develop": 1,
+              "sell": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 76,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 51,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 0,
+            "railIndustry": 27,
+            "railLinks": 8,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 6,
+              "develop": 4,
+              "network": 5,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 74,
+          "incomeBonus": 16,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 35,
+            "railIndustry": 5,
+            "railLinks": 8,
+            "actions": {
+              "scout": 2,
+              "network": 21,
+              "build": 3,
+              "sell": 2,
+              "develop": 1,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 12,
+      "seed": 88019947,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 110,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 80,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 30,
+            "railIndustry": 36,
+            "railLinks": 6,
+            "actions": {
+              "network": 10,
+              "develop": 1,
+              "scout": 1,
+              "build": 13,
+              "sell": 3,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 73,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 43,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 6,
+            "railIndustry": 10,
+            "railLinks": 10,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 2,
+              "network": 7,
+              "develop": 5,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 83,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 21,
+            "railIndustry": 0,
+            "railLinks": 32,
+            "actions": {
+              "network": 25,
+              "build": 3,
+              "sell": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 87,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 57,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 12,
+            "railIndustry": 17,
+            "railLinks": 5,
+            "actions": {
+              "build": 17,
+              "develop": 2,
+              "sell": 3,
+              "network": 6,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 13,
+      "seed": 88029920,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 61,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 4,
+            "actions": {
+              "build": 5,
+              "loan": 1,
+              "develop": 7,
+              "sell": 2,
+              "scout": 1,
+              "network": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 53,
+          "incomeBonus": 10,
+          "vpWithoutIncomeBonus": 43,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 37,
+            "railIndustry": 0,
+            "railLinks": 6,
+            "actions": {
+              "network": 16,
+              "build": 1,
+              "pass": 16,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 107,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 77,
+          "components": {
+            "canalIndustry": 45,
+            "canalLinks": 0,
+            "railIndustry": 26,
+            "railLinks": 6,
+            "actions": {
+              "build": 7,
+              "sell": 5,
+              "develop": 3,
+              "scout": 1,
+              "network": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 34,
+            "canalLinks": 22,
+            "railIndustry": 23,
+            "railLinks": 3,
+            "actions": {
+              "network": 9,
+              "build": 8,
+              "scout": 2,
+              "develop": 1,
+              "sell": 1,
+              "pass": 13
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 14,
+      "seed": 88029920,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 26,
+            "railIndustry": 15,
+            "railLinks": 11,
+            "actions": {
+              "network": 10,
+              "build": 8,
+              "sell": 8,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 96,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 66,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 3,
+            "railIndustry": 25,
+            "railLinks": 17,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 1,
+              "develop": 2,
+              "network": 7,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 79,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 17,
+            "railIndustry": 14,
+            "railLinks": 9,
+            "actions": {
+              "network": 10,
+              "develop": 1,
+              "build": 7,
+              "sell": 3,
+              "pass": 7,
+              "scout": 1,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 85,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 12,
+            "railIndustry": 10,
+            "railLinks": 21,
+            "actions": {
+              "build": 7,
+              "develop": 6,
+              "loan": 1,
+              "sell": 2,
+              "network": 9,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 15,
+      "seed": 88029920,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 74,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 44,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 0,
+            "railIndustry": 18,
+            "railLinks": 2,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 9,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 41,
+            "railIndustry": 7,
+            "railLinks": 5,
+            "actions": {
+              "network": 11,
+              "build": 8,
+              "sell": 3,
+              "scout": 1,
+              "pass": 10,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 66,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 3,
+            "railIndustry": 10,
+            "railLinks": 3,
+            "actions": {
+              "build": 9,
+              "develop": 6,
+              "loan": 1,
+              "sell": 3,
+              "network": 4,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 96,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 66,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 28,
+            "railIndustry": 21,
+            "railLinks": 7,
+            "actions": {
+              "scout": 2,
+              "network": 12,
+              "build": 10,
+              "sell": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 16,
+      "seed": 88029920,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 23,
+            "railIndustry": 16,
+            "railLinks": 1,
+            "actions": {
+              "network": 9,
+              "develop": 1,
+              "build": 8,
+              "sell": 3,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 63,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 12,
+            "railLinks": 2,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 6,
+              "sell": 1,
+              "network": 1,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 78,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 56,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 36,
+            "railIndustry": 0,
+            "railLinks": 1,
+            "actions": {
+              "network": 16,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 13
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 77,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 5,
+            "railIndustry": 14,
+            "railLinks": 0,
+            "actions": {
+              "build": 10,
+              "develop": 3,
+              "loan": 1,
+              "sell": 2,
+              "network": 3,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 17,
+      "seed": 88039893,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 64,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 6,
+            "railIndustry": 13,
+            "railLinks": 4,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 3,
+              "sell": 1,
+              "network": 5,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 80,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 36,
+            "railIndustry": 0,
+            "railLinks": 7,
+            "actions": {
+              "network": 20,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 0,
+            "railIndustry": 27,
+            "railLinks": 10,
+            "actions": {
+              "build": 10,
+              "develop": 3,
+              "loan": 1,
+              "sell": 2,
+              "network": 6,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 86,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 56,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 16,
+            "railIndustry": 7,
+            "railLinks": 7,
+            "actions": {
+              "network": 11,
+              "develop": 1,
+              "build": 8,
+              "sell": 4,
+              "pass": 8
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 18,
+      "seed": 88039893,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 62,
+          "incomeBonus": 19,
+          "vpWithoutIncomeBonus": 43,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 24,
+            "railIndustry": 6,
+            "railLinks": 10,
+            "actions": {
+              "network": 16,
+              "build": 5,
+              "sell": 3,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 40,
+          "incomeBonus": 19,
+          "vpWithoutIncomeBonus": 21,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 7,
+            "railIndustry": 7,
+            "railLinks": 0,
+            "actions": {
+              "build": 8,
+              "loan": 1,
+              "develop": 6,
+              "network": 4,
+              "scout": 2,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 10,
+            "railIndustry": 39,
+            "railLinks": 6,
+            "actions": {
+              "network": 8,
+              "develop": 1,
+              "build": 11,
+              "sell": 4,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 45,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 19,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 0,
+            "actions": {
+              "build": 11,
+              "develop": 11,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 19,
+      "seed": 88039893,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 2,
+            "railIndustry": 25,
+            "railLinks": 5,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 10,
+              "network": 7,
+              "sell": 2,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 103,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 23,
+            "railIndustry": 30,
+            "railLinks": 9,
+            "actions": {
+              "network": 14,
+              "build": 12,
+              "sell": 1,
+              "scout": 2,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 98,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 33,
+            "railLinks": 15,
+            "actions": {
+              "build": 12,
+              "develop": 5,
+              "sell": 4,
+              "network": 7,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 84,
+          "incomeBonus": 21,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 24,
+            "railIndustry": 1,
+            "railLinks": 19,
+            "actions": {
+              "scout": 2,
+              "network": 20,
+              "build": 5,
+              "sell": 3,
+              "develop": 1,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 20,
+      "seed": 88039893,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 20,
+            "railIndustry": 36,
+            "railLinks": 6,
+            "actions": {
+              "network": 8,
+              "develop": 1,
+              "build": 14,
+              "sell": 3,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 112,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 12,
+            "railIndustry": 25,
+            "railLinks": 16,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 5,
+              "sell": 4,
+              "network": 7,
+              "scout": 2,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 95,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 29,
+            "railIndustry": 0,
+            "railLinks": 24,
+            "actions": {
+              "network": 26,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 41,
+            "canalLinks": 0,
+            "railIndustry": 32,
+            "railLinks": 3,
+            "actions": {
+              "build": 16,
+              "develop": 2,
+              "loan": 1,
+              "sell": 5,
+              "network": 3,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 21,
+      "seed": 88049866,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 5,
+            "railIndustry": 10,
+            "railLinks": 3,
+            "actions": {
+              "build": 11,
+              "develop": 6,
+              "sell": 4,
+              "network": 3,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 84,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 50,
+            "railIndustry": 0,
+            "railLinks": 5,
+            "actions": {
+              "network": 21,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 69,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 0,
+            "railIndustry": 12,
+            "railLinks": 4,
+            "actions": {
+              "build": 11,
+              "sell": 3,
+              "develop": 4,
+              "network": 3,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 18,
+            "railIndustry": 10,
+            "railLinks": 2,
+            "actions": {
+              "network": 10,
+              "build": 7,
+              "sell": 3,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 22,
+      "seed": 88049866,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 84,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 33,
+            "railIndustry": 0,
+            "railLinks": 12,
+            "actions": {
+              "network": 20,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 76,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 12,
+            "railLinks": 15,
+            "actions": {
+              "build": 8,
+              "develop": 6,
+              "sell": 1,
+              "network": 6,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 128,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 98,
+          "components": {
+            "canalIndustry": 36,
+            "canalLinks": 25,
+            "railIndustry": 30,
+            "railLinks": 7,
+            "actions": {
+              "network": 8,
+              "build": 12,
+              "sell": 3,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 84,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 59,
+          "components": {
+            "canalIndustry": 33,
+            "canalLinks": 0,
+            "railIndustry": 22,
+            "railLinks": 4,
+            "actions": {
+              "build": 10,
+              "develop": 4,
+              "loan": 1,
+              "sell": 4,
+              "network": 2,
+              "scout": 2,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 23,
+      "seed": 88049866,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 73,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 43,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 9,
+            "railIndustry": 18,
+            "railLinks": 3,
+            "actions": {
+              "build": 12,
+              "develop": 6,
+              "sell": 2,
+              "network": 5,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 18,
+            "railIndustry": 21,
+            "railLinks": 17,
+            "actions": {
+              "network": 15,
+              "build": 7,
+              "sell": 2,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 92,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 32,
+            "railLinks": 11,
+            "actions": {
+              "build": 11,
+              "develop": 8,
+              "sell": 5,
+              "network": 5,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 85,
+          "incomeBonus": 21,
+          "vpWithoutIncomeBonus": 64,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 23,
+            "railIndustry": 1,
+            "railLinks": 20,
+            "actions": {
+              "scout": 2,
+              "network": 21,
+              "build": 3,
+              "sell": 3,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 24,
+      "seed": 88049866,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 25,
+            "railIndustry": 25,
+            "railLinks": 1,
+            "actions": {
+              "network": 7,
+              "build": 10,
+              "scout": 3,
+              "sell": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 40,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 20,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 0,
+            "railIndustry": 0,
+            "railLinks": 7,
+            "actions": {
+              "build": 8,
+              "develop": 7,
+              "loan": 1,
+              "sell": 1,
+              "scout": 1,
+              "network": 4,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 64,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 22,
+            "railIndustry": 0,
+            "railLinks": 10,
+            "actions": {
+              "network": 15,
+              "build": 5,
+              "sell": 2,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 77,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 0,
+            "railIndustry": 10,
+            "railLinks": 10,
+            "actions": {
+              "build": 9,
+              "develop": 5,
+              "scout": 2,
+              "sell": 3,
+              "network": 2,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 25,
+      "seed": 88059839,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 89,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 59,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 1,
+            "railIndustry": 20,
+            "railLinks": 22,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 9,
+              "sell": 2,
+              "network": 8,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 112,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 34,
+            "railIndustry": 11,
+            "railLinks": 24,
+            "actions": {
+              "network": 18,
+              "build": 6,
+              "sell": 4,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 0,
+            "railIndustry": 39,
+            "railLinks": 10,
+            "actions": {
+              "build": 11,
+              "develop": 9,
+              "loan": 1,
+              "sell": 5,
+              "network": 3,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 32,
+            "railIndustry": 45,
+            "railLinks": 7,
+            "actions": {
+              "network": 10,
+              "develop": 1,
+              "build": 15,
+              "sell": 2,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 26,
+      "seed": 88059839,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 100,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 39,
+            "railIndustry": 0,
+            "railLinks": 14,
+            "actions": {
+              "network": 16,
+              "build": 3,
+              "sell": 3,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 4,
+            "railIndustry": 14,
+            "railLinks": 1,
+            "actions": {
+              "build": 7,
+              "develop": 7,
+              "sell": 3,
+              "network": 2,
+              "scout": 1,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 102,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 30,
+            "railIndustry": 21,
+            "railLinks": 1,
+            "actions": {
+              "network": 11,
+              "build": 7,
+              "scout": 2,
+              "sell": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 77,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 7,
+            "railIndustry": 10,
+            "railLinks": 5,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 5,
+              "sell": 1,
+              "network": 4,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 27,
+      "seed": 88059839,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 70,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 40,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 4,
+            "railIndustry": 19,
+            "railLinks": 0,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 4,
+              "develop": 3,
+              "network": 1,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 74,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 31,
+            "railIndustry": 2,
+            "railLinks": 2,
+            "actions": {
+              "network": 10,
+              "scout": 1,
+              "build": 8,
+              "sell": 2,
+              "develop": 1,
+              "pass": 11,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 50,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 20,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 0,
+            "railIndustry": 2,
+            "railLinks": 6,
+            "actions": {
+              "build": 8,
+              "develop": 6,
+              "sell": 1,
+              "network": 4,
+              "scout": 1,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 73,
+          "incomeBonus": 18,
+          "vpWithoutIncomeBonus": 55,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 31,
+            "railIndustry": 7,
+            "railLinks": 2,
+            "actions": {
+              "scout": 2,
+              "network": 13,
+              "build": 6,
+              "develop": 3,
+              "pass": 8
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 28,
+      "seed": 88059839,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 31,
+            "railIndustry": 20,
+            "railLinks": 19,
+            "actions": {
+              "network": 13,
+              "build": 9,
+              "scout": 2,
+              "sell": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 64,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 34,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 11,
+            "railLinks": 3,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 5,
+              "sell": 5,
+              "network": 3,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 98,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 31,
+            "railIndustry": 11,
+            "railLinks": 12,
+            "actions": {
+              "network": 18,
+              "build": 4,
+              "sell": 3,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 0,
+            "railIndustry": 10,
+            "railLinks": 2,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 5,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 29,
+      "seed": 88069812,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 79,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 0,
+            "railIndustry": 20,
+            "railLinks": 11,
+            "actions": {
+              "build": 11,
+              "develop": 8,
+              "sell": 5,
+              "scout": 1,
+              "network": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 25,
+            "railIndustry": 14,
+            "railLinks": 18,
+            "actions": {
+              "network": 17,
+              "build": 6,
+              "sell": 6,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 5,
+            "railIndustry": 38,
+            "railLinks": 27,
+            "actions": {
+              "build": 13,
+              "develop": 7,
+              "network": 10,
+              "sell": 2,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 27,
+            "railIndustry": 37,
+            "railLinks": 13,
+            "actions": {
+              "network": 14,
+              "build": 12,
+              "develop": 1,
+              "sell": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 30,
+      "seed": 88069812,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 86,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 36,
+            "railIndustry": 5,
+            "railLinks": 14,
+            "actions": {
+              "network": 16,
+              "build": 5,
+              "scout": 2,
+              "sell": 3,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 48,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 20,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 2,
+            "railIndustry": 4,
+            "railLinks": 5,
+            "actions": {
+              "build": 9,
+              "develop": 10,
+              "loan": 1,
+              "network": 3,
+              "scout": 2,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 76,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 14,
+            "railIndustry": 16,
+            "railLinks": 1,
+            "actions": {
+              "network": 8,
+              "build": 10,
+              "sell": 2,
+              "scout": 3,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 3,
+            "railIndustry": 5,
+            "railLinks": 0,
+            "actions": {
+              "build": 10,
+              "develop": 9,
+              "sell": 3,
+              "network": 3,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 31,
+      "seed": 88069812,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 72,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 2,
+            "actions": {
+              "build": 9,
+              "develop": 6,
+              "sell": 3,
+              "scout": 1,
+              "network": 2,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 89,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 17,
+            "railIndustry": 4,
+            "railLinks": 14,
+            "actions": {
+              "network": 10,
+              "build": 8,
+              "scout": 2,
+              "sell": 2,
+              "pass": 11,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 82,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 6,
+            "railIndustry": 21,
+            "railLinks": 0,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 6,
+              "sell": 1,
+              "network": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 89,
+          "incomeBonus": 21,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 42,
+            "railIndustry": 5,
+            "railLinks": 8,
+            "actions": {
+              "scout": 2,
+              "network": 16,
+              "build": 4,
+              "sell": 3,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 32,
+      "seed": 88069812,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 22,
+            "railIndustry": 21,
+            "railLinks": 2,
+            "actions": {
+              "network": 9,
+              "scout": 2,
+              "build": 9,
+              "sell": 3,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 43,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 17,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 2,
+            "railIndustry": 0,
+            "railLinks": 0,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "sell": 2,
+              "develop": 8,
+              "network": 1,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 69,
+          "incomeBonus": 16,
+          "vpWithoutIncomeBonus": 53,
+          "components": {
+            "canalIndustry": 6,
+            "canalLinks": 38,
+            "railIndustry": 1,
+            "railLinks": 1,
+            "actions": {
+              "network": 18,
+              "build": 3,
+              "sell": 2,
+              "develop": 1,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 58,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 28,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 6,
+            "railIndustry": 2,
+            "railLinks": 1,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "sell": 2,
+              "develop": 5,
+              "network": 3,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 33,
+      "seed": 88079785,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 88,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 0,
+            "railIndustry": 28,
+            "railLinks": 16,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "develop": 7,
+              "sell": 3,
+              "network": 5,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 87,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 37,
+            "railIndustry": 6,
+            "railLinks": 12,
+            "actions": {
+              "network": 19,
+              "build": 5,
+              "scout": 2,
+              "sell": 4,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 96,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 66,
+          "components": {
+            "canalIndustry": 32,
+            "canalLinks": 7,
+            "railIndustry": 14,
+            "railLinks": 13,
+            "actions": {
+              "build": 11,
+              "sell": 5,
+              "develop": 7,
+              "network": 4,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 107,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 77,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 35,
+            "railIndustry": 24,
+            "railLinks": 1,
+            "actions": {
+              "network": 8,
+              "develop": 2,
+              "build": 10,
+              "sell": 1,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 34,
+      "seed": 88079785,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 28,
+            "railIndustry": 12,
+            "railLinks": 9,
+            "actions": {
+              "network": 16,
+              "build": 10,
+              "sell": 4,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 45,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 20,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 0,
+            "actions": {
+              "build": 16,
+              "loan": 1,
+              "develop": 11,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 98,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 24,
+            "railIndustry": 27,
+            "railLinks": 1,
+            "actions": {
+              "network": 8,
+              "develop": 2,
+              "build": 13,
+              "sell": 3,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 54,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 24,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 2,
+            "railIndustry": 2,
+            "railLinks": 2,
+            "actions": {
+              "build": 13,
+              "develop": 10,
+              "sell": 2,
+              "network": 3,
+              "scout": 2,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 35,
+      "seed": 88079785,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 88,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 0,
+            "railIndustry": 38,
+            "railLinks": 4,
+            "actions": {
+              "build": 15,
+              "loan": 2,
+              "develop": 4,
+              "sell": 3,
+              "network": 1,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 103,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 28,
+            "railIndustry": 20,
+            "railLinks": 7,
+            "actions": {
+              "network": 12,
+              "build": 11,
+              "sell": 2,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 76,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 7,
+            "actions": {
+              "build": 9,
+              "develop": 10,
+              "sell": 4,
+              "network": 3,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 53,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 19,
+            "railIndustry": 0,
+            "railLinks": 14,
+            "actions": {
+              "scout": 2,
+              "network": 21,
+              "build": 3,
+              "sell": 1,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 36,
+      "seed": 88079785,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 23,
+            "railIndustry": 39,
+            "railLinks": 4,
+            "actions": {
+              "network": 11,
+              "develop": 1,
+              "build": 13,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 31,
+            "canalLinks": 4,
+            "railIndustry": 22,
+            "railLinks": 6,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "sell": 4,
+              "develop": 7,
+              "network": 3,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 123,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 93,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 38,
+            "railIndustry": 5,
+            "railLinks": 28,
+            "actions": {
+              "network": 20,
+              "build": 4,
+              "sell": 4,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 34,
+            "canalLinks": 0,
+            "railIndustry": 37,
+            "railLinks": 6,
+            "actions": {
+              "build": 14,
+              "develop": 6,
+              "loan": 1,
+              "sell": 5,
+              "scout": 2,
+              "network": 2,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 37,
+      "seed": 88089758,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 33,
+            "canalLinks": 0,
+            "railIndustry": 31,
+            "railLinks": 6,
+            "actions": {
+              "build": 13,
+              "loan": 2,
+              "sell": 3,
+              "develop": 5,
+              "network": 2,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 96,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 40,
+            "railIndustry": 0,
+            "railLinks": 27,
+            "actions": {
+              "network": 23,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 79,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 15,
+            "railIndustry": 12,
+            "railLinks": 4,
+            "actions": {
+              "build": 8,
+              "sell": 3,
+              "develop": 7,
+              "network": 7,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 18,
+            "railIndustry": 25,
+            "railLinks": 11,
+            "actions": {
+              "network": 11,
+              "build": 10,
+              "scout": 2,
+              "sell": 2,
+              "develop": 1,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 38,
+      "seed": 88089758,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 60,
+          "incomeBonus": 10,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 41,
+            "railIndustry": 0,
+            "railLinks": 9,
+            "actions": {
+              "network": 25,
+              "build": 1,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 43,
+            "canalLinks": 0,
+            "railIndustry": 35,
+            "railLinks": 9,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 8,
+              "develop": 3,
+              "network": 3,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 26,
+            "railIndustry": 30,
+            "railLinks": 3,
+            "actions": {
+              "network": 13,
+              "build": 13,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 5,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 3,
+              "develop": 7,
+              "scout": 2,
+              "network": 2,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 39,
+      "seed": 88089758,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 58,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 28,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 0,
+            "railIndustry": 7,
+            "railLinks": 3,
+            "actions": {
+              "build": 8,
+              "loan": 1,
+              "sell": 1,
+              "develop": 12,
+              "scout": 1,
+              "network": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 90,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 66,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 34,
+            "railIndustry": 16,
+            "railLinks": 1,
+            "actions": {
+              "network": 9,
+              "build": 8,
+              "scout": 2,
+              "sell": 1,
+              "develop": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 3,
+            "actions": {
+              "build": 12,
+              "develop": 8,
+              "sell": 2,
+              "network": 1,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 59,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 17,
+            "railIndustry": 0,
+            "railLinks": 3,
+            "actions": {
+              "scout": 2,
+              "network": 19,
+              "build": 2,
+              "sell": 2,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 40,
+      "seed": 88089758,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 112,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 40,
+            "railIndustry": 23,
+            "railLinks": 6,
+            "actions": {
+              "network": 13,
+              "build": 13,
+              "scout": 3,
+              "sell": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 91,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 61,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 2,
+            "railIndustry": 32,
+            "railLinks": 11,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 5,
+              "develop": 7,
+              "network": 5,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 41,
+            "railIndustry": 14,
+            "railLinks": 24,
+            "actions": {
+              "network": 16,
+              "build": 8,
+              "sell": 7,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 114,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 84,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 2,
+            "railIndustry": 45,
+            "railLinks": 11,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 4,
+              "develop": 4,
+              "network": 5,
+              "scout": 1,
+              "pass": 1
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 41,
+      "seed": 88099731,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 31,
+            "canalLinks": 0,
+            "railIndustry": 1,
+            "railLinks": 1,
+            "actions": {
+              "build": 8,
+              "develop": 7,
+              "sell": 5,
+              "network": 3,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 67,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 42,
+            "railIndustry": 0,
+            "railLinks": 5,
+            "actions": {
+              "network": 16,
+              "build": 1,
+              "sell": 1,
+              "pass": 15,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 52,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 22,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 0,
+            "railIndustry": 6,
+            "railLinks": 6,
+            "actions": {
+              "build": 8,
+              "develop": 6,
+              "sell": 1,
+              "scout": 1,
+              "network": 6,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 33,
+            "canalLinks": 27,
+            "railIndustry": 22,
+            "railLinks": 4,
+            "actions": {
+              "network": 8,
+              "build": 8,
+              "scout": 2,
+              "sell": 2,
+              "pass": 12
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 42,
+      "seed": 88099731,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 110,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 27,
+            "railIndustry": 10,
+            "railLinks": 28,
+            "actions": {
+              "network": 18,
+              "build": 6,
+              "scout": 1,
+              "sell": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 87,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 57,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 8,
+            "railIndustry": 26,
+            "railLinks": 4,
+            "actions": {
+              "build": 16,
+              "develop": 7,
+              "loan": 1,
+              "network": 5,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 122,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 33,
+            "railIndustry": 28,
+            "railLinks": 24,
+            "actions": {
+              "network": 19,
+              "build": 13,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 50,
+            "railLinks": 11,
+            "actions": {
+              "build": 15,
+              "develop": 8,
+              "sell": 6,
+              "network": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 43,
+      "seed": 88099731,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 80,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 6,
+            "railIndustry": 10,
+            "railLinks": 7,
+            "actions": {
+              "build": 11,
+              "develop": 10,
+              "sell": 4,
+              "network": 4,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 112,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 38,
+            "railIndustry": 30,
+            "railLinks": 5,
+            "actions": {
+              "network": 12,
+              "build": 12,
+              "sell": 1,
+              "develop": 1,
+              "scout": 1,
+              "pass": 2,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 72,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 21,
+            "railLinks": 4,
+            "actions": {
+              "build": 14,
+              "develop": 9,
+              "loan": 1,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 65,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 15,
+            "railIndustry": 5,
+            "railLinks": 14,
+            "actions": {
+              "scout": 2,
+              "network": 16,
+              "build": 8,
+              "sell": 3,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 44,
+      "seed": 88099731,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 33,
+            "railIndustry": 14,
+            "railLinks": 12,
+            "actions": {
+              "network": 12,
+              "scout": 2,
+              "build": 13,
+              "sell": 1,
+              "pass": 1,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 82,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 6,
+            "railIndustry": 14,
+            "railLinks": 11,
+            "actions": {
+              "build": 13,
+              "develop": 11,
+              "loan": 1,
+              "sell": 3,
+              "network": 5,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 32,
+            "railIndustry": 22,
+            "railLinks": 15,
+            "actions": {
+              "network": 16,
+              "build": 9,
+              "sell": 5,
+              "scout": 1,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 0,
+            "railIndustry": 27,
+            "railLinks": 2,
+            "actions": {
+              "build": 10,
+              "develop": 9,
+              "sell": 4,
+              "scout": 1,
+              "network": 2,
+              "pass": 4
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 45,
+      "seed": 88109704,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 33,
+            "canalLinks": 11,
+            "railIndustry": 9,
+            "railLinks": 6,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 2,
+              "sell": 3,
+              "network": 5,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 100,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 47,
+            "railIndustry": 0,
+            "railLinks": 7,
+            "actions": {
+              "network": 14,
+              "build": 3,
+              "sell": 3,
+              "scout": 1,
+              "pass": 13
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 86,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 56,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 5,
+            "railIndustry": 14,
+            "railLinks": 7,
+            "actions": {
+              "build": 8,
+              "develop": 2,
+              "sell": 2,
+              "network": 5,
+              "scout": 1,
+              "pass": 14
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 81,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 54,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 21,
+            "railIndustry": 10,
+            "railLinks": 4,
+            "actions": {
+              "network": 6,
+              "develop": 1,
+              "scout": 2,
+              "build": 7,
+              "sell": 3,
+              "pass": 11
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 46,
+      "seed": 88109704,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 92,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 67,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 35,
+            "railIndustry": 0,
+            "railLinks": 19,
+            "actions": {
+              "network": 20,
+              "build": 4,
+              "sell": 3,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 77,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 3,
+            "railIndustry": 12,
+            "railLinks": 5,
+            "actions": {
+              "build": 16,
+              "develop": 4,
+              "sell": 3,
+              "network": 4,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 27,
+            "railIndustry": 35,
+            "railLinks": 9,
+            "actions": {
+              "network": 10,
+              "develop": 1,
+              "build": 15,
+              "sell": 3,
+              "scout": 2,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 51,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 26,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 3,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 7,
+              "sell": 1,
+              "scout": 1,
+              "network": 3,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 47,
+      "seed": 88109704,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 60,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 30,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 1,
+            "railIndustry": 9,
+            "railLinks": 5,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 2,
+              "sell": 3,
+              "network": 5,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 83,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 53,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 20,
+            "railIndustry": 9,
+            "railLinks": 10,
+            "actions": {
+              "network": 10,
+              "build": 9,
+              "sell": 3,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 62,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 32,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 5,
+            "railIndustry": 4,
+            "railLinks": 8,
+            "actions": {
+              "build": 9,
+              "develop": 2,
+              "sell": 2,
+              "network": 11,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 83,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 26,
+            "railIndustry": 11,
+            "railLinks": 9,
+            "actions": {
+              "scout": 2,
+              "network": 17,
+              "build": 4,
+              "sell": 2,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 48,
+      "seed": 88109704,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 21,
+            "railIndustry": 17,
+            "railLinks": 30,
+            "actions": {
+              "network": 15,
+              "develop": 1,
+              "build": 9,
+              "sell": 3,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 90,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 60,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 6,
+            "railIndustry": 13,
+            "railLinks": 13,
+            "actions": {
+              "build": 9,
+              "develop": 9,
+              "sell": 4,
+              "network": 8,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 19,
+            "railIndustry": 23,
+            "railLinks": 28,
+            "actions": {
+              "network": 17,
+              "build": 8,
+              "sell": 5,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 114,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 84,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 9,
+            "railIndustry": 46,
+            "railLinks": 5,
+            "actions": {
+              "build": 17,
+              "loan": 1,
+              "develop": 2,
+              "sell": 4,
+              "network": 5,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 49,
+      "seed": 88119677,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 57,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 27,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 2,
+            "actions": {
+              "build": 11,
+              "develop": 10,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 29,
+            "railIndustry": 10,
+            "railLinks": 16,
+            "actions": {
+              "network": 15,
+              "build": 6,
+              "sell": 5,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 8,
+            "railIndustry": 20,
+            "railLinks": 2,
+            "actions": {
+              "build": 8,
+              "develop": 14,
+              "sell": 1,
+              "network": 3,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 31,
+            "railIndustry": 34,
+            "railLinks": 7,
+            "actions": {
+              "network": 9,
+              "build": 13,
+              "sell": 2,
+              "pass": 5,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 50,
+      "seed": 88119677,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 124,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 40,
+            "railIndustry": 17,
+            "railLinks": 26,
+            "actions": {
+              "network": 20,
+              "build": 6,
+              "sell": 5,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 107,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 77,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 7,
+            "railIndustry": 26,
+            "railLinks": 15,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 3,
+              "network": 8,
+              "develop": 3,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 30,
+            "railIndustry": 31,
+            "railLinks": 11,
+            "actions": {
+              "network": 15,
+              "develop": 1,
+              "build": 10,
+              "sell": 1,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 90,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 60,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 6,
+            "railIndustry": 27,
+            "railLinks": 7,
+            "actions": {
+              "build": 10,
+              "develop": 8,
+              "sell": 5,
+              "network": 6,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 51,
+      "seed": 88119677,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 84,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 59,
+          "components": {
+            "canalIndustry": 35,
+            "canalLinks": 0,
+            "railIndustry": 23,
+            "railLinks": 1,
+            "actions": {
+              "build": 9,
+              "develop": 5,
+              "loan": 1,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 82,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 32,
+            "railIndustry": 2,
+            "railLinks": 0,
+            "actions": {
+              "network": 8,
+              "build": 8,
+              "scout": 1,
+              "sell": 1,
+              "pass": 14
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 64,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 34,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 0,
+            "actions": {
+              "build": 9,
+              "develop": 8,
+              "sell": 3,
+              "network": 2,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 84,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 55,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 29,
+            "railIndustry": 0,
+            "railLinks": 4,
+            "actions": {
+              "scout": 2,
+              "network": 13,
+              "build": 5,
+              "sell": 3,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 52,
+      "seed": 88119677,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 29,
+            "railIndustry": 28,
+            "railLinks": 2,
+            "actions": {
+              "network": 8,
+              "develop": 1,
+              "build": 11,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 81,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 51,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 4,
+            "railIndustry": 14,
+            "railLinks": 10,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 12,
+              "sell": 1,
+              "network": 4,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 60,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 28,
+            "railIndustry": 0,
+            "railLinks": 2,
+            "actions": {
+              "network": 16,
+              "build": 7,
+              "sell": 2,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 75,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 45,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 4,
+            "railIndustry": 5,
+            "railLinks": 6,
+            "actions": {
+              "build": 10,
+              "develop": 7,
+              "sell": 2,
+              "network": 5,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 53,
+      "seed": 88129650,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 67,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 37,
+          "components": {
+            "canalIndustry": 31,
+            "canalLinks": 0,
+            "railIndustry": 2,
+            "railLinks": 4,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 3,
+              "develop": 3,
+              "network": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 62,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 31,
+            "railIndustry": 0,
+            "railLinks": 2,
+            "actions": {
+              "network": 17,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 57,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 0,
+            "actions": {
+              "build": 8,
+              "develop": 9,
+              "network": 1,
+              "loan": 1,
+              "sell": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 107,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 33,
+            "railIndustry": 21,
+            "railLinks": 1,
+            "actions": {
+              "network": 8,
+              "scout": 2,
+              "build": 8,
+              "sell": 2,
+              "develop": 1,
+              "pass": 13
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 54,
+      "seed": 88129650,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 84,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 43,
+            "railIndustry": 0,
+            "railLinks": 2,
+            "actions": {
+              "network": 15,
+              "build": 5,
+              "sell": 2,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 63,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 5,
+            "railIndustry": 5,
+            "railLinks": 4,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "network": 4,
+              "develop": 5,
+              "sell": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 103,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 24,
+            "railIndustry": 26,
+            "railLinks": 3,
+            "actions": {
+              "network": 7,
+              "develop": 3,
+              "build": 11,
+              "sell": 3,
+              "pass": 7,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 51,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 21,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 0,
+            "railIndustry": 2,
+            "railLinks": 1,
+            "actions": {
+              "build": 9,
+              "develop": 9,
+              "loan": 1,
+              "sell": 2,
+              "network": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 55,
+      "seed": 88129650,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 80,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 4,
+            "railIndustry": 23,
+            "railLinks": 2,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "develop": 6,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 26,
+            "railIndustry": 9,
+            "railLinks": 19,
+            "actions": {
+              "network": 13,
+              "build": 13,
+              "scout": 2,
+              "sell": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 94,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 71,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 10,
+            "railIndustry": 23,
+            "railLinks": 8,
+            "actions": {
+              "build": 7,
+              "loan": 1,
+              "develop": 3,
+              "sell": 3,
+              "network": 6,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 77,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 25,
+            "railIndustry": 0,
+            "railLinks": 3,
+            "actions": {
+              "scout": 2,
+              "network": 12,
+              "build": 7,
+              "sell": 3,
+              "pass": 8
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 56,
+      "seed": 88129650,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 6,
+            "canalLinks": 30,
+            "railIndustry": 40,
+            "railLinks": 19,
+            "actions": {
+              "network": 12,
+              "build": 15,
+              "scout": 1,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 3,
+            "railIndustry": 34,
+            "railLinks": 17,
+            "actions": {
+              "build": 12,
+              "develop": 9,
+              "loan": 1,
+              "sell": 5,
+              "network": 7
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 94,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 21,
+            "railIndustry": 6,
+            "railLinks": 35,
+            "actions": {
+              "network": 23,
+              "build": 5,
+              "scout": 1,
+              "sell": 4,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 114,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 84,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 3,
+            "railIndustry": 37,
+            "railLinks": 17,
+            "actions": {
+              "build": 12,
+              "develop": 4,
+              "sell": 5,
+              "network": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 57,
+      "seed": 88139623,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 70,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 2,
+            "railIndustry": 9,
+            "railLinks": 5,
+            "actions": {
+              "build": 7,
+              "loan": 1,
+              "develop": 7,
+              "sell": 2,
+              "network": 3,
+              "scout": 1,
+              "pass": 13
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 50,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 35,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 26,
+            "railIndustry": 0,
+            "railLinks": 4,
+            "actions": {
+              "network": 17,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 47,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 20,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 0,
+            "railIndustry": 0,
+            "railLinks": 2,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "sell": 2,
+              "develop": 4,
+              "scout": 1,
+              "network": 3,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 22,
+            "railIndustry": 25,
+            "railLinks": 1,
+            "actions": {
+              "network": 8,
+              "build": 9,
+              "scout": 2,
+              "develop": 1,
+              "sell": 1,
+              "loan": 1,
+              "pass": 12
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 58,
+      "seed": 88139623,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 126,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 46,
+            "railIndustry": 5,
+            "railLinks": 27,
+            "actions": {
+              "network": 22,
+              "build": 4,
+              "sell": 4,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 7,
+            "railIndustry": 40,
+            "railLinks": 14,
+            "actions": {
+              "build": 14,
+              "sell": 3,
+              "develop": 6,
+              "network": 5,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 95,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 25,
+            "railIndustry": 23,
+            "railLinks": 13,
+            "actions": {
+              "network": 12,
+              "build": 13,
+              "scout": 1,
+              "sell": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 1,
+            "actions": {
+              "build": 15,
+              "develop": 7,
+              "sell": 5,
+              "network": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 59,
+      "seed": 88139623,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 78,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 48,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 0,
+            "railIndustry": 29,
+            "railLinks": 8,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "develop": 9,
+              "sell": 2,
+              "scout": 1,
+              "network": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 133,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 103,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 36,
+            "railIndustry": 40,
+            "railLinks": 19,
+            "actions": {
+              "network": 15,
+              "build": 13,
+              "scout": 1,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 88,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 58,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 0,
+            "railIndustry": 23,
+            "railLinks": 8,
+            "actions": {
+              "build": 13,
+              "develop": 11,
+              "sell": 6,
+              "network": 4
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 135,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 105,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 26,
+            "railIndustry": 26,
+            "railLinks": 37,
+            "actions": {
+              "scout": 1,
+              "network": 19,
+              "build": 8,
+              "pass": 3,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 60,
+      "seed": 88139623,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 131,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 101,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 35,
+            "railIndustry": 39,
+            "railLinks": 19,
+            "actions": {
+              "network": 16,
+              "build": 12,
+              "sell": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 82,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 0,
+            "railIndustry": 19,
+            "railLinks": 9,
+            "actions": {
+              "build": 12,
+              "develop": 13,
+              "sell": 5,
+              "network": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 110,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 30,
+            "railIndustry": 12,
+            "railLinks": 40,
+            "actions": {
+              "network": 23,
+              "build": 4,
+              "sell": 3,
+              "scout": 1,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 135,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 105,
+          "components": {
+            "canalIndustry": 40,
+            "canalLinks": 0,
+            "railIndustry": 62,
+            "railLinks": 0,
+            "actions": {
+              "build": 17,
+              "develop": 4,
+              "sell": 8,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 61,
+      "seed": 88149596,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 78,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 48,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 2,
+            "railIndustry": 9,
+            "railLinks": 13,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "develop": 3,
+              "sell": 2,
+              "network": 5,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 44,
+            "railIndustry": 17,
+            "railLinks": 15,
+            "actions": {
+              "network": 13,
+              "build": 7,
+              "sell": 3,
+              "develop": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 67,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 37,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 0,
+            "railIndustry": 17,
+            "railLinks": 1,
+            "actions": {
+              "build": 13,
+              "develop": 4,
+              "sell": 2,
+              "network": 1,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 69,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 23,
+            "railIndustry": 5,
+            "railLinks": 4,
+            "actions": {
+              "network": 10,
+              "develop": 2,
+              "build": 5,
+              "scout": 2,
+              "sell": 2,
+              "pass": 9
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 62,
+      "seed": 88149596,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 94,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 40,
+            "railIndustry": 0,
+            "railLinks": 15,
+            "actions": {
+              "network": 22,
+              "build": 4,
+              "sell": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 63,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 2,
+            "railIndustry": 5,
+            "railLinks": 3,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "sell": 3,
+              "network": 3,
+              "develop": 3,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 25,
+            "railIndustry": 20,
+            "railLinks": 10,
+            "actions": {
+              "network": 11,
+              "build": 10,
+              "sell": 2,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 76,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 0,
+            "railIndustry": 20,
+            "railLinks": 8,
+            "actions": {
+              "build": 13,
+              "develop": 6,
+              "sell": 3,
+              "network": 5,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 63,
+      "seed": 88149596,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 84,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 54,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 14,
+            "railIndustry": 20,
+            "railLinks": 3,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "develop": 4,
+              "sell": 2,
+              "network": 7,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 6,
+            "canalLinks": 31,
+            "railIndustry": 27,
+            "railLinks": 25,
+            "actions": {
+              "network": 15,
+              "build": 11,
+              "scout": 1,
+              "sell": 2,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 119,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 89,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 3,
+            "railIndustry": 46,
+            "railLinks": 8,
+            "actions": {
+              "build": 13,
+              "develop": 4,
+              "sell": 8,
+              "network": 4,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 30,
+            "railIndustry": 14,
+            "railLinks": 32,
+            "actions": {
+              "scout": 2,
+              "network": 16,
+              "build": 7,
+              "pass": 4,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 64,
+      "seed": 88149596,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 37,
+            "canalLinks": 22,
+            "railIndustry": 25,
+            "railLinks": 2,
+            "actions": {
+              "network": 7,
+              "build": 9,
+              "scout": 2,
+              "develop": 2,
+              "sell": 2,
+              "pass": 12
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 62,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 2,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 4,
+              "sell": 3,
+              "scout": 1,
+              "network": 2,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 65,
+          "incomeBonus": 19,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 29,
+            "railIndustry": 0,
+            "railLinks": 3,
+            "actions": {
+              "network": 19,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 9
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 48,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 21,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 0,
+            "railIndustry": 0,
+            "railLinks": 1,
+            "actions": {
+              "build": 7,
+              "develop": 6,
+              "loan": 1,
+              "sell": 2,
+              "scout": 1,
+              "network": 1,
+              "pass": 14
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 65,
+      "seed": 88159569,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 71,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 41,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 8,
+            "railIndustry": 12,
+            "railLinks": 2,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 5,
+              "network": 3,
+              "sell": 1,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 33,
+            "railIndustry": 0,
+            "railLinks": 1,
+            "actions": {
+              "network": 11,
+              "build": 5,
+              "sell": 4,
+              "scout": 1,
+              "pass": 13
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 55,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 25,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 0,
+            "railIndustry": 5,
+            "railLinks": 0,
+            "actions": {
+              "build": 8,
+              "develop": 5,
+              "sell": 3,
+              "scout": 1,
+              "network": 2,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 99,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 27,
+            "railIndustry": 12,
+            "railLinks": 0,
+            "actions": {
+              "network": 9,
+              "build": 6,
+              "scout": 2,
+              "sell": 1,
+              "develop": 2,
+              "pass": 14
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 66,
+      "seed": 88159569,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 73,
+          "incomeBonus": 17,
+          "vpWithoutIncomeBonus": 56,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 39,
+            "railIndustry": 0,
+            "railLinks": 12,
+            "actions": {
+              "network": 20,
+              "build": 2,
+              "sell": 1,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 43,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 18,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 0,
+            "railIndustry": 0,
+            "railLinks": 2,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 3,
+              "sell": 2,
+              "network": 4,
+              "scout": 2,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 91,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 61,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 15,
+            "railIndustry": 21,
+            "railLinks": 4,
+            "actions": {
+              "network": 8,
+              "develop": 3,
+              "build": 8,
+              "sell": 2,
+              "pass": 13
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 51,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 21,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 3,
+            "actions": {
+              "build": 8,
+              "develop": 7,
+              "sell": 2,
+              "network": 4,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 67,
+      "seed": 88159569,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 66,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 36,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 1,
+            "railIndustry": 14,
+            "railLinks": 14,
+            "actions": {
+              "build": 9,
+              "loan": 1,
+              "develop": 7,
+              "sell": 1,
+              "network": 8,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 145,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 115,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 33,
+            "railIndustry": 40,
+            "railLinks": 19,
+            "actions": {
+              "network": 14,
+              "build": 12,
+              "sell": 4,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 89,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 59,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 0,
+            "railIndustry": 41,
+            "railLinks": 5,
+            "actions": {
+              "build": 12,
+              "develop": 9,
+              "sell": 4,
+              "network": 3,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 62,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 12,
+            "railIndustry": 1,
+            "railLinks": 18,
+            "actions": {
+              "scout": 2,
+              "network": 21,
+              "build": 4,
+              "sell": 3,
+              "pass": 4
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 68,
+      "seed": 88159569,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 99,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 24,
+            "railIndustry": 25,
+            "railLinks": 8,
+            "actions": {
+              "network": 9,
+              "develop": 1,
+              "build": 11,
+              "scout": 2,
+              "sell": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 68,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 5,
+            "railIndustry": 9,
+            "railLinks": 5,
+            "actions": {
+              "build": 11,
+              "loan": 1,
+              "develop": 8,
+              "sell": 1,
+              "network": 6,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 36,
+            "railIndustry": 15,
+            "railLinks": 18,
+            "actions": {
+              "network": 13,
+              "build": 7,
+              "sell": 6,
+              "develop": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 97,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 67,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 4,
+            "railIndustry": 28,
+            "railLinks": 8,
+            "actions": {
+              "build": 12,
+              "develop": 5,
+              "sell": 4,
+              "network": 4,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 69,
+      "seed": 88169542,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 63,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 33,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 0,
+            "railIndustry": 12,
+            "railLinks": 3,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "sell": 4,
+              "develop": 3,
+              "network": 3,
+              "scout": 2,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 87,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 31,
+            "railIndustry": 0,
+            "railLinks": 24,
+            "actions": {
+              "network": 23,
+              "build": 3,
+              "sell": 2,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 76,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 46,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 5,
+            "railIndustry": 26,
+            "railLinks": 3,
+            "actions": {
+              "build": 14,
+              "develop": 6,
+              "loan": 1,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 32,
+            "railIndustry": 26,
+            "railLinks": 8,
+            "actions": {
+              "network": 13,
+              "build": 10,
+              "develop": 1,
+              "sell": 1,
+              "scout": 2,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 70,
+      "seed": 88169542,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 93,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 71,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 40,
+            "railIndustry": 0,
+            "railLinks": 21,
+            "actions": {
+              "network": 25,
+              "build": 3,
+              "sell": 2,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 93,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 31,
+            "canalLinks": 0,
+            "railIndustry": 26,
+            "railLinks": 6,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 4,
+              "develop": 6,
+              "network": 2,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 18,
+            "railIndustry": 41,
+            "railLinks": 15,
+            "actions": {
+              "network": 11,
+              "develop": 1,
+              "build": 13,
+              "sell": 2,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 80,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 2,
+            "railIndustry": 13,
+            "railLinks": 5,
+            "actions": {
+              "build": 11,
+              "develop": 9,
+              "sell": 4,
+              "network": 3,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 71,
+      "seed": 88169542,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 70,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 40,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 3,
+            "railIndustry": 11,
+            "railLinks": 11,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 2,
+              "network": 7,
+              "develop": 3,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 30,
+            "railIndustry": 40,
+            "railLinks": 2,
+            "actions": {
+              "network": 11,
+              "build": 14,
+              "develop": 1,
+              "sell": 3,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 2,
+            "railIndustry": 24,
+            "railLinks": 20,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 4,
+              "develop": 2,
+              "network": 6,
+              "scout": 2,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 95,
+          "incomeBonus": 21,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 38,
+            "railIndustry": 5,
+            "railLinks": 15,
+            "actions": {
+              "scout": 2,
+              "network": 23,
+              "build": 3,
+              "sell": 3,
+              "pass": 3
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 72,
+      "seed": 88169542,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 35,
+            "railIndustry": 25,
+            "railLinks": 10,
+            "actions": {
+              "network": 11,
+              "develop": 1,
+              "build": 10,
+              "sell": 2,
+              "scout": 2,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 45,
+            "canalLinks": 6,
+            "railIndustry": 28,
+            "railLinks": 13,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "develop": 5,
+              "sell": 4,
+              "network": 7,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 94,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 35,
+            "railIndustry": 6,
+            "railLinks": 19,
+            "actions": {
+              "network": 18,
+              "build": 6,
+              "sell": 4,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 52,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 22,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 0,
+            "railIndustry": 7,
+            "railLinks": 2,
+            "actions": {
+              "build": 12,
+              "develop": 9,
+              "sell": 2,
+              "scout": 2,
+              "network": 1,
+              "pass": 6
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 73,
+      "seed": 88179515,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 98,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 6,
+            "railIndustry": 27,
+            "railLinks": 11,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 4,
+              "network": 5,
+              "develop": 6,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 22,
+            "railIndustry": 16,
+            "railLinks": 18,
+            "actions": {
+              "network": 16,
+              "build": 9,
+              "sell": 4,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 80,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 0,
+            "railIndustry": 20,
+            "railLinks": 13,
+            "actions": {
+              "build": 10,
+              "develop": 12,
+              "loan": 1,
+              "sell": 3,
+              "network": 4,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 25,
+            "railIndustry": 35,
+            "railLinks": 14,
+            "actions": {
+              "network": 14,
+              "build": 12,
+              "sell": 1,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 74,
+      "seed": 88179515,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 75,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 22,
+            "railIndustry": 0,
+            "railLinks": 6,
+            "actions": {
+              "network": 17,
+              "build": 5,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 42,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 19,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 0,
+            "railIndustry": 7,
+            "railLinks": 7,
+            "actions": {
+              "build": 10,
+              "loan": 2,
+              "develop": 6,
+              "sell": 1,
+              "network": 2,
+              "scout": 1,
+              "pass": 10
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 28,
+            "railIndustry": 31,
+            "railLinks": 7,
+            "actions": {
+              "network": 8,
+              "develop": 1,
+              "build": 9,
+              "sell": 2,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 61,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 31,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 9,
+            "railLinks": 3,
+            "actions": {
+              "build": 11,
+              "develop": 9,
+              "sell": 3,
+              "network": 1,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 75,
+      "seed": 88179515,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 90,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 60,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 0,
+            "railIndustry": 13,
+            "railLinks": 18,
+            "actions": {
+              "build": 12,
+              "loan": 1,
+              "sell": 5,
+              "develop": 5,
+              "network": 5,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 29,
+            "railIndustry": 35,
+            "railLinks": 6,
+            "actions": {
+              "network": 13,
+              "build": 12,
+              "scout": 2,
+              "sell": 2,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 84,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 54,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 0,
+            "railIndustry": 24,
+            "railLinks": 0,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "sell": 4,
+              "develop": 6,
+              "scout": 1,
+              "pass": 5
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 79,
+          "incomeBonus": 15,
+          "vpWithoutIncomeBonus": 64,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 35,
+            "railIndustry": 0,
+            "railLinks": 19,
+            "actions": {
+              "scout": 2,
+              "network": 22,
+              "build": 1,
+              "sell": 1,
+              "develop": 1,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 76,
+      "seed": 88179515,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 29,
+            "railIndustry": 16,
+            "railLinks": 6,
+            "actions": {
+              "network": 12,
+              "build": 8,
+              "sell": 3,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 74,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 44,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 1,
+            "railIndustry": 21,
+            "railLinks": 6,
+            "actions": {
+              "build": 14,
+              "loan": 1,
+              "sell": 3,
+              "network": 4,
+              "develop": 3,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 99,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 20,
+            "railIndustry": 10,
+            "railLinks": 21,
+            "actions": {
+              "network": 16,
+              "build": 7,
+              "sell": 6,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 70,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 40,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 16,
+            "railIndustry": 6,
+            "railLinks": 3,
+            "actions": {
+              "build": 11,
+              "develop": 6,
+              "sell": 1,
+              "network": 8,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 77,
+      "seed": 88189488,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 79,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 49,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 7,
+            "railIndustry": 10,
+            "railLinks": 4,
+            "actions": {
+              "build": 10,
+              "loan": 1,
+              "sell": 5,
+              "network": 4,
+              "scout": 1,
+              "pass": 11
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 92,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 37,
+            "railIndustry": 0,
+            "railLinks": 18,
+            "actions": {
+              "network": 20,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 7
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 82,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 52,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 4,
+            "railIndustry": 19,
+            "railLinks": 13,
+            "actions": {
+              "build": 9,
+              "develop": 4,
+              "network": 8,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "guided",
+          "vp": 67,
+          "incomeBonus": 26,
+          "vpWithoutIncomeBonus": 41,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 23,
+            "railIndustry": 0,
+            "railLinks": 1,
+            "actions": {
+              "network": 12,
+              "develop": 1,
+              "scout": 2,
+              "build": 4,
+              "sell": 2,
+              "pass": 13
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 78,
+      "seed": 88189488,
+      "seats": [
+        "search",
+        "neural",
+        "guided",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 92,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 22,
+            "railIndustry": 0,
+            "railLinks": 29,
+            "actions": {
+              "network": 26,
+              "build": 2,
+              "sell": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 67,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 37,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 4,
+            "actions": {
+              "build": 16,
+              "loan": 1,
+              "develop": 7,
+              "sell": 2,
+              "network": 2,
+              "scout": 1,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "guided",
+          "vp": 96,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 66,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 24,
+            "railIndustry": 31,
+            "railLinks": 8,
+            "actions": {
+              "network": 13,
+              "develop": 1,
+              "build": 11,
+              "scout": 1,
+              "pass": 4
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 103,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 8,
+            "railIndustry": 33,
+            "railLinks": 10,
+            "actions": {
+              "build": 13,
+              "develop": 4,
+              "sell": 5,
+              "network": 7,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 79,
+      "seed": 88189488,
+      "seats": [
+        "neural",
+        "guided",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 64,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 34,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 2,
+            "railIndustry": 9,
+            "railLinks": 10,
+            "actions": {
+              "build": 8,
+              "loan": 1,
+              "develop": 2,
+              "sell": 2,
+              "network": 10,
+              "scout": 1,
+              "pass": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 69,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 42,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 20,
+            "railIndustry": 4,
+            "railLinks": 7,
+            "actions": {
+              "network": 12,
+              "build": 6,
+              "sell": 2,
+              "scout": 2,
+              "pass": 11,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 77,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 47,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 0,
+            "railIndustry": 14,
+            "railLinks": 9,
+            "actions": {
+              "build": 10,
+              "develop": 2,
+              "sell": 4,
+              "network": 7,
+              "scout": 1,
+              "pass": 8
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 86,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 64,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 45,
+            "railIndustry": 0,
+            "railLinks": 6,
+            "actions": {
+              "scout": 2,
+              "network": 18,
+              "build": 3,
+              "sell": 2,
+              "pass": 7
+            }
+          }
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 80,
+      "seed": 88189488,
+      "seats": [
+        "guided",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 134,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 104,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 34,
+            "railIndustry": 44,
+            "railLinks": 22,
+            "actions": {
+              "network": 14,
+              "develop": 1,
+              "build": 14,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 0,
+            "railIndustry": 54,
+            "railLinks": 8,
+            "actions": {
+              "build": 15,
+              "loan": 1,
+              "develop": 7,
+              "sell": 7,
+              "network": 3,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 106,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 25,
+            "railIndustry": 5,
+            "railLinks": 42,
+            "actions": {
+              "network": 23,
+              "build": 5,
+              "sell": 3,
+              "develop": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 36,
+            "canalLinks": 6,
+            "railIndustry": 26,
+            "railLinks": 11,
+            "actions": {
+              "build": 13,
+              "develop": 10,
+              "sell": 3,
+              "network": 4
+            }
+          }
+        }
+      ],
+      "moves": 128
+    }
+  ],
+  "notes": [
+    "Same seed reused across a complete rotation of seats; ties share one win.",
+    "Search uses original engine transitions with sampled unknown future cards. World model uses learned transitions only.",
+    "Depth and retained width are shared. Model metadata records candidate selection; learned-pool-v1 ranks up to 32 candidates before keeping the requested width. Wall-clock cost is reported, not equalized.",
+    "VP follows this existing engine, including an end-game income bonus absent from the full tabletop rules. vpWithoutIncomeBonus only removes that bonus; it does not correct other rules differences.",
+    "Classic search uses heuristic state evaluation. Guided search uses learned terminal value with real engine transitions. World uses the value function recorded in model metadata.",
+    "Results measure this implementation, observation setting, opponent lineup and compute budget; they do not establish general architectural superiority.",
+    "Whole seed groups run on independent workers; timings include CPU contention."
+  ],
+  "execution": {
+    "workers": 4
+  },
+  "artifacts": {
+    "world-model.json": {
+      "directory": "world_model/experiments/score-v2/models",
+      "sha256": "90dc99f69b4ffe58cfe7783820d189626c4e1aba3900a036f6f7f96b45fcd2d1"
+    },
+    "neural-policy.json": {
+      "directory": "world_model/experiments/score-v2/models",
+      "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    }
+  }
+}
