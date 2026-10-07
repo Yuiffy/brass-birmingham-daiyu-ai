@@ -1,5 +1,9 @@
 # Brass Birmingham Daiyu AI
 
+> **独立桌游实验：** [马尼拉 · 船长竞价实验室](manila/README.md) 提供 3–5 人本地人机对局，
+> 用精确规则模型和配对模拟研究船长竞拍价格。在 `manila/` 中运行 `npm start`，打开
+> `http://127.0.0.1:5180`。其规则与 AI 独立于伯明翰，不需要加载伯明翰模型。
+
 `Brass Birmingham Daiyu AI` is an unofficial browser game and AI analysis project for
 **Brass: Birmingham**. It is a public AGPL-3.0 fork of
 [`artyom-morozov/fast_brass`](https://github.com/artyom-morozov/fast_brass), extending the Rust

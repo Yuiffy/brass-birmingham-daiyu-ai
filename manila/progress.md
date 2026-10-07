@@ -1,0 +1,21 @@
+Original prompt: 帮我找一个马尼拉桌游带AI版来玩，没有的话我们自己参考开源项目（或者完全重做）自己做一个。用我们最新分支调研的世界模型来辅助制作ai。最终目的是判断竞拍船长出价在什么范围内比较合理
+
+Visual thesis: A warm paper harbour chart, ink navy water and brass accents; the three routes dominate the workspace.
+Content plan: Harbour playfield, explicit next action, compact public player ledger, and an auction valuation inspector.
+Interaction thesis: Boats ease between track positions; action rows reveal expected returns; simulation runs in a worker without blocking play.
+
+Architecture: Dependency-free ES modules, Node static server, pure serializable simulation separate from canvas renderer and DOM controls. Seeded dice; JSON saves; exact rule world-model adapter. No external artwork or source code copied.
+
+Research: framist/manila is an MIT calculator, not a full game. Nanyang Trade Port uses different roles/rules. Michigan report omits auctions/shares and uses a ten-space track. Official Zoch English PDF downloaded to ignored output/manila-research/rules.pdf for audit. The requested latest world-model branch has not yet been located; clarification pending. Do not label the rule simulator a trained neural world model.
+
+2026-10-07: User clarified the earlier research may be on another unpushed computer and was likely MuZero; explicitly allowed deciding whether to use it. Decision: exact known dynamics plus counterfactual simulation, with no learned-dynamics claim.
+
+Completed: 3/4/5-player base-rule engine; legal actions; seeded dice; initial hidden-stock determinization preserving public supply/purchases; mortgages, redemption, blind passengers, insurance bankruptcy; pirates boarding/plunder routing; ordered small/large pilots; terminal wealth. Added interpretable baseline AI, exact dice DP, paired price-by-price rollouts through one/three voyages or terminal. Analysis runs in a browser worker; price bounds include confidence intervals, relative lead and terminal win-rate; explicitly marks censored test ranges. Added browser UI, observing AI, save/restore/import/export, F fullscreen, responsive layout and DOM controls.
+
+Validation: 24 Node tests passed, including 18 complete simulation games and hidden-hand swap invariance. Supplied web-game Playwright client ran twice and canvas screenshots were inspected. Browser QA exercised invalid bids and setup, winning auction, buying/loading, placement, rolling and settlement, save reload, rules dialog, watch/pause, JSON export/import and invalid import rejection. Actual button-driven games completed for 3, 4 and 5 players (5/6/6 voyages). 390x844 mobile has no document overflow. Inspected desktop and mobile gameplay screenshots; corrected low-contrast crew count labels and moved primary controls directly below board.
+
+Completed benchmark: 64 paired samples, prices 1–40, seed 20261007, four players. Corrected style application so the observer always retains balanced continuation policy and only opponents change; re-ran cautious/aggressive scenarios. Balanced: mean acceptable 1–26, lower-CI 1–20. Cautious opponents: mean 1–29, lower-CI 1–23. Aggressive opponents: mean 1–13, lower-CI 1–6. Cross-model intersections 1–13 / 1–6. Earlier uncorrected cross-style results are superseded. Raw combined report in ignored manila/output/bid-benchmark.json; human-readable report in EXPERIMENT-2026-10-07.md. These are exploratory baseline-policy results, not human expert recommendations.
+
+Final QA: terminal analysis completed in browser worker and rendered price curve, confidence band, terminal win rates and censored-range notice. Browser console zero errors after adding inline favicon. Final syntax checks and git diff --check passed. Development server remains running at http://127.0.0.1:5180 for the user; browser opened via Codex panel. Code is on codex/manila-ai-auction, no remote push.
+
+Limitations / future work: AI is a rule heuristic baseline, not a trained or calibrated expert. Opponent initial-stock posterior is uniform conditional on public card counts, not inferred from bidding behaviour. A MuZero-style policy/value learner or information-set tree search can replace this baseline after held-out evaluation against a frozen opponent pool. No neural training or benchmark wins against humans claimed. No deployment or remote push performed.

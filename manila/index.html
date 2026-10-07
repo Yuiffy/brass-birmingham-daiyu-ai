@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>马尼拉 · 船长竞价实验室</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><a class="brand" href="./"><span class="seal">M</span><span>马尼拉<small>MANILA / CAPTAIN LAB</small></span></a><div class="toolbar"><select id="count" aria-label="玩家人数"><option value="3">3 人</option><option value="4" selected>4 人</option><option value="5">5 人</option></select><label class="seed-label">种子 <input id="seed" type="number" value="20261007" aria-label="游戏种子"></label><button id="restart">新开一局</button><button id="rules-open" class="quiet">玩法</button></div></header>
+  <main>
+    <section class="workspace">
+      <div class="board-heading"><div><span class="eyebrow">THE HARBOUR CHART</span><h1>港口航线</h1></div><div id="round-status"></div></div>
+      <div class="chart"><canvas id="board" width="1080" height="540" aria-label="三条航线，船从左向右驶向马尼拉"></canvas></div>
+      <section class="turn"><div class="turn-heading"><h2 id="turn-title"></h2><span id="turn-hint"></span></div><div id="controls"></div><div id="message" role="status" aria-live="polite"></div></section>
+      <div id="market" class="market"></div>
+      <div class="players-heading"><h2>商人账簿</h2><span>初始股票保密 · 公开购股可见</span></div>
+      <div id="players" class="players"></div>
+      <details class="journal"><summary>航海日志</summary><ol id="log"></ol></details>
+    </section>
+    <aside>
+      <div class="inspector-title"><span class="eyebrow">AUCTION INTELLIGENCE</span><h2>船长值多少钱？</h2><p>同一手股票、同一组骰子。<br>比较拿下船长与现在退出的结果。</p></div>
+      <div id="auction-status" class="auction-status"></div>
+      <div class="experiment-options"><label>模拟范围<select id="horizon"><option value="1">本航次 · 当前市值</option><option value="3">未来 3 航次 · 当前市值</option><option value="0" selected>直至终局 · 实际财富</option></select></label><div class="option-row"><label>样本数<select id="samples"><option value="32" selected>32 · 快速</option><option value="64">64 · 初探</option><option value="256">256 · 复核</option><option value="1024">1024 · 深入</option></select></label><label>出价测到<input id="max-bid" type="number" min="1" max="200" value="30"></label></div><label>对手策略<select id="style"><option value="balanced">均衡基线</option><option value="cautious">保守竞价</option><option value="aggressive">积极竞价</option></select></label></div>
+      <button id="analyze" class="primary full">计算合理出价</button><div id="analysis-progress" aria-live="polite"></div>
+      <div id="analysis-result" class="analysis-result"><div class="empty-chart"><span>Δ</span><p>在你的竞拍回合运行模拟，<br>找到收益归零的位置。</p></div></div>
+      <details class="method"><summary>如何理解结果</summary><p>均值可接受：模拟平均财富增益不小于零的价格。谨慎上限：均值的近似 95% 置信区间下界不小于零。每个价格都会重新模拟现金约束与抵押。</p><p>这是“以此价格获胜是否值得”的条件估值，不是成交概率，也不是最优拍卖策略。终局胜率仅针对所选基线对手。</p><p>当前使用已知规则的精确状态转移 + 启发式策略模拟。骰子概率可精确计算；置信区间不包含策略误差。请切换对手竞价风格复核，当前 AI 尚未经过人类棋力校准。</p></details>
+      <div class="save-tools"><button id="save" class="quiet">导出存档</button><button id="load" class="quiet">导入存档</button><button id="export-analysis" class="quiet" disabled>导出分析</button><input id="load-file" type="file" accept="application/json" hidden></div>
+    </aside>
+  </main>
+  <dialog id="rules"><button id="rules-close" class="dialog-close" aria-label="关闭玩法">×</button><span class="eyebrow">A FAR-EASTERN BUSINESS CONTEST</span><h2>一场航海，三个决定</h2><p><b>竞拍船长：</b>轮流加价或永久退出本轮。赢家付款，可购一张股票；选择三种货物，设置 0–5 的起点，总和必须是 9。所有人放弃则前任免费续任。</p><p><b>部署帮手：</b>船长先手。船上帮手平分成功货物利润，港口和船厂按到达船数支付 6 / 8 / 15。可选海盗、大小领航员和保险。停止部署后本航次不能再放置。三人局先部署两轮再掷第一轮骰子。</p><p><b>航行三次：</b>每次掷骰前部署；第三次掷骰前小领航员先动，大领航员后动。超过 13 立即到港。第二次恰好 13 可被海盗登船；第三次恰好 13 会被劫掠，无海盗则到港。海盗船长决定被劫货物去港口或船厂。</p><p><b>股票与财富：</b>成功货物价格按 0 → 5 → 10 → 15 → 20 → 30 上升。任一达到 30 则结束。现金 + 股票当前价值 − 每张抵押股 15 为总财富。抵押借 12，赎回付 15；支付不足时自动抵押最低市值股票。保险不足必须贷款，耗尽支付能力后的缺口由银行补足。</p><p>当前为原版基础规则，不启用“海盗挤掉船员”变体。自动保存到本机浏览器。可以让 AI 代走，也可以只观察 AI 对局。</p><a href="https://raw.githubusercontent.com/framist/manila/master/SR-Manila-en.pdf" target="_blank" rel="noreferrer">查看 Zoch 英文规则书 ↗</a></dialog>
+  <script type="module" src="app.mjs"></script>
+</body></html>
