@@ -67,3 +67,23 @@ AI 的装载、部署、领航和后续竞拍使用可解释启发式策略。�
 所有程序、UI 和画布图形从零编写，没有复制以上项目源代码或商业游戏美术。保留所在仓库 AGPL-3.0 授权；非官方粉丝与研究项目。
 
 模块：`engine.mjs` 规则、合法动作、观察 / 隐藏信息采样；`ai.mjs` 策略、骰子动态规划和反事实模拟；`worker.mjs` 后台分析；`app.mjs` UI / 存档 / 画布；`tests/rules.test.mjs` 边界与完整对局回归。
+
+## 完整 AI 对战比较
+
+[2026-10-07 对战报告](reports/2026-10-07/README.md)包含三、四、五人局的终局财富分布、均值 / 最低 / 最高 / 分位数、共享胜率、船长成交价及抵押统计。原始逐局日志压缩后随报告提交，可由种子复现。
+
+六种策略：均衡、竞价上限减 3 的保守策略、加 3 的积极策略、即时收益部署、随机合法部署，以及精确规则模型前瞻（默认最多 4 个候选 × 8 个重采样，模拟到本航次结算）。随机策略仅部署随机；前瞻策略竞价沿用均衡，当前没有 MuZero 训练。策略模块可独立扩展，尚未接入游戏 UI 的对手选择。
+
+在 `manila` 目录运行：
+
+```powershell
+npm run tournament -- --seeds 128 --strategies balanced,cautious,aggressive,greedy,random --players 3,4,5 --workers 4 --validate --output output/tournament-focal
+npm run tournament -- --seeds 64 --strategies search --players 3,4,5 --workers 4 --validate --output output/tournament-search
+npm run tournament -- --mode mixed --seeds 128 --strategies balanced,cautious,aggressive,greedy --players 4 --workers 4 --validate --output output/tournament-mixed
+node tools/report-tournament.mjs reports/2026-10-07
+python tools/plot-tournament.py reports/2026-10-07
+```
+
+仅制图需要 Python / matplotlib，可安装到独立虚拟环境。比赛本身只有 Node 标准库依赖。`--validate` 在每步核验合法动作及资产不变量；对局必须到终局，超限会报错，不能把截断财富当最终分数。输出目录写入 manifest（配置、Node 版本及模拟源文件 SHA256）、原始 JSONL、JSON / CSV 汇总。报告脚本核验全部局数、编号和源哈希后才汇总；如果规则或策略已改动，请先重新跑比赛。
+
+挑战赛按全部座位轮换，其他玩家固定均衡；混合赛跑四种策略的全部 24 种座位 / 手牌分配排列。骰子按航次、掷骰轮、货物编码，独立于决策随机流。均值与胜率区间按种子分组，同种子的轮换不当作独立样本；不同样本量只用共同种子做配对比较。绝对财富分数依赖人数、对手与游戏长度，应结合胜率阅读。
