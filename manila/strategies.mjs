@@ -1,5 +1,6 @@
 import { GOODS, PRICES, clone, rng, legalActions, transition, determinize, wealth, capacity } from './engine.mjs';
 import { policy, rankActions, setupScore, positionValue, reserveBid } from './ai.mjs';
+import { AUCTION_FORMULAS, formulaLimit } from './auction-formulas.mjs';
 
 export const STRATEGIES = {
   balanced: { name: '均衡', description: '原版均衡启发式，包含未来船员分摊和股票期权估计。' },
@@ -14,6 +15,7 @@ export const STRATEGIES = {
 // arbitrary candidate offsets do not require mutation of a global registry.
 export function strategyDefinition(id) {
   if (STRATEGIES[id]) return STRATEGIES[id];
+  if (AUCTION_FORMULAS[id]) return { ...AUCTION_FORMULAS[id], formula: true, description: '仅替换竞拍估值；购股、装载、部署沿用原启发式。' };
   const match = /^(bid|look|relative)(-liquid)?\+(\d+)$/.exec(id);
   if (!match || Number(match[3]) > 96) return null;
   const kind=match[1], liquid=Boolean(match[2]), offset=Number(match[3]);
@@ -107,6 +109,10 @@ export function searchPolicy(s, random, { samples = 8, width = 4, objective = 'w
 export function chooseStrategy(s, id, random = () => .5, searchOptions = {}) {
   const definition=strategyDefinition(id);
   if (!definition) throw Error(`未知策略 ${id}`);
+  if (definition.formula) {
+    if (s.phase === 'auction') return s.bid + 1 <= formulaLimit(s, id, random) ? { type: 'bid', amount: s.bid + 1 } : { type: 'pass' };
+    return policy(s, 'balanced', random);
+  }
   if(definition.kind){
     if(s.phase==='auction')return auctionPolicy(s,definition);
     if(definition.kind!=='bid')return searchPolicy(s,random,{...searchOptions,objective:definition.kind==='relative'?'relative':'wealth'});

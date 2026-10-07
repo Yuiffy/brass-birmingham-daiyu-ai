@@ -111,4 +111,23 @@ node tools/report-evolution.mjs output/evolution-restored output/evolution-rebui
 python tools/plot-evolution.py output/evolution-rebuilt
 ```
 
-恢复工具验证压缩日志及源代码哈希，重新计算各阶段统计。旧的第一轮报告重建需使用其冻结提交 `0f3f47a`；本轮扩展了策略接口与比赛日志，历史数据不冒充当前代码生成的结果。
+恢复工具验证压缩日志及源代码哈希，重新计算各阶段统计。旧的第一轮报告重建需使用冻结提交 `0f3f47a`；竞价升级报告需使用 `280e649`。历史数据不冒充当前代码生成的结果。
+
+## 替换竞拍估值公式
+
+[竞拍估值公式实验](reports/2026-10-07-formulas/README.md)检验基础公式本身，而不只是加价偏移。原来的固定项 4、购股权重 0.7、持股控制权重 0.25 均为最初手工设定，没有理论推导或训练依据。
+
+`auction-formulas.mjs` 提供固定上限、线性权重、公开持股优势、资金约束和单航次 / 终局配对模拟估值。所有候选真实购股、装载、部署沿用同一启发式，只替换竞拍决策。模拟报价抽样 8 个隐藏持股世界，两次配对估计赢得船长相对立即退出的收益，按局部单位成本修正上限；不是精确盈亏平衡求解或 MuZero。终局版本模拟到真正结束，单航次版本仍有手工股票远期补丁。
+
+从报告所在的冻结提交重跑全部赛程：
+
+```powershell
+Get-ChildItem reports/2026-10-07-formulas/specs/*.json | Sort-Object Name | ForEach-Object {
+  npm run league -- $_.FullName output/formulas-replayed 8
+}
+node tools/report-evolution.mjs output/formulas-replayed output/formulas-replayed-report
+node tools/report-formulas.mjs output/formulas-replayed-report
+python tools/plot-formulas.py output/formulas-replayed-report
+```
+
+新研究保留全部筛选、独立确认及居民配对复核，使用种子分组区间；不把筛选胜率或单一对手池的胜出当成全局最优。公式策略通过 `formula-*` ID 在比赛工具中调用，游戏页面尚未增加这些对手选项。

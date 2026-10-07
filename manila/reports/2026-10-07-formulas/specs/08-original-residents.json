@@ -1,0 +1,24 @@
+{
+  "stage": "08-original-residents",
+  "format": "challenge",
+  "seeds": 512,
+  "base": 108700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid+3",
+    "bid-liquid+3",
+    "formula-b7-o100-c0",
+    "formula-fixed14",
+    "formula-b7-o70-c0"
+  ],
+  "opponents": [
+    "bid+3",
+    "bid+3",
+    "bid+3"
+  ],
+  "resident": "bid+3",
+  "selectionReason": "Freeze best confirmed linear formula, previous fixed-cap finalist, direct control ablation, and both original references; 512 unseen seeds with matched resident self-play controls."
+}

@@ -14,7 +14,7 @@ export async function runTournament({tasks,config,output,workers=4}) {
   workers=Math.max(1,Math.min(workers,availableParallelism(),tasks.length));
   await mkdir(output,{recursive:true});
   const hashes={};
-  for(const file of ['engine.mjs','ai.mjs','strategies.mjs','tournament.mjs','league.mjs','tools/tournament-runner.mjs','tools/tournament-worker.mjs','tools/evolve.mjs'])hashes[file]=createHash('sha256').update(await readFile(path.join(root,file))).digest('hex');
+  for(const file of ['engine.mjs','ai.mjs','auction-formulas.mjs','strategies.mjs','tournament.mjs','league.mjs','tools/tournament-runner.mjs','tools/tournament-worker.mjs','tools/evolve.mjs'])hashes[file]=createHash('sha256').update(await readFile(path.join(root,file))).digest('hex');
   const ids=[...new Set(tasks.flatMap(t=>t.lineup))];
   const manifest={schema:2,config,workers,scheduledGames:tasks.length,node:process.version,sourceSHA256:hashes,startedAt:new Date().toISOString(),strategyDescriptions:Object.fromEntries(ids.map(id=>[id,strategyDefinition(id)]))};
   await writeFile(path.join(output,'manifest.json'),JSON.stringify(manifest,null,2));

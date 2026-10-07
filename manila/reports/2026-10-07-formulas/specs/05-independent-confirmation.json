@@ -1,0 +1,17 @@
+{
+  "stage": "05-independent-confirmation",
+  "format": "mixed",
+  "seeds": 128,
+  "base": 105700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid+3",
+    "bid-liquid+3",
+    "formula-fixed14",
+    "formula-fixed18"
+  ],
+  "selectionReason": "Top two deterministic formulas from direct pair league; 128 fresh seeds x all 24 policy-to-hand/seat assignments. Separate model confirmation uses the same original and deterministic winner controls."
+}

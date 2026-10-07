@@ -8,6 +8,7 @@
     "benchmark": "node tools/benchmark.mjs",
     "tournament": "node tools/tournament.mjs",
     "evolve": "node tools/evolve.mjs",
-    "league": "node tools/league-batch.mjs"
+    "league": "node tools/league-batch.mjs",
+    "formulas": "node tools/formula-study.mjs"
   }
 }

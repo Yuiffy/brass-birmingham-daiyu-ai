@@ -1,0 +1,17 @@
+{
+  "stage": "06-model-confirmation",
+  "format": "mixed",
+  "seeds": 48,
+  "base": 106700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid+3",
+    "formula-fixed14",
+    "formula-mcfull-wealth",
+    "formula-mcfull-relative"
+  ],
+  "selectionReason": "Top two sampled formulas versus original +3 and best deterministic formula; 48 fresh seeds x all 24 assignments. Smaller predeclared compute budget than deterministic confirmation; never pool their ranks."
+}

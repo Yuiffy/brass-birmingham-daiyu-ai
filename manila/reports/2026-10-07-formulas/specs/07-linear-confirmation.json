@@ -1,0 +1,17 @@
+{
+  "stage": "07-linear-confirmation",
+  "format": "mixed",
+  "seeds": 128,
+  "base": 107700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid+3",
+    "formula-b10-o35-c0",
+    "formula-b7-o100-c0",
+    "formula-b7-o70-c0"
+  ],
+  "selectionReason": "Independent extension: top two linear candidates from the pair league and direct control-term ablation, separately from fixed-cap finalists. Freeze before reading new seeds; preserve all earlier stages."
+}

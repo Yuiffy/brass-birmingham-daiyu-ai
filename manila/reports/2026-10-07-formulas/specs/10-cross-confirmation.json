@@ -1,0 +1,17 @@
+{
+  "stage": "10-cross-confirmation",
+  "format": "mixed",
+  "seeds": 64,
+  "base": 110700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid+3",
+    "bid-liquid+3",
+    "formula-b7-o100-c0",
+    "formula-mcfull-relative"
+  ],
+  "selectionReason": "Freeze winners of both formula families; 64 unseen seeds x all 24 assignments. Directly compare model winner, linear winner and both original references in one strong opponent pool."
+}

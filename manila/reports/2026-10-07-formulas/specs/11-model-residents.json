@@ -1,0 +1,22 @@
+{
+  "stage": "11-model-residents",
+  "format": "challenge",
+  "seeds": 32,
+  "base": 111700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "formula-mcfull-relative",
+    "formula-b7-o100-c0",
+    "bid+3"
+  ],
+  "opponents": [
+    "formula-mcfull-relative",
+    "formula-mcfull-relative",
+    "formula-mcfull-relative"
+  ],
+  "resident": "formula-mcfull-relative",
+  "selectionReason": "Selected model is copied into all three opponents; matched self-play control, 32 fresh seed groups x four seats. Predeclared smaller compute budget; intervals may be broad."
+}

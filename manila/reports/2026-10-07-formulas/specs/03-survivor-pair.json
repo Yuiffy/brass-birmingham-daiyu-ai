@@ -1,0 +1,21 @@
+{
+  "stage": "03-survivor-pair",
+  "format": "pair",
+  "seeds": 48,
+  "base": 103700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "strategies": [
+    "bid+3",
+    "bid-liquid+3",
+    "formula-b7-o100-c0",
+    "formula-b10-o35-c0",
+    "formula-fixed18",
+    "formula-b4-o70-c0",
+    "formula-b4-o35-c0",
+    "formula-fixed14"
+  ],
+  "selectionReason": "Top six average challenger win rates across both screens; now directly compete in all four compositions"
+}

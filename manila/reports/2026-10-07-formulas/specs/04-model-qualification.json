@@ -1,0 +1,26 @@
+{
+  "stage": "04-model-qualification",
+  "format": "challenge",
+  "seeds": 48,
+  "base": 104700001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid+3",
+    "bid-liquid+3",
+    "formula-fixed14",
+    "formula-fixed18",
+    "formula-mcround-wealth",
+    "formula-mcround-relative",
+    "formula-mcfull-wealth",
+    "formula-mcfull-relative"
+  ],
+  "opponents": [
+    "bid+3",
+    "formula-fixed14",
+    "formula-fixed18"
+  ],
+  "selectionReason": "Terminal/one-voyage counterfactual quotes; identical seed/hand controls against selected strong formulas"
+}
