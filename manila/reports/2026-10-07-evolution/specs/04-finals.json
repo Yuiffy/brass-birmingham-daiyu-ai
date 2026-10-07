@@ -1,0 +1,17 @@
+{
+  "stage": "04-finals",
+  "format": "final",
+  "seeds": 64,
+  "base": 64000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid-liquid+3",
+    "bid+3",
+    "relative-liquid+3",
+    "relative+3"
+  ],
+  "selectionReason": "03-models"
+}

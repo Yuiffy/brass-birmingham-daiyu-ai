@@ -1,0 +1,16 @@
+{
+  "stage": "09-critical-pair",
+  "format": "pair",
+  "seeds": 256,
+  "base": 108000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "strategies": [
+    "bid+3",
+    "bid-liquid+3",
+    "bid+6"
+  ],
+  "selectionReason": "The 32-seed invasion estimates changed substantially across seed blocks and were inconclusive. Resolve the central +3 versus +6 contest on 256 fresh seeds with all composition/seat rotations."
+}

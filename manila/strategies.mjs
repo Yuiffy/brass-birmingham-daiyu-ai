@@ -1,5 +1,5 @@
-import { GOODS, PRICES, clone, rng, legalActions, transition, determinize, wealth } from './engine.mjs';
-import { policy, rankActions, setupScore, positionValue } from './ai.mjs';
+import { GOODS, PRICES, clone, rng, legalActions, transition, determinize, wealth, capacity } from './engine.mjs';
+import { policy, rankActions, setupScore, positionValue, reserveBid } from './ai.mjs';
 
 export const STRATEGIES = {
   balanced: { name: '均衡', description: '原版均衡启发式，包含未来船员分摊和股票期权估计。' },
@@ -9,6 +9,30 @@ export const STRATEGIES = {
   random: { name: '随机部署', description: '部署阶段在合法动作中均匀随机，含停止；其余阶段沿用均衡。' },
   search: { name: '模型前瞻', description: '每次重采样隐藏股，最多 4 个候选 × 8 个样本模拟至本航次结算，使用股票远期启发式作叶估值；后续策略与竞价沿用均衡。不是 MuZero 或树搜索。' },
 };
+
+// Keep historical IDs intact. League variants are parsed in every worker, so
+// arbitrary candidate offsets do not require mutation of a global registry.
+export function strategyDefinition(id) {
+  if (STRATEGIES[id]) return STRATEGIES[id];
+  const match = /^(bid|look|relative)(-liquid)?\+(\d+)$/.exec(id);
+  if (!match || Number(match[3]) > 96) return null;
+  const kind=match[1], liquid=Boolean(match[2]), offset=Number(match[3]);
+  return {kind,liquid,offset,name:`${kind==='bid'?'积极':kind==='look'?'前瞻财富':'前瞻领先'}${liquid?'保留资金':''}+${offset}`,description:`均衡竞价上限增加 ${offset}；${liquid?'支付能力至少保留 6 比索；':''}${kind==='bid'?'原部署启发式':`精确规则单航次前瞻，叶估值目标为${kind==='look'?'自身财富':'自身减最强对手财富'}，计算预算由比赛配置指定`}。`};
+}
+
+function auctionPolicy(s, definition) {
+  const available=capacity(s.players[s.actor]);
+  const limit=Math.min(available-(definition.liquid?6:0),reserveBid(s,s.actor)+definition.offset);
+  return s.bid+1<=limit?{type:'bid',amount:s.bid+1}:{type:'pass'};
+}
+
+function rolloutPolicy(s, ids, random) {
+  const id=ids?.[s.actor] || 'balanced', definition=strategyDefinition(id);
+  if (definition?.kind && s.phase==='auction')return auctionPolicy(s,definition);
+  // Model-based opponents use their heuristic continuation in these rollouts;
+  // recursively nesting their planners would change the fixed compute budget.
+  return policy(s, ['balanced','cautious','aggressive','random'].includes(id)?id:'balanced',random);
+}
 
 // A cargo-indexed exogenous tape keeps dice comparable when policies change order,
 // skip finished boats, or reach different turn counts. No strategy sees this seed.
@@ -46,7 +70,7 @@ function leafValue(s, p) {
   return wealth(s, p) + .4 * option;
 }
 
-export function searchPolicy(s, random, { samples = 8, width = 4 } = {}) {
+export function searchPolicy(s, random, { samples = 8, width = 4, objective = 'wealth', rolloutStrategies } = {}) {
   if (!['placement','setup','pilot-small','pilot-large','boarding','pirate-route'].includes(s.phase)) return policy(s, 'balanced', random);
   const ranked = rankActions(s);
   if (ranked.length === 1) return ranked[0].action;
@@ -71,17 +95,23 @@ export function searchPolicy(s, random, { samples = 8, width = 4 } = {}) {
       let steps = 0;
       while (t.phase !== 'finished' && t.voyage === voyage) {
         if (++steps > 250) throw Error('前瞻模拟超出单航次动作上限');
-        const action = policy(t, 'balanced', tieRandom);
+        const action = rolloutPolicy(t, rolloutStrategies, tieRandom);
         transition(t, action, action.type === 'roll' ? cargoDice(t, seed) : null);
       }
-      totals[c] += leafValue(t, actor);
+      totals[c] += leafValue(t, actor) - (objective==='relative'?Math.max(...t.players.map((_,p)=>p===actor?-Infinity:leafValue(t,p))):0);
     }
   }
   return candidates[totals.indexOf(Math.max(...totals))].action;
 }
 
 export function chooseStrategy(s, id, random = () => .5, searchOptions = {}) {
-  if (!STRATEGIES[id]) throw Error(`未知策略 ${id}`);
+  const definition=strategyDefinition(id);
+  if (!definition) throw Error(`未知策略 ${id}`);
+  if(definition.kind){
+    if(s.phase==='auction')return auctionPolicy(s,definition);
+    if(definition.kind!=='bid')return searchPolicy(s,random,{...searchOptions,objective:definition.kind==='relative'?'relative':'wealth'});
+    return policy(s,'balanced',random);
+  }
   if (id === 'greedy') return greedyPolicy(s, random);
   if (id === 'search') return searchPolicy(s, random, searchOptions);
   return policy(s, id, random);

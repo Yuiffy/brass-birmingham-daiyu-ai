@@ -1,0 +1,26 @@
+{
+  "stage": "06-higher-models",
+  "format": "challenge",
+  "seeds": 32,
+  "base": 53000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid+3",
+    "bid-liquid+3",
+    "look+6",
+    "relative+6",
+    "look+9",
+    "relative+9",
+    "look+12",
+    "relative+12"
+  ],
+  "opponents": [
+    "bid+3",
+    "bid-liquid+3",
+    "bid+5"
+  ],
+  "selectionReason": "Check interaction of stronger auction reserves and both planner objectives on the same seeds/opponent pool as stage 03, even though these offsets lost the heuristic refinement."
+}

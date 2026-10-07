@@ -1,0 +1,22 @@
+{
+  "stage": "01-screen",
+  "format": "pair",
+  "seeds": 32,
+  "base": 31000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "strategies": [
+    "bid+3",
+    "bid+6",
+    "bid+9",
+    "bid+12",
+    "bid+18",
+    "bid+24",
+    "bid+36",
+    "bid+48",
+    "bid+60"
+  ],
+  "selectionReason": "Initial preset league stage"
+}

@@ -1,5 +1,5 @@
 import { createGame, clone, rng, wealth, capacity, apply, transition } from './engine.mjs';
-import { STRATEGIES, chooseStrategy, cargoDice } from './strategies.mjs';
+import { STRATEGIES, strategyDefinition, chooseStrategy, cargoDice } from './strategies.mjs';
 
 export function quantile(values, q) {
   if (!values.length) return null;
@@ -16,27 +16,32 @@ export function describe(values) {
   return { n, mean, min: Math.min(...values), max: Math.max(...values), sd, p05: quantile(values,.05), p25: quantile(values,.25), median: quantile(values,.5), p75: quantile(values,.75), p95: quantile(values,.95), histogram: [...bins].sort((a,b)=>a[0]-b[0]).map(([lower,count])=>({lower,upper:lower+20,count})) };
 }
 
-export function playMatch({ lineup, seed, rotation = 0, initialCaptain = 0, validate = false, searchOptions = {} }) {
-  if (!lineup.every(id => STRATEGIES[id])) throw Error('参赛策略无效');
+export function playMatch({ lineup, seed, rotation = 0, seatOrder, initialCaptain = 0, validate = false, searchOptions = {} }) {
+  if (!lineup.every(id => strategyDefinition(id))) throw Error('参赛策略无效');
   const n = lineup.length, s = createGame(n, seed), shuffledHands = s.players.map(p => clone(p));
+  const identities=seatOrder||Array.from({length:n},(_,seat)=>(seat-rotation+n)%n);
+  if(identities.length!==n||new Set(identities).size!==n||identities.some(i=>!Number.isInteger(i)||i<0||i>=n))throw Error('座位身份排列无效');
+  const identitySeats=Array.from({length:n},(_,i)=>identities.indexOf(i));
   // Rotate the SAME identities and hands together. The oldest/first bidder remains
   // physical seat zero, so a complete rotation block controls initial seat advantage.
-  for (let seat = 0; seat < n; seat++) s.players[seat] = shuffledHands[(seat - rotation + n) % n];
-  const seatStrategies = Array.from({length:n}, (_, seat) => lineup[(seat-rotation+n)%n]);
+  for (let seat = 0; seat < n; seat++) s.players[seat] = shuffledHands[identities[seat]];
+  const seatStrategies = identities.map(i=>lineup[i]);
   s.captain = initialCaptain; s.actor = initialCaptain;
   const randoms = lineup.map((_, identity) => rng((seed ^ Math.imul(identity+1,0x45d9f3b)) >>> 0));
   const decisions = Array(n).fill(0), captainWins = Array(n).fill(0), bidSpent = Array(n).fill(0), placements = Array(n).fill(0), debtMax = Array(n).fill(0);
-  let steps = 0;
+  let steps = 0, auctionStart=null;
+  const auctionStarts=new Map();
   const started = performance.now();
   while (s.phase !== 'finished') {
     if (++steps > 6000 || s.voyage > 80) throw Error(`对局未结束：seed=${seed}, ${lineup.join('/')}`);
-    const seat=s.actor, identity=(seat-rotation+n)%n, phase=s.phase;
-    const action=chooseStrategy(s,seatStrategies[seat],randoms[identity],searchOptions);
+    const seat=s.actor, identity=identities[seat], phase=s.phase;
+    if(phase==='auction'&&!auctionStart){auctionStart={market:[...s.market],cash:s.players.map(p=>p.cash),shares:s.players.map(p=>[...p.shares]),mortgages:s.players.map(p=>[...p.mortgages])};auctionStarts.set(s.voyage,auctionStart);}
+    const action=chooseStrategy(s,seatStrategies[seat],randoms[identity],{...searchOptions,rolloutStrategies:seatStrategies});
     decisions[seat]++;
     if(action.type==='place')placements[seat]++;
     const dice=action.type==='roll'?cargoDice(s,seed ^ 0x9e3779b9):null;
     if(validate)apply(s,action,dice);else transition(s,action,dice);
-    if(phase==='auction'&&s.phase==='setup'){captainWins[s.captain]++;bidSpent[s.captain]+=s.bidder===null?0:s.bid;}
+    if(phase==='auction'&&s.phase==='setup'){captainWins[s.captain]++;bidSpent[s.captain]+=s.bidder===null?0:s.bid;auctionStart=null;}
     if(validate){
       for(const p of s.players){if(p.cash<0||!Number.isFinite(p.cash)||p.mortgages.some((m,g)=>m>p.shares[g]))throw Error('资产不变量失败');}
       for(let g=0;g<4;g++)if(s.supply[g]+s.players.reduce((v,p)=>v+p.shares[g],0)!==5)throw Error('股份不守恒');
@@ -44,14 +49,14 @@ export function playMatch({ lineup, seed, rotation = 0, initialCaptain = 0, vali
     s.players.forEach((p,i)=>debtMax[i]=Math.max(debtMax[i],p.mortgages.reduce((a,b)=>a+b,0)));
   }
   const scores=s.players.map((_,p)=>wealth(s,p)),max=Math.max(...scores),ties=scores.filter(v=>v===max).length;
-  return {seed,rotation,players:n,lineup,seatStrategies,voyages:s.voyage,steps,elapsedMs:performance.now()-started,
-    results:s.players.map((p,seat)=>({identity:(seat-rotation+n)%n,seat,strategy:seatStrategies[seat],score:scores[seat],cash:p.cash,stockValue:scores[seat]-p.cash+15*p.mortgages.reduce((a,b)=>a+b,0),mortgages:p.mortgages.reduce((a,b)=>a+b,0),maxMortgages:debtMax[seat],win:scores[seat]===max?1/ties:0,rank:1+scores.filter(v=>v>scores[seat]).length,captainWins:captainWins[seat],bidSpent:bidSpent[seat],placements:placements[seat],decisions:decisions[seat]})),market:s.market,
-    auctionHistory:s.history.map(h=>({voyage:h.voyage,identity:(h.captain-rotation+n)%n,price:h.bid,wealth:h.wealth.map((_,i)=>h.wealth[(i+rotation)%n])}))};
+  return {seed,rotation,seatOrder:identities,players:n,lineup,seatStrategies,voyages:s.voyage,steps,elapsedMs:performance.now()-started,
+    results:s.players.map((p,seat)=>({identity:identities[seat],seat,strategy:seatStrategies[seat],score:scores[seat],cash:p.cash,stockValue:scores[seat]-p.cash+15*p.mortgages.reduce((a,b)=>a+b,0),mortgages:p.mortgages.reduce((a,b)=>a+b,0),maxMortgages:debtMax[seat],win:scores[seat]===max?1/ties:0,rank:1+scores.filter(v=>v>scores[seat]).length,captainWins:captainWins[seat],bidSpent:bidSpent[seat],placements:placements[seat],decisions:decisions[seat]})),market:s.market,
+    auctionHistory:s.history.map(h=>{const start=auctionStarts.get(h.voyage),seat=h.captain;return {voyage:h.voyage,identity:identities[seat],price:h.bid,wealth:identitySeats.map(i=>h.wealth[i]),marketBefore:start.market,winnerCashBefore:start.cash[seat],winnerSharesBefore:start.shares[seat],winnerMortgagesBefore:start.mortgages[seat]};})};
 }
 
 export function buildSchedule({ seeds = 100, startSeed = 20261007, counts = [3,4,5], strategies = Object.keys(STRATEGIES), mode = 'focal' } = {}) {
   if(!Number.isInteger(seeds)||seeds<1||seeds>100000)throw Error('种子数量无效');
-  if(!counts.every(n=>[3,4,5].includes(n))||!strategies.every(id=>STRATEGIES[id]))throw Error('赛程参数无效');
+  if(!counts.every(n=>[3,4,5].includes(n))||!strategies.every(id=>strategyDefinition(id)))throw Error('赛程参数无效');
   const tasks=[];
   for(let i=0;i<seeds;i++)for(const n of counts){
     const seed=(startSeed+Math.imul(i+1,2654435761))>>>0;
@@ -83,7 +88,7 @@ export function aggregateMatches(matches, mode = 'focal') {
     const scoreBlocks=[...blocks.values()].map(rs=>rs.reduce((v,r)=>v+r.score,0)/rs.length);
     const winBlocks=[...blocks.values()].map(rs=>rs.reduce((v,r)=>v+r.win,0)/rs.length);
     const scoreStats=describe(rows.map(r=>r.score)),scoreSe=describe(scoreBlocks).sd/Math.sqrt(blocks.size),winRate=rows.reduce((v,r)=>v+r.win,0)/rows.length,winSe=describe(winBlocks).sd/Math.sqrt(blocks.size);
-    return {players:Number(count),strategy,name:STRATEGIES[strategy].name,...scoreStats,seedBlocks:blocks.size,mean95:[scoreStats.mean-1.96*scoreSe,scoreStats.mean+1.96*scoreSe],winRate,win95:[Math.max(0,winRate-1.96*winSe),Math.min(1,winRate+1.96*winSe)],averageRank:rows.reduce((v,r)=>v+r.rank,0)/rows.length,averageVoyages:rows.reduce((v,r)=>v+r.voyages,0)/rows.length,averageCaptainWins:rows.reduce((v,r)=>v+r.captainWins,0)/rows.length,averageBidSpent:rows.reduce((v,r)=>v+r.bidSpent,0)/rows.length,averageMortgages:rows.reduce((v,r)=>v+r.mortgages,0)/rows.length,bySeat:Array.from({length:Number(count)},(_,seat)=>{const rs=rows.filter(r=>r.seat===seat);return{seat,n:rs.length,mean:rs.length?rs.reduce((v,r)=>v+r.score,0)/rs.length:null,winRate:rs.length?rs.reduce((v,r)=>v+r.win,0)/rs.length:null};}),blocks:[...blocks].map(([seed,rs])=>({seed,mean:rs.reduce((v,r)=>v+r.score,0)/rs.length,win:rs.reduce((v,r)=>v+r.win,0)/rs.length}))};
+    return {players:Number(count),strategy,name:strategyDefinition(strategy).name,...scoreStats,seedBlocks:blocks.size,mean95:blocks.size>1?[scoreStats.mean-1.96*scoreSe,scoreStats.mean+1.96*scoreSe]:null,winRate,win95:blocks.size>1?[Math.max(0,winRate-1.96*winSe),Math.min(1,winRate+1.96*winSe)]:null,averageRank:rows.reduce((v,r)=>v+r.rank,0)/rows.length,averageVoyages:rows.reduce((v,r)=>v+r.voyages,0)/rows.length,averageCaptainWins:rows.reduce((v,r)=>v+r.captainWins,0)/rows.length,averageBidSpent:rows.reduce((v,r)=>v+r.bidSpent,0)/rows.length,averageMortgages:rows.reduce((v,r)=>v+r.mortgages,0)/rows.length,bySeat:Array.from({length:Number(count)},(_,seat)=>{const rs=rows.filter(r=>r.seat===seat);return{seat,n:rs.length,mean:rs.length?rs.reduce((v,r)=>v+r.score,0)/rs.length:null,winRate:rs.length?rs.reduce((v,r)=>v+r.win,0)/rs.length:null};}),blocks:[...blocks].map(([seed,rs])=>({seed,mean:rs.reduce((v,r)=>v+r.score,0)/rs.length,win:rs.reduce((v,r)=>v+r.win,0)/rs.length}))};
   }).sort((a,b)=>a.players-b.players||b.mean-a.mean);
 }
 

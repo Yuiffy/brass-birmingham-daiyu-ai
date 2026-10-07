@@ -70,6 +70,8 @@ AI 的装载、部署、领航和后续竞拍使用可解释启发式策略。�
 
 ## 完整 AI 对战比较
 
+[竞价升级与强策略联赛](reports/2026-10-07-evolution/README.md)是后续研究：淘汰原均衡 / 即时收益 / 随机候选，直接比较不同积极上限、支付能力保留和财富 / 领先前瞻；逐轮筛选、独立种子确认，再测试策略普及后的入侵表现。该报告替代“单个积极策略对均衡对手”的强度排名解释。
+
 [2026-10-07 对战报告](reports/2026-10-07/README.md)包含三、四、五人局的终局财富分布、均值 / 最低 / 最高 / 分位数、共享胜率、船长成交价及抵押统计。原始逐局日志压缩后随报告提交，可由种子复现。
 
 六种策略：均衡、竞价上限减 3 的保守策略、加 3 的积极策略、即时收益部署、随机合法部署，以及精确规则模型前瞻（默认最多 4 个候选 × 8 个重采样，模拟到本航次结算）。随机策略仅部署随机；前瞻策略竞价沿用均衡，当前没有 MuZero 训练。策略模块可独立扩展，尚未接入游戏 UI 的对手选择。
@@ -87,3 +89,26 @@ python tools/plot-tournament.py reports/2026-10-07
 仅制图需要 Python / matplotlib，可安装到独立虚拟环境。比赛本身只有 Node 标准库依赖。`--validate` 在每步核验合法动作及资产不变量；对局必须到终局，超限会报错，不能把截断财富当最终分数。输出目录写入 manifest（配置、Node 版本及模拟源文件 SHA256）、原始 JSONL、JSON / CSV 汇总。报告脚本核验全部局数、编号和源哈希后才汇总；如果规则或策略已改动，请先重新跑比赛。
 
 挑战赛按全部座位轮换，其他玩家固定均衡；混合赛跑四种策略的全部 24 种座位 / 手牌分配排列。骰子按航次、掷骰轮、货物编码，独立于决策随机流。均值与胜率区间按种子分组，同种子的轮换不当作独立样本；不同样本量只用共同种子做配对比较。绝对财富分数依赖人数、对手与游戏长度，应结合胜率阅读。
+
+## 强策略的参数与联赛工具
+
+`bid+N` 将原竞价上限增加 N（支持 0–96）；`bid-liquid+N` 还要求支付后剩余支付能力至少 6，比单纯现金余额多计可抵押信用。`look+N` 用财富前瞻部署，`relative+N` 用“自身减最强对手”的叶估值；它们也支持 `-liquid`，例如 `relative-liquid+6`。其他阶段仍使用精确规则和基础启发式，不把参数筛选称作 MuZero 训练。
+
+```powershell
+npm run evolve -- --stage all --workers 8
+npm run league -- reports/2026-10-07-evolution/specs/06-higher-models.json output/evolution 8
+node tools/report-evolution.mjs output/evolution reports/2026-10-07-evolution
+python tools/plot-evolution.py reports/2026-10-07-evolution
+```
+
+`evolve` 运行初始五轮；后续扩展与确认赛的完整参数保存在报告的 `specs/` 中，按文件顺序运行 `league` 即可复现。报告说明了自适应筛选依据。比赛默认八个 Node worker，前瞻预算为三个候选、四个样本；所有比赛都到真实终局并逐动作校验。
+
+只想复核统计、无需重新比赛时：
+
+```powershell
+node tools/restore-evolution.mjs reports/2026-10-07-evolution output/evolution-restored
+node tools/report-evolution.mjs output/evolution-restored output/evolution-rebuilt
+python tools/plot-evolution.py output/evolution-rebuilt
+```
+
+恢复工具验证压缩日志及源代码哈希，重新计算各阶段统计。旧的第一轮报告重建需使用其冻结提交 `0f3f47a`；本轮扩展了策略接口与比赛日志，历史数据不冒充当前代码生成的结果。

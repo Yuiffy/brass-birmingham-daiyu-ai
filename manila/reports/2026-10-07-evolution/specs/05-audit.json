@@ -1,0 +1,27 @@
+{
+  "stage": "05-audit",
+  "format": "challenge",
+  "seeds": 32,
+  "base": 75000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid-liquid+3",
+    "bid+3",
+    "relative-liquid+3",
+    "relative+3",
+    "bid+5",
+    "look-liquid+3",
+    "bid+24",
+    "bid+60"
+  ],
+  "opponents": [
+    "bid-liquid+3",
+    "bid-liquid+3",
+    "bid-liquid+3"
+  ],
+  "resident": "bid-liquid+3",
+  "selectionReason": "Initial preset league stage"
+}

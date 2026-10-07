@@ -1,0 +1,17 @@
+{
+  "stage": "07-confirmation",
+  "format": "mixed",
+  "seeds": 64,
+  "base": 86000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "finalists": [
+    "bid+3",
+    "bid-liquid+3",
+    "look+2",
+    "relative+2"
+  ],
+  "selectionReason": "Keep the strongest heuristic from the expanded low pair league, the liquidity heuristic winner of the first held-out qualifier, and the top wealth / relative planners on the common qualification pool. High-offset planners were tested through +12 and with liquidity protection through +9, and eliminated. Freeze all four candidates before 64 new seeds; enumerate all 24 strategy-to-hand/seat permutations."
+}

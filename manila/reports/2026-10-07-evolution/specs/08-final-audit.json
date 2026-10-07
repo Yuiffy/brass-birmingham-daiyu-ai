@@ -1,0 +1,31 @@
+{
+  "stage": "08-final-audit",
+  "format": "challenge",
+  "seeds": 32,
+  "base": 97000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid-liquid+3",
+    "bid+3",
+    "bid+1",
+    "bid+2",
+    "bid+6",
+    "bid+12",
+    "bid+24",
+    "bid+60",
+    "look+2",
+    "relative+2",
+    "look-liquid+3",
+    "relative-liquid+6"
+  ],
+  "opponents": [
+    "bid-liquid+3",
+    "bid-liquid+3",
+    "bid-liquid+3"
+  ],
+  "resident": "bid-liquid+3",
+  "selectionReason": "The two +3 heuristics tied at 27.224% in the fully hand/seat-balanced held-out confirmation. Choose the liquidity variant as the resident due to marginally higher wealth/lower debt; test a frozen pool spanning lower/higher bidding and the most promising planners, with a matched self-play control."
+}

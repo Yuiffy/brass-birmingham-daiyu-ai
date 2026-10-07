@@ -1,0 +1,20 @@
+{
+  "stage": "02-refine",
+  "format": "pair",
+  "seeds": 24,
+  "base": 42000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "strategies": [
+    "bid+6",
+    "bid+3",
+    "bid+5",
+    "bid+7",
+    "bid+9",
+    "bid-liquid+6",
+    "bid-liquid+3"
+  ],
+  "selectionReason": "01-screen"
+}

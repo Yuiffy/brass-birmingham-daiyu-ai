@@ -1,0 +1,23 @@
+{
+  "stage": "10-critical-audit",
+  "format": "challenge",
+  "seeds": 256,
+  "base": 119000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "challengers": [
+    "bid-liquid+3",
+    "bid+6",
+    "look-liquid+3",
+    "relative-liquid+6"
+  ],
+  "opponents": [
+    "bid-liquid+3",
+    "bid-liquid+3",
+    "bid-liquid+3"
+  ],
+  "resident": "bid-liquid+3",
+  "selectionReason": "Independent 256-seed paired self-play controls for the higher reserve and promising model-based invaders. Candidate family frozen before these seeds."
+}

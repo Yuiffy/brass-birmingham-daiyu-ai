@@ -6,6 +6,8 @@
     "start": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
     "benchmark": "node tools/benchmark.mjs",
-    "tournament": "node tools/tournament.mjs"
+    "tournament": "node tools/tournament.mjs",
+    "evolve": "node tools/evolve.mjs",
+    "league": "node tools/league-batch.mjs"
   }
 }

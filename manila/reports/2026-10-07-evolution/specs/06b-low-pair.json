@@ -1,0 +1,19 @@
+{
+  "stage": "06b-low-pair",
+  "format": "pair",
+  "seeds": 24,
+  "base": 81000001,
+  "searchOptions": {
+    "samples": 4,
+    "width": 3
+  },
+  "strategies": [
+    "bid+1",
+    "bid+2",
+    "bid+3",
+    "bid-liquid+1",
+    "bid-liquid+2",
+    "bid-liquid+3"
+  ],
+  "selectionReason": "Refinement winner was at the lower boundary +3; expand downward and test liquidity interactions rather than declaring that boundary optimal."
+}
