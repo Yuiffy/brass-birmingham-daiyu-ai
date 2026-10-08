@@ -10,6 +10,7 @@ def compare(baseline, candidate):
     for key in ('games', 'seed', 'depth', 'width', 'types'):
         if baseline['config'][key] != candidate['config'][key]:
             raise ValueError(f'Mismatched {key}')
+    if baseline['config'].get('rulesVersion','legacy-v1')!=candidate['config'].get('rulesVersion','legacy-v1'):raise ValueError('Different rules versions')
     players = len(baseline['config']['types'])
     if set(baseline['config']['types']) != {'guided', 'world'}:
         raise ValueError('Expected guided/world entrants only')

@@ -42,7 +42,7 @@ class GameLogic {
             case ACTIONS.NETWORK: return this.getValidNetworkTargets(playerId).length > 0;
             case ACTIONS.DEVELOP: return this.canDevelop(playerId);
             case ACTIONS.SELL: return this.getValidSellTargets(playerId).length > 0;
-            case ACTIONS.LOAN: return true; // Can always take a loan
+            case ACTIONS.LOAN: return this.state.canTakeLoan(playerId);
             case ACTIONS.SCOUT: return this.canScout(playerId);
             case ACTIONS.PASS: return true; // Can always pass
             default: return false;
@@ -131,9 +131,13 @@ class GameLogic {
         return targets;
     }
 
+    hasBuildNetwork(playerId,cityId){
+        return this.state.isInNetwork(playerId,cityId)||(this.state.rulesVersion==='economy-v2'&&!Object.values(this.state.boardIndustries).some(t=>t.playerId===playerId)&&!Object.values(this.state.breweryFarmTiles).some(t=>t?.playerId===playerId)&&!Object.values(this.state.boardLinks).some(t=>t.playerId===playerId));
+    }
+
     hasCardForBuild(playerId, cityId, industryType) {
         const player = this.state.players[playerId];
-        const inNetwork = this.state.isInNetwork(playerId, cityId);
+        const inNetwork = this.state.isInNetwork(playerId, cityId) || (this.state.rulesVersion==='economy-v2' && !Object.values(this.state.boardIndustries).some(t=>t.playerId===playerId) && !Object.values(this.state.breweryFarmTiles).some(t=>t?.playerId===playerId) && !Object.values(this.state.boardLinks).some(t=>t.playerId===playerId));
         for (const card of player.hand) {
             // Location card: can build at that location (no network needed)
             if (card.type === CARD_TYPES.LOCATION && card.location === cityId) return true;
@@ -227,7 +231,7 @@ class GameLogic {
                     this.state.consumeResource(src.key);
                     remaining--;
                 } else if (src.type === 'market') {
-                    this.state.coalMarket--;
+                    this.state.coalMarket=Math.max(0,this.state.coalMarket-1);
                     remaining--;
                 }
             }
@@ -243,7 +247,7 @@ class GameLogic {
                     this.state.consumeResource(src.key);
                     remaining--;
                 } else if (src.type === 'market') {
-                    this.state.ironMarket--;
+                    this.state.ironMarket=Math.max(0,this.state.ironMarket-1);
                     remaining--;
                 }
             }
@@ -264,6 +268,7 @@ class GameLogic {
             resourceCubes: tileData.resourceCubes || 0,
         };
 
+        this.state.supplyNewIndustry(key);
         // Discard the used card
         this.discardCard(playerId, cardIndex);
 
@@ -372,7 +377,7 @@ class GameLogic {
                 } else {
                     // Buy coal from market - add market price to total
                     totalCost += src.price;
-                    this.state.coalMarket--;
+                    this.state.coalMarket=Math.max(0,this.state.coalMarket-1);
                 }
             }
             this.state.spendMoney(playerId, totalCost);
@@ -440,6 +445,12 @@ class GameLogic {
         // industryType2 can be null for single develop
         const player = this.state.players[playerId];
 
+        if(this.state.rulesVersion==='economy-v2'){
+            const used=new Map(),types=[industryType1,industryType2].filter(Boolean);
+            for(const type of types){const offset=used.get(type)||0,tile=player.industryTiles[type]?.filter(t=>!t.used)[offset];if(!tile?.canDevelop)return {success:false,message:'Cannot develop this tile'};used.set(type,offset+1);}
+            const sources=this.state.findIronSource(playerId).slice(0,types.length);
+            if(sources.length<types.length||sources.reduce((sum,s)=>sum+(s.free?0:s.price),0)>player.money)return {success:false,message:'Cannot afford development'};
+        }
         // Validate iron availability before proceeding
         const tilesToDevelop = industryType2 ? 2 : 1;
         const ironSources = this.state.findIronSource(playerId);
@@ -456,7 +467,7 @@ class GameLogic {
                 // Buy from market
                 const price = this.state.getIronPrice();
                 this.state.spendMoney(playerId, price);
-                this.state.ironMarket--;
+                this.state.ironMarket=Math.max(0,this.state.ironMarket-1);
             }
         }
 
@@ -480,7 +491,47 @@ class GameLogic {
     // SELL Action
     // ========================================================================
 
+    // Reserve actual cubes/merchant beer without applying a game transition.
+    planSales(playerId, keys) {
+        if(!keys.length||new Set(keys).size!==keys.length)return null;
+        const reserved=new Map(),steps=[];
+        for(const key of keys){
+            const tile=this.state.boardIndustries[key];
+            if(!tile||tile.playerId!==playerId||tile.flipped||!isSellableIndustry(tile.type))return null;
+            const cityId=key.slice(0,key.lastIndexOf('_')),connected=this.state.getConnectedLocations(cityId);
+            const merchants=this.state.merchantTiles.map((m,index)=>({m,index})).filter(({m})=>connected.has(m.location)&&(m.buys===null||m.buys===tile.type));
+            let chosen=null;
+            for(const {m,index} of merchants){
+                const options=this.state.findBeerSources(cityId,playerId).filter(s=>s.type!=='merchant'||s.index===index);
+                const beer=[];
+                for(const src of options){
+                    const id=src.type==='merchant'?`merchant:${src.index}`:src.key;
+                    const source=src.type==='merchant'?null:src.key.startsWith('farm_')?this.state.breweryFarmTiles[src.key.slice(5)]:this.state.boardIndustries[src.key];
+                    const available=(src.type==='merchant'?(m.hasBeer?1:0):source?.resourceCubes||0)-(reserved.get(id)||0);
+                    for(let n=0;n<available&&beer.length<(tile.tileData.beersToSell||0);n++)beer.push({...src,id});
+                }
+                if(beer.length===(tile.tileData.beersToSell||0)){chosen={key,cityId,tile,merchant:index,beer};break;}
+            }
+            if(!chosen)return null;
+            for(const src of chosen.beer)reserved.set(src.id,(reserved.get(src.id)||0)+1);
+            steps.push(chosen);
+        }
+        return steps;
+    }
+
+    getValidSellBundles(playerId) {
+        const targets=this.getValidSellTargets(playerId).sort((a,b)=>b.tile.tileData.vp-a.tile.tileData.vp),bundles=[],seen=new Set();
+        const add=keys=>{const id=keys.slice().sort().join('|');if(keys.length<2||seen.has(id)||!this.planSales(playerId,keys))return;seen.add(id);bundles.push({keys,key:keys[0],tile:targets.find(t=>t.key===keys[0]).tile,cityId:targets.find(t=>t.key===keys[0]).cityId});};
+        for(let i=0;i<targets.length;i++)for(let j=i+1;j<targets.length&&bundles.length<12;j++)add([targets[i].key,targets[j].key]);
+        const all=[];for(const t of targets)if(this.planSales(playerId,all.concat(t.key)))all.push(t.key);add(all);
+        return bundles;
+    }
+
     getValidSellTargets(playerId) {
+        if(this.state.rulesVersion==='economy-v2')return Object.keys(this.state.boardIndustries).flatMap(key=>{
+            const plan=this.planSales(playerId,[key]);if(!plan)return [];
+            const {cityId,tile}=plan[0];return [{key,cityId,tile,beerNeeded:tile.tileData.beersToSell||0}];
+        });
         const targets = [];
 
         for (const [key, tile] of Object.entries(this.state.boardIndustries)) {
@@ -530,6 +581,22 @@ class GameLogic {
 
     executeSell(playerId, tileKeys, cardIndex) {
         // tileKeys: array of board keys to sell
+        if(this.state.rulesVersion==='economy-v2'){
+            const plan=this.planSales(playerId,tileKeys);if(!plan)return {success:false,message:'Cannot sell this combination with available beer and merchants'};
+            for(const step of plan){
+                for(const src of step.beer){
+                    if(src.type!=='merchant'){this.state.consumeResource(src.key);continue;}
+                    const mt=this.state.merchantTiles[src.index];mt.hasBeer=false;mt.bonusClaimed=true;
+                    const bonus=MERCHANTS[mt.location],player=this.state.players[playerId];
+                    if(bonus?.bonusType==='vp')player.vp+=bonus.bonusAmount;
+                    if(bonus?.bonusType==='money')player.money+=bonus.bonusAmount;
+                    if(bonus?.bonusType==='income')this.state.adjustIncome(playerId,bonus.bonusAmount);
+                    if(bonus?.bonusType==='develop')this.applyFreeDevelop(playerId,bonus.bonusAmount);
+                }
+                step.tile.flipped=true;this.state.adjustIncome(playerId,step.tile.tileData.income);
+            }
+            this.discardCard(playerId,cardIndex);return {success:true,message:`Sold ${tileKeys.join(', ')}`};
+        }
         const player = this.state.players[playerId];
         const results = [];
 
@@ -602,8 +669,7 @@ class GameLogic {
 
     executeLoan(playerId, cardIndex) {
         const player = this.state.players[playerId];
-        player.money += LOAN_AMOUNT;
-        this.state.adjustIncome(playerId, -LOAN_INCOME_PENALTY);
+        if(!this.state.takeLoan(playerId))return {success:false,message:'Cannot reduce income below -10'};
 
         this.discardCard(playerId, cardIndex);
 
@@ -765,13 +831,13 @@ class GameLogic {
                             validIndices.push(idx);
                         } else if (card.type === CARD_TYPES.INDUSTRY && card.industryType === target.industryType) {
                             // Industry card: target must be in network
-                            if (this.state.isInNetwork(playerId, target.cityId)) {
+                            if (this.hasBuildNetwork(playerId, target.cityId)) {
                                 validIndices.push(idx);
                             }
                         } else if (card.type === CARD_TYPES.WILD_LOCATION) {
                             validIndices.push(idx);
                         } else if (card.type === CARD_TYPES.WILD_INDUSTRY) {
-                            if (this.state.isInNetwork(playerId, target.cityId)) {
+                            if (this.hasBuildNetwork(playerId, target.cityId)) {
                                 validIndices.push(idx);
                             }
                         }

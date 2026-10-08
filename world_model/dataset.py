@@ -29,7 +29,7 @@ class TrainingMixture:
         if replay_stride < 1:raise ValueError('Replay stride must be positive')
         self.sources=[primary];self.rows=[np.asarray(primary.splits['train'],dtype='int64')]
         if replay is not None:
-            if primary.schema['fields']!=replay.schema['fields'] or primary.action_dim!=replay.action_dim:
+            if primary.schema['version']!=replay.schema['version'] or primary.schema['fields']!=replay.schema['fields'] or primary.action_dim!=replay.action_dim:
                 raise ValueError('Replay schema mismatch')
             if {g['seed'] for g in primary.games}&{g['seed'] for g in replay.games}:
                 raise ValueError('Replay seeds overlap primary games')

@@ -23,10 +23,10 @@
     field('actionsThisTurn', 'turn', 2); field('actionsPerTurn', 'turn', 2);
     field('isFirstRound', 'turn'); field('gameOver', 'turn');
     field('deckSize', 'cards', 64); field('wildLocationPile', 'cards', 4); field('wildIndustryPile', 'cards', 4);
-    field('coalMarket', 'coalMarket', 14); field('ironMarket', 'ironMarket', 10);
+    field('coalMarket', 'coalMarket', D.COAL_MARKET_PRICES.length); field('ironMarket', 'ironMarket', D.IRON_MARKET_PRICES.length);
     for (let p = 0; p < 4; p++) field(`order.${p}`, 'turn', 4);
     for (let p = 0; p < 4; p++) {
-        for (const [k, group, scale] of [['money','money',100], ['income','income',30], ['vp','vp',100],
+        for (const [k, group, scale] of [['money','money',100], ['income','income',D.RULES_VERSION==='economy-v2'?100:30], ['vp','vp',100],
             ['handSize','cards',8], ['spent','turn',50], ['canal','network',14], ['rail','network',14],
             ['wildLocation','cards',1], ['wildIndustry','cards',1]]) field(`p${p}.${k}`, group, scale);
         for (const t of types) field(`p${p}.used.${t}`, 'supply', 12);
@@ -40,7 +40,7 @@
     for (const link of links) { field(`link.${link}.owner`, 'network', 4); field(`link.${link}.rail`, 'network'); }
     merchants.forEach((m, i) => ['present','beer','claimed'].forEach(k => field(`merchant.${i}.${m}.${k}`, 'merchant')));
     const indices = Object.fromEntries(fields.map((f, i) => [f.name, i]));
-    const schema = { version: 'brass-wm-v1', observation: 'all-hands-public-board-no-future-deck-order', fields,
+    const schema = { version: D.RULES_VERSION==='economy-v2'?'brass-wm-economy-v2':'brass-wm-v1', rulesVersion:D.RULES_VERSION, observation: 'all-hands-public-board-no-future-deck-order', fields,
         types, cities, slots, links, cards, merchants, actions };
 
     function encodeState(s) {
@@ -74,11 +74,13 @@
     }
 
     function encodeAction(a, s) {
-        const t = a.target || {}, tile = t.tileData || t.tile?.tileData || {};
+        const t = a.target || {};
+        let tile=t.tileData||t.tile?.tileData||{};
+        if(t.keys){tile={};for(const key of t.keys)for(const [name,value] of Object.entries(s.boardIndustries[key]?.tileData||{}))if(typeof value==='number')tile[name]=(tile[name]||0)+value;}
         const v = actions.map(x => +(a.action === x));
         for (let p = 0; p < 4; p++) v.push(+(s.currentPlayerId === p));
         const slotKey = t.key || `${t.cityId}_${t.slotIndex}`;
-        v.push(...slots.map(x => +(x === slotKey)), ...links.map(x => +(x === t.connectionId)));
+        v.push(...slots.map(x => +(t.keys?t.keys.includes(x):x === slotKey)), ...links.map(x => +(x === t.connectionId)));
         v.push(...types.map(x => +(x === (t.industryType || t.type1 || t.tile?.type))),
             ...types.map(x => +(x === t.type2)));
         const discarded = (a.cardIndices || [a.cardIndex]).map(i => s.currentPlayer.hand[i]).filter(Boolean);
@@ -106,11 +108,11 @@
         }
         const actor = Array.from({length:s.numPlayers}, (_,p) => [p,raw(v,`current.${p}`)]).sort((a,b)=>b[1]-a[1])[0][0];
         s.currentPlayerIndex = s.turnOrder.indexOf(actor);
-        s.coalMarket = bounded(get('coalMarket'),0,14); s.ironMarket = bounded(get('ironMarket'),0,10);
+        s.coalMarket = bounded(get('coalMarket'),0,D.COAL_MARKET_PRICES.length); s.ironMarket = bounded(get('ironMarket'),0,D.IRON_MARKET_PRICES.length);
         s.wildLocationPile = bounded(get('wildLocationPile'),0,4); s.wildIndustryPile = bounded(get('wildIndustryPile'),0,4);
         s.players.forEach((p,i) => {
             s.moneySpentThisRound[i] = Math.max(0,get(`p${i}.spent`));
-            p.money = Math.max(0,get(`p${i}.money`)); p.income = bounded(get(`p${i}.income`),-10,30); p.vp = Math.max(0,get(`p${i}.vp`));
+            p.money = Math.max(0,get(`p${i}.money`)); p.income = D.RULES_VERSION==='economy-v2'?bounded(get(`p${i}.income`),0,99):bounded(get(`p${i}.income`),-10,30); p.vp = D.RULES_VERSION==='economy-v2'?get(`p${i}.vp`):Math.max(0,get(`p${i}.vp`));
             p.linksRemaining = {canal:bounded(get(`p${i}.canal`),0,14),rail:bounded(get(`p${i}.rail`),0,14)};
             types.forEach(t => p.industryTiles[t].forEach((tile,j) => {tile.used = j < get(`p${i}.used.${t}`);}));
             p.hand = cards.flatMap((c,j) => Array.from({length:bounded(get(`p${i}.card.${cardIds[j]}`),0,8)},()=>({...c}))).slice(0,8);
@@ -136,6 +138,22 @@
         return s;
     }
     function value(v, player) {
+        if(D.RULES_VERSION==='economy-v2'){
+            const count=Math.round(raw(v,'players')),end=raw(v,'gameOver')>=.5;
+            const scores=Array.from({length:count},(_,p)=>raw(v,`p${p}.vp`)+(end?0:1.2*D.incomeAtPosition(raw(v,`p${p}.income`))+.1*raw(v,`p${p}.money`)));
+            if(!end){
+                slots.forEach(slot=>{const p=Math.round(raw(v,`slot.${slot}.owner`))-1;if(p<0||p>=count)return;
+                    const flip=Math.max(0,Math.min(1,raw(v,`slot.${slot}.flipped`))),keep=raw(v,'era')<.5&&raw(v,`slot.${slot}.level`)>=2;
+                    scores[p]+=Math.max(0,raw(v,`slot.${slot}.vp`))*(.3+.7*flip)*(keep?1.6:1);
+                });
+                links.forEach(id=>{const p=Math.round(raw(v,`link.${id}.owner`))-1;if(p<0||p>=count)return;
+                    const locations=D.CONNECTIONS.find(c=>c.id===id).cities;
+                    scores[p]+=locations.filter(D.isMerchantLocation).length*2;
+                    slots.forEach(slot=>{const city=slot.startsWith('farm:')?slot.slice(5):slot.slice(0,slot.lastIndexOf('_'));if(locations.includes(city))scores[p]+=Math.max(0,raw(v,`slot.${slot}.linkVP`))*Math.max(0,Math.min(1,raw(v,`slot.${slot}.flipped`)));});
+                });
+            }
+            return scores[player]-.25*Math.max(...scores.filter((_,p)=>p!==player));
+        }
         const scores = Array.from({length:4},(_,p) => raw(v,`p${p}.vp`)+1.2*raw(v,`p${p}.income`)+0.06*raw(v,`p${p}.money`));
         slots.forEach(slot => {
             const owner = Math.round(raw(v,`slot.${slot}.owner`))-1;

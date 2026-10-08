@@ -5,5 +5,6 @@ package-lock.json
 screenshots/capture.js
 progress.md
 world_model/data*/
+world_model/.local-experiments/
 __pycache__/
 .venv/

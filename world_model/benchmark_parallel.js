@@ -4,7 +4,7 @@ const path=require('node:path'),fs=require('node:fs');
 const {tournament}=require('./tournament');
 const {Network}=require('./inference');
 
-async function parallelTournament({workers=4,games=12,seed=800001,models='world_model/models',depth=2,width=8,types=['heuristic','search','neural','world'],onProgress=()=>{}}={}){
+async function parallelTournament({workers=4,games=12,seed=800001,models='world_model/models',guidedModels=null,depth=2,width=8,types=['heuristic','search','neural','world'],onProgress=()=>{}}={}){
     if(!Array.isArray(types)||types.length<2||types.length>4)throw Error('Use 2–4 seats');
     const seats=types.length;
     if(!Number.isInteger(workers)||workers<1||workers>16||!Number.isInteger(games)||games<seats||games%seats)throw Error('Use 1–16 workers and complete seat rotations');
@@ -15,7 +15,7 @@ async function parallelTournament({workers=4,games=12,seed=800001,models='world_
         for(let i=0;i<count;i++){
             const groups=Math.floor(games/seats/count)+(i<games/seats%count?1:0);
             const offset=groupStart*seats;
-            const worker=new Worker(__filename,{workerData:{games:groups*seats,seed:seed+groupStart*9973,models:path.resolve(models),depth,width,types}});
+            const worker=new Worker(__filename,{workerData:{games:groups*seats,seed:seed+groupStart*9973,models:path.resolve(models),guidedModels:guidedModels?path.resolve(guidedModels):null,depth,width,types}});
             groupStart+=groups;threads.push(worker);
             pending.push(new Promise((resolve,reject)=>{
                 let received=false;
@@ -44,7 +44,7 @@ async function parallelTournament({workers=4,games=12,seed=800001,models='world_
 
 if(!isMainThread){
     const load=file=>new Network(JSON.parse(fs.readFileSync(path.join(workerData.models,file),'utf8')));
-    tournament({...workerData,world:load('world-model.json'),policy:load('neural-policy.json'),
+    tournament({...workerData,world:load('world-model.json'),policy:load('neural-policy.json'),guidedWorld:workerData.guidedModels?new Network(JSON.parse(fs.readFileSync(path.join(workerData.guidedModels,'world-model.json'),'utf8'))):null,
         onProgress:p=>{if(p.completed)parentPort.postMessage({type:'progress',scores:p.scores});}})
         .then(report=>{parentPort.postMessage({type:'result',report});parentPort.close();})
         .catch(error=>{throw error;});

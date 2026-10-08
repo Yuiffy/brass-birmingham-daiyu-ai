@@ -34,15 +34,18 @@ async function main(){
     if(command==='benchmark'){
         const {Network}=require('./inference');const {tournament}=require('./tournament');
         const config=options(args),models=config.models||'world_model/models';
+        if(config['guided-models'])config.guidedModels=config['guided-models'];
         if(typeof config.types==='string')config.types=config.types.split(',');
         if(config.workers!==undefined&&(!Number.isInteger(config.workers)||config.workers<1||config.workers>16))throw Error('Use 1–16 benchmark workers');
         const world=new Network(JSON.parse(fs.readFileSync(path.join(models,'world-model.json'),'utf8')));
         const policy=new Network(JSON.parse(fs.readFileSync(path.join(models,'neural-policy.json'),'utf8')));
         const run=config.workers>1?require('./benchmark_parallel').parallelTournament:tournament;
-        const report=await run({...config,models,world,policy,onProgress:p=>{if(p.completed&&(p.game%20===0||p.game===p.games))console.log(`Game ${p.game}/${p.games}`,p.scores.map(s=>`${s.type}: ${s.vp}`).join(' | '));}});
+        const guidedWorld=config.guidedModels?new Network(JSON.parse(fs.readFileSync(path.join(config.guidedModels,'world-model.json'),'utf8'))):null;
+        const report=await run({...config,models,world,policy,guidedWorld,onProgress:p=>{if(p.completed&&(p.game%20===0||p.game===p.games))console.log(`Game ${p.game}/${p.games}`,p.scores.map(s=>`${s.type}: ${s.vp}`).join(' | '));}});
         const crypto=require('node:crypto');
         report.artifacts=Object.fromEntries(['world-model.json','neural-policy.json'].map(file=>[file,{
             directory:models,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(models,file))).digest('hex')} ]));
+        if(config.guidedModels)report.artifacts.guided={directory:config.guidedModels,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(config.guidedModels,'world-model.json'))).digest('hex')};
         const out=config.out||'world_model/reports/tournament.json';fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2));
         console.table(report.rows);console.log(`Saved ${out}`);return;
     }

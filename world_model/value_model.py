@@ -49,3 +49,16 @@ def features(states,schema,version='brass-value-v1'):
             (owned*sellable*vp*(1-flip)).sum(1),(owned*sellable*persistent*vp*(1-flip)).sum(1)],1)/100)
     extra=np.stack(extra,1);total_extra=extra.sum(1)
     return np.concatenate([base,extra,np.stack([(total_extra-extra[:,p])/players[:,None] for p in range(4)],1)],2).astype('float32')
+
+
+def score_anchors(states,schema):
+    """Observable VP already earned plus VP if the current era ended now."""
+    ix={f['name']:i for i,f in enumerate(schema['fields'])}
+    scale={f['name']:f['scale'] for f in schema['fields']}
+    raw=lambda key:states[:,ix[key]]*scale[key]
+    values=features(states,schema,'brass-value-v2')
+    anchors=np.stack([raw(f'p{p}.vp') for p in range(4)],1)
+    for p in range(4):
+        industry=sum((np.rint(raw(f'slot.{s}.owner'))==p+1)*np.clip(raw(f'slot.{s}.flipped'),0,1)*np.maximum(raw(f'slot.{s}.vp'),0) for s in schema['slots'])
+        anchors[:,p]+=np.where(raw('gameOver')>=.5,0,industry+values[:,p,109]*100)
+    return anchors

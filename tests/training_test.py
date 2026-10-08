@@ -30,7 +30,7 @@ class TrainingTests(unittest.TestCase):
     def test_dynamics_replay_uses_training_rows_and_restores_row_order(self):
         from dataset import TrainingMixture
         class FakeDataset:
-            schema={'fields':['a','b']};state_dim=2;action_dim=1;input_dim=3
+            schema={'version':'test-v1','fields':['a','b']};state_dim=2;action_dim=1;input_dim=3
             def __init__(self,seed,offset):
                 self.games=[dict(seed=seed)];self.splits={'train':[1,3,5,7]};self.offset=offset
             def batch(self,ids):
@@ -109,6 +109,21 @@ console.log(JSON.stringify({schema:E.schema,cases}));"""
             uninterrupted.save_optimizer(checkpoint);restored.load_optimizer(checkpoint)
         uninterrupted.update(x,y,lr=.0002);restored.update(x,y,lr=.0002)
         for a,b in zip(uninterrupted.params,restored.params):np.testing.assert_array_equal(a,b)
+
+    def test_residual_score_targets_match_browser_anchor_and_exclude_absent_seats(self):
+        from value_model import score_anchors
+        from train_value import active_samples
+        script="""process.env.BRASS_RULES='economy-v2';const S=require('./world_model/simulator'),E=require('./world_model/encoding'),V=require('./world_model/value_features'),D=require('./js/gameData');
+        const states=[];for(const n of [2,3,4]){const s=S.create(n,31);s.players[0].vp=12;s.boardIndustries.birmingham_0={playerId:0,type:'cottonMill',tileData:D.INDUSTRY_DATA.cottonMill[1],flipped:true,resourceCubes:0};s.boardLinks['birmingham-oxford']={playerId:0,type:'canal'};states.push(E.encodeState(s));s.gameOver=true;states.push(E.encodeState(s));}
+        console.log(JSON.stringify({schema:E.schema,states,anchors:states.map(v=>[0,1,2,3].map(p=>V.scoreAnchor(v,p)))}));"""
+        data=json.loads(subprocess.check_output(['node','-e',script],cwd=Path(__file__).resolve().parents[1]))
+        states=np.array(data['states'],dtype='float32');anchors=score_anchors(states,data['schema'])
+        np.testing.assert_allclose(anchors,data['anchors'],atol=1e-5)
+        labels=np.full((6,4),100,dtype='float32')
+        x,y=active_samples(states,labels,data['schema'],0,'brass-value-v2',True)
+        self.assertEqual(len(x),18)
+        counts=[2,2,3,3,4,4];mask=np.arange(4)[None,:]<np.array(counts)[:,None]
+        np.testing.assert_allclose(y[:,0],((labels-anchors)/100)[mask],atol=1e-6)
 
     def test_chunked_scale_matches_dense_and_uses_only_selected_rows(self):
         rng=np.random.default_rng(33);values=rng.normal(size=(8500,4)).astype('float32')

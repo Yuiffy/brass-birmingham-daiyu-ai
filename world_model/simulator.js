@@ -33,7 +33,7 @@
             case 'build': return l.executeBuild(p, t.cityId, t.slotIndex, t.industryType, a.cardIndex);
             case 'network': return l.executeNetwork(p, t.connectionId, a.cardIndex);
             case 'develop': return l.executeDevelop(p, t.type1, t.type2, a.cardIndex);
-            case 'sell': return l.executeSell(p, [t.key], a.cardIndex);
+            case 'sell': return l.executeSell(p, t.keys||[t.key], a.cardIndex);
             case 'loan': return l.executeLoan(p, a.cardIndex);
             case 'scout': return l.executeScout(p, a.cardIndices);
             case 'pass': return l.executePass(p, a.cardIndex);
@@ -47,14 +47,23 @@
         // The legacy bot retries a Develop when executeDevelop reports insufficient
         // iron. Remove those known failures without altering its ranking or rules.
         const iron = state.findIronSource(state.currentPlayerId).length;
-        return list.filter(a => a.action !== 'develop' || iron >= (a.target.type2 ? 2 : 1));
+        return list.filter(a => {
+            if(a.action!=='develop')return true;
+            const count=a.target.type2?2:1;if(iron<count)return false;
+            if(state.rulesVersion!=='economy-v2')return true;
+            const sources=state.findIronSource(state.currentPlayerId).slice(0,count);
+            if(sources.reduce((sum,s)=>sum+(s.free?0:s.price),0)>state.currentPlayer.money)return false;
+            const used=new Map();return [a.target.type1,a.target.type2].filter(Boolean).every(type=>{
+                const offset=used.get(type)||0,tile=state.currentPlayer.industryTiles[type].filter(t=>!t.used)[offset];used.set(type,offset+1);return tile?.canDevelop;
+            });
+        });
     }
 
     // Membership is checked using the engine's candidate generator. Failed
     // executions cannot partially mutate the live state because we use a clone.
     const key = a => JSON.stringify([a.action, a.cardIndex, a.cardIndices,
         a.target?.cityId, a.target?.slotIndex, a.target?.industryType,
-        a.target?.connectionId, a.target?.type1, a.target?.type2, a.target?.key]);
+        a.target?.connectionId, a.target?.type1, a.target?.type2, a.target?.key, a.target?.keys]);
     function step(state, action, { validate = true } = {}) {
         if (state.gameOver) throw Error('Game is over');
         if (validate && !candidates(state).some(a => key(a) === key(action))) {

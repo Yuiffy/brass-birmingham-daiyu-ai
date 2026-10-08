@@ -1,0 +1,12 @@
+{
+  "means": {
+    "baseline": 5.9,
+    "direct": 81.21666666666667,
+    "residual": 70.93333333333334
+  },
+  "chosen": "direct",
+  "candidateSHA256": "75f5e05f8ad6fdc62aca0df8a331bd2ddc049595cc435c7364332cf7bf1042f0",
+  "baselineSHA256": "8742688cc3e78e4b084cd8c457b66fc02f187e8f40950a4d8136ba9d59ba5c76",
+  "chosenBeforeFinalEvaluation": true,
+  "developmentImproved": true
+}

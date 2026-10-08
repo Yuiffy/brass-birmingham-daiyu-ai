@@ -135,7 +135,7 @@ class UIManager {
                 </div>
                 <div class="player-panel-stats">
                     <span class="player-panel-stat" title="Money">£${player.money}</span>
-                    <span class="player-panel-stat" title="Income">Inc: ${player.income}</span>
+                    <span class="player-panel-stat" title="Income">Inc: ${this.state.getIncomeAmount(player.income)}</span>
                     <span class="player-panel-stat" title="Cards">${player.hand.length} cards</span>
                     <span class="player-panel-stat" title="Links">
                         ${this.state.era === ERA.CANAL ? player.linksRemaining.canal : player.linksRemaining.rail} links
@@ -1079,7 +1079,7 @@ class UIManager {
     showGameOver(scores) {
         const overlay = document.getElementById('gameover-overlay');
 
-        const sorted = [...this.state.players].sort((a, b) => b.vp - a.vp);
+        const sorted = [...this.state.players].sort((a, b) => this.state.comparePlayers(a,b));
 
         let html = '<table class="scoring-table"><thead><tr><th>Rank</th><th>Player</th><th>VP</th><th>Income</th><th>Money</th></tr></thead><tbody>';
         sorted.forEach((p, i) => {
@@ -1087,7 +1087,7 @@ class UIManager {
                 <td>${i + 1}</td>
                 <td style="color:${p.color}">${p.name}</td>
                 <td>${p.vp}</td>
-                <td>${p.income}</td>
+                <td>${this.state.getIncomeAmount(p.income)}</td>
                 <td>£${p.money}</td>
             </tr>`;
         });

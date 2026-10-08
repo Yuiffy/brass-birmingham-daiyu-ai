@@ -3,18 +3,26 @@
     const Sim=BrassSimulator,E=BrassEncoding,P=BrassPlanner;
     const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const fmt=n=>Number(n).toFixed(2);
-    const api={world:null,worldByPlayers:{},policy:null,error:null};
+    const api={world:null,worldByPlayers:{},guidedByPlayers:{},policyByPlayers:{},policy:null,error:null};
     let loading=null;
     api.load=()=>{
-        if(api.policy&&[2,3,4].every(p=>api.worldByPlayers[p]))return Promise.resolve(true);
+        if(api.policy&&[2,3,4].every(p=>api.worldByPlayers[p]&&api.policyByPlayers[p]))return Promise.resolve(true);
         if(loading)return loading;
         loading=(async()=>{
         try{
             const fetchModel=async(directory,file)=>{const r=await fetch(`${directory}/${file}`);if(!r.ok)throw Error(`${directory}/${file}: HTTP ${r.status}`);return new BrassWorldModel.Network(await r.json());};
             const [worlds,policy]=await Promise.all([
                 Promise.all([2,3,4].map(async players=>[players,await fetchModel(`world_model/${BrassRuntimeModels.directoryForPlayers(players)}`,'world-model.json')])),
-                fetchModel('world_model/models','neural-policy.json')
+                fetchModel(`world_model/${BrassRuntimeModels.directoryForPlayers(4)}`,'neural-policy.json')
             ]);
+            const guided=await Promise.all(worlds.map(async([players,world])=>{
+                const directory=BrassRuntimeModels.guidedDirectoryForPlayers(players);
+                return [players,directory===BrassRuntimeModels.directoryForPlayers(players)?world:await fetchModel(`world_model/${directory}`,'world-model.json')];
+            }));
+            const policies=await Promise.all([2,3,4].map(async players=>[players,
+                E.schema.rulesVersion==='economy-v2'&&players!==4?await fetchModel(`world_model/${BrassRuntimeModels.directoryForPlayers(players)}`,'neural-policy.json'):policy]));
+            api.policyByPlayers=Object.fromEntries(policies);
+            api.guidedByPlayers=Object.fromEntries(guided);
             api.worldByPlayers=Object.fromEntries(worlds);api.world=api.worldByPlayers[4];api.policy=policy;api.error=null;
             document.querySelectorAll('option[value="guided"]').forEach(o=>o.disabled=!api.world.valueLayers);
             return true;
@@ -23,16 +31,21 @@
         return loading;
     };
     api.getWorld=players=>api.worldByPlayers[players]||null;
+    api.getPolicy=players=>api.policyByPlayers[players]||null;
+    api.getGuided=players=>api.guidedByPlayers[players]||api.getWorld(players);
     api.readyFor=(kinds,players=4)=>{
         if(!document.getElementById('ai-enabled').checked)return true;
-        const world=api.getWorld(players),missing=(kinds.includes('world')&&!world)||(kinds.includes('neural')&&!api.policy);
+        const world=api.getWorld(players),missing=(kinds.includes('world')&&!world)||(kinds.includes('neural')&&!api.getPolicy(players));
         if((kinds.includes('guided')||kinds.includes('world'))&&!world){document.getElementById('model-status').textContent=`${players} 人模型尚未加载。`;return false;}
-        if(kinds.includes('guided')&&!world?.valueLayers){document.getElementById('model-status').textContent='学习增强搜索需要已训练的局面估值权重。';return false;}
+        if(kinds.includes('guided')&&!api.getGuided(players)?.valueLayers){document.getElementById('model-status').textContent='学习增强搜索需要已训练的局面估值权重。';return false;}
         if(missing){document.getElementById('model-status').textContent='训练权重尚不可用，请等待加载或改选搜索型 / 人类玩家。'+(api.error||'');return false;}
         return true;
     };
     api.setup=()=>{
         const enabled=document.getElementById('ai-enabled'), status=document.getElementById('model-status');
+        const corrected=globalThis.BRASS_RULES==='economy-v2';
+        document.getElementById('rules-status').textContent=corrected?'经济规则校准版：无终局收入加分，收入轨/贷款/时代/市场已修正；仍非完整官方规则，不能直接与真人比赛分数比较。':'历史训练版：保留旧规则与权重，含额外终局收入分。';
+        if(corrected)document.querySelectorAll('a[href="arena.html"]').forEach(a=>a.href='arena.html?rules=economy-v2');
         const setEnabled=()=>{
             document.querySelectorAll('.player-ai-select').forEach(s=>{s.disabled=!enabled.checked;if(!enabled.checked)s.value='human';});
             if(enabled.checked){status.textContent='正在加载 2P / 3P / 4P 训练权重…';api.load().then(ok=>{status.textContent=ok?`模型已就绪 · 已按玩家人数加载 2P / 3P / 4P 动力学 · 4P 数据 ${api.world.data.datasetGames.toLocaleString()} 局 · 学习增强搜索可用`:`模型加载失败：${api.error}。搜索型和人类玩家仍可使用。`;});}
@@ -58,6 +71,7 @@
             const panel=document.createElement('div');panel.id='ai-toolbar';
             panel.innerHTML='<span id="ai-turn-label"></span><button class="ai-button" id="ai-pause">暂停 AI</button><button class="ai-button" id="ai-step">AI 走一步</button><button class="ai-button" id="ai-inspect">AI 推演 / 预测对照</button><a href="arena.html" target="_blank" rel="noopener">对战实验室 ↗</a>';
             document.getElementById('game-screen').prepend(panel);this.toolbar=panel;
+            if(globalThis.BRASS_RULES==='economy-v2')panel.querySelector('a').href='arena.html?rules=economy-v2';
             const dialog=document.createElement('dialog');dialog.className='imagination-dialog';dialog.id='imagination-dialog';
             dialog.innerHTML='<div class="imagination-header"><div><small>BRASS · AI IMAGINATION</small><h2>在模型中想象未来</h2></div><button id="ai-close" class="ai-button">关闭</button></div><p class="ai-note">世界模型预测会出错。右侧真实结果由原规则引擎在副本上计算；只有点击执行才会改变棋局。</p><div class="ai-controls"><label>推演深度 <select id="ai-depth"><option>1</option><option>2</option><option selected>3</option><option>5</option></select></label><button class="ai-button" id="ai-rethink">重新推演</button><span id="ai-plan-info" role="status"></span></div><div class="imagination-grid"><div><h3>候选动作与未来评分</h3><div id="ai-candidates"></div></div><div><h3>Prediction vs Reality</h3><div id="ai-comparison">选择左侧动作查看。</div></div></div>';
             document.body.appendChild(dialog);this.dialog=dialog;
@@ -86,7 +100,7 @@
         move(){
             if(this.disposed||this.state.gameOver)return;
             const type=this.kinds[this.state.currentPlayerId];if(type==='human')return;
-            try{const result=P.plan(this.state,{type,world:api.getWorld(this.state.numPlayers),policy:api.policy,depth:2,width:8});this.lastPlan=result;this.apply(result.selected);}
+            try{const result=P.plan(this.state,{type,world:type==='guided'?api.getGuided(this.state.numPlayers):api.getWorld(this.state.numPlayers),policy:api.getPolicy(this.state.numPlayers),depth:2,width:8});this.lastPlan=result;this.apply(result.selected);}
             catch(e){this.running=false;this.ui.showToast(e.message,'error');this.refresh();}
         }
         apply(action){

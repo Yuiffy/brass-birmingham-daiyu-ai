@@ -1,4 +1,5 @@
 'use strict';
+const calibrated=typeof location!=='undefined'&&new URLSearchParams(location.search).get('rules')==='economy-v2';
 const names={heuristic:'原启发式 AI',search:'搜索树逻辑型',neural:'神经网络型',world:'世界模型型',guided:'学习增强搜索'};
 const $=id=>document.getElementById(id),pct=v=>`${(v*100).toFixed(1)}%`,num=v=>Number(v).toFixed(3);
 const vp=v=>Number(v).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -42,7 +43,7 @@ function renderEvaluation(r){
 $('arena-start').onclick=()=>{
     const players=Number($('arena-players').value),games=Number($('arena-games').value),seed=Number($('arena-seed').value),depth=Number($('arena-depth').value);
     if(![2,3,4].includes(players)||!Number.isInteger(games)||games<players||games>400||games%players||!Number.isInteger(seed)){$('arena-status').textContent=`请选择 ${players}–400 局，局数为 ${players} 的倍数，并输入整数种子。`;return;}
-    worker?.terminate();worker=new Worker('world_model/arena-worker.js');
+    worker?.terminate();worker=new Worker('world_model/arena-worker.js'+(calibrated?'?rules=economy-v2':''));
     versionRequest++;$('arena-version').disabled=true;$('arena-lineup').disabled=true;$('arena-players').disabled=true;
     $('arena-start').disabled=true;$('arena-stop').disabled=false;$('arena-progress').value=0;
     $('arena-status').textContent='正在加载权重并开始对局…';
@@ -69,8 +70,8 @@ async function loadVersion(){
     const lineup=$('arena-lineup').value;
     const tournamentFile=lineup==='strong'?version.strong:lineup==='guided'?(version.guided||'tournament-guided.json'):version.tournament;
     const specialized=$('arena-version').value==='current'&&lineup==='strong'&&players<4;
-    const tournamentURL=specialized?`world_model/experiments/dynamics-small-study/tournament-${players}p-candidate.json`:tournamentFile?`world_model/${version.reports}/${tournamentFile}`:null;
-    const evaluationURL=specialized?`world_model/experiments/dynamics-small-study/prediction-${players}p-candidate/evaluation.json`:`world_model/${version.evaluation||version.reports}/evaluation.json`;
+    const tournamentURL=calibrated?(lineup==='strong'?`world_model/experiments/economy-20260920/${players}p/runtime-tournament.json`:null):specialized?`world_model/experiments/dynamics-small-study/tournament-${players}p-candidate.json`:tournamentFile?`world_model/${version.reports}/${tournamentFile}`:null;
+    const evaluationURL=calibrated?`world_model/experiments/economy-20260920/${players}p/prediction/evaluation.json`:specialized?`world_model/experiments/dynamics-small-study/prediction-${players}p-candidate/evaluation.json`:`world_model/${version.evaluation||version.reports}/evaluation.json`;
     lastReport=null;$('arena-export').disabled=true;$('tournament-result').querySelector('tbody').innerHTML='';
     $('arena-status').textContent='正在读取所选版本…';
     $('eval-caption').textContent='正在读取所选版本的测试评估…';
@@ -80,7 +81,15 @@ async function loadVersion(){
         read(evaluationURL).then(r=>{if(token===versionRequest)renderEvaluation(r);}).catch(e=>{if(token===versionRequest)$('eval-caption').textContent=`所选版本评估报告不可用：${e.message}`;})
     ]);
 }
+if(calibrated){
+    $('arena-version').value='current';
+    for(const option of $('arena-version').options)option.disabled=option.value!=='current';
+    $('arena-version').selectedOptions[0].textContent='经济规则校准版（实验）';
+    const link=document.querySelector('a[href="index.html"]');if(link)link.href='index.html?rules=economy-v2';
+    document.querySelector('h1').insertAdjacentHTML('afterend','<p class="arena-note">当前为经济规则校准版，无额外终局收入分。本页成绩与旧规则不能直接横向比较；完整官方规则仍有未实现部分。</p>');
+}
 $('arena-version').onchange=loadVersion;$('arena-lineup').onchange=loadVersion;$('arena-players').onchange=loadVersion;loadVersion();
+if(!calibrated){
 read('world_model/reports/higher-scores.json').then(r=>{
     const ci=x=>`${x.estimate>=0?'+':''}${vp(x.estimate)} [${vp(x.low)}, ${vp(x.high)}]`;
     $('growth-caption').textContent=`每种 AI 每版 ${r.runs[0].games} 局 · 全新种子 ${r.protocol.finalSeed} · 固定三个对手 · 4 个座位轮换 · 开发赛选定模型后冻结复测`;
@@ -112,3 +121,21 @@ read('world_model/reports/learning-curve.json').then(r=>{
     $('curve-caption').textContent='初版的训练子集对照：相同验证集、24 轮训练；只改变训练游戏数量。10,000 局续训结果见上方“续训前后”。';
     $('learning-curve').innerHTML=`<table class="ai-table"><thead><tr><th>训练局数</th><th>训练样本</th><th>最佳验证 MSE</th></tr></thead><tbody>${r.runs.map(x=>`<tr><td>${x.trainingGames}</td><td>${x.trainingRows}</td><td>${x.validationMSE.toFixed(6)}</td></tr>`).join('')}</tbody></table>`;
 }).catch(()=>{$('curve-caption').textContent='初版训练子集报告不可用。';});
+
+}else{
+    for(const id of ['score-history','upgrade','continuation'])$(id).hidden=true;
+    for(const href of ['#upgrade','#continuation'])document.querySelector(`a[href="${href}"]`).hidden=true;
+    $('learning-curve').parentElement.hidden=true;
+    $('score-training').innerHTML='<h2>新规则下的独立复测</h2><p class="ai-note">读取本轮结果…</p>';
+    $('mechanism').querySelector('.ai-note').textContent='当前使用按人数分别训练的经济规则校准模型。只采用通过独立复测门槛的价值头；完整官方规则仍有未实现部分。';
+    read('world_model/reports/economy-20260920.json').then(report=>{
+        const rows=report.runs.flatMap(run=>[
+            {players:run.players,name:'学习增强搜索',result:run.comparison.results.guided,accepted:run.promotionEligible},
+            {players:run.players,name:'世界模型',result:run.worldStage.comparison.results.world,accepted:run.worldStage.promotionEligible}
+        ]);
+        $('score-training').innerHTML='<h2>新规则下的独立复测</h2><p class="ai-note">分两阶段固定另一类 AI 的权重，只更新被测 AI 的价值头。每个人数、每个阶段的新旧版本各 120 局；按完整种子组计算区间。这里的基线是本轮新规则初版。</p>'+
+            '<div class="comparison-scroll"><table class="ai-table"><thead><tr><th>人数</th><th>被测 AI</th><th>基线平均 VP</th><th>候选平均 VP</th><th>增分 / 95% 区间</th><th>采用</th></tr></thead><tbody>'+rows.map(row=>{
+                const r=row.result,g=r.gain.vp;return `<tr><td>${row.players}</td><td>${row.name}</td><td>${vp(r.baseline.averageVP)}</td><td>${vp(r.candidate.averageVP)}</td><td>${vp(g.mean)} [${vp(g.ci95[0])}, ${vp(g.ci95[1])}]</td><td>${row.accepted?'已采用':'保留基线'}</td></tr>`;
+            }).join('')+'</tbody></table></div><p class="arena-note">采用门槛使用每个阶段三个人数校正后的 98.33% 区间，并要求全桌均分不下降。两阶段的对手不同，不能把表中两类 AI 当成同桌排名。旧规则和真人赛事分数不与本表直接比较。</p><a href="docs/economy-training-results.md">完整结果</a> · <a href="docs/economy-calibration.md">规则范围与剩余限制</a>';
+    }).catch(e=>{$('score-training').innerHTML=`<h2>新规则下的独立复测</h2><p>${escapeHTML(e.message)}</p>`;});
+}

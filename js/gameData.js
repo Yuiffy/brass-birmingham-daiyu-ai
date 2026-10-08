@@ -515,13 +515,14 @@ const CARD_DECK = {
 // ============================================================================
 // Coal Market: 14 spaces, prices from cheapest to most expensive
 // Initially 13 cubes (first space empty)
-const COAL_MARKET_PRICES = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 8];
-const COAL_MARKET_INITIAL = 13; // cubes at start (spaces 1-13 filled, space 0 empty)
+const CORRECTED_ECONOMY = (typeof process!=='undefined'?process.env.BRASS_RULES:globalThis.BRASS_RULES)==='economy-v2';
+const COAL_MARKET_PRICES = CORRECTED_ECONOMY?[1,1,2,2,3,3,4,4,5,5,6,6,7,7,8]:[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 8];
+const COAL_MARKET_INITIAL = CORRECTED_ECONOMY?14:13; // cubes at start (spaces 1-13 filled, space 0 empty)
 
 // Iron Market: 10 spaces
 // Initially 8 cubes (first 2 spaces empty)
-const IRON_MARKET_PRICES = [1, 1, 2, 2, 3, 3, 4, 5, 6, 6];
-const IRON_MARKET_INITIAL = 8; // cubes at start (spaces 2-9 filled, spaces 0-1 empty)
+const IRON_MARKET_PRICES = CORRECTED_ECONOMY?[1,1,2,2,3,3,4,4,5,5,6]:[1, 1, 2, 2, 3, 3, 4, 5, 6, 6];
+const IRON_MARKET_INITIAL = CORRECTED_ECONOMY?9:8; // cubes at start (spaces 2-9 filled, spaces 0-1 empty)
 
 // ============================================================================
 // Income Track
@@ -533,6 +534,16 @@ const IRON_MARKET_INITIAL = 8; // cubes at start (spaces 2-9 filled, spaces 0-1 
 // 21 to 30: 4 track spaces per level
 // Total track spaces: 11 + 20 + 30 + 40 = 101
 
+// Keep historical simulations reproducible; the corrected profile has its own schema/models.
+const RULES_VERSION = (typeof process !== 'undefined' ? process.env.BRASS_RULES : globalThis.BRASS_RULES) || 'legacy-v1';
+if (!['legacy-v1','economy-v2'].includes(RULES_VERSION)) throw Error('Unknown rules version');
+function incomeAtPosition(position) {
+    const p=Math.max(0,Math.min(99,Math.round(position)));
+    return p<=10?p-10:p<=30?Math.ceil((p-10)/2):p<=60?10+Math.ceil((p-30)/3):20+Math.ceil((p-60)/4);
+}
+function highestIncomePosition(level) {
+    let p=99;while(p>0&&incomeAtPosition(p)>level)p--;return p;
+}
 const INITIAL_MONEY = 17;
 const INITIAL_INCOME = 10;
 const LOAN_AMOUNT = 30;
@@ -594,6 +605,7 @@ function isCity(locationId) {
 }
 
 const GAME_DATA_EXPORTS = {
+    RULES_VERSION, incomeAtPosition, highestIncomePosition,
     INDUSTRY_TYPES,
     RESOURCE_TYPES,
     ERA,

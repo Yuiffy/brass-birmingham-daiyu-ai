@@ -52,6 +52,7 @@
                 this.incomeBonusWeight=data.valueModel.incomeBonusWeight??0;
                 if(!Number.isFinite(this.incomeBonusWeight)||this.incomeBonusWeight<0||this.incomeBonusWeight>1)throw Error('Invalid income bonus objective');
                 if(!Number.isFinite(this.opponentWeight)||this.opponentWeight<0||this.opponentWeight>1)throw Error('Invalid value objective');
+                if(data.valueModel.residualScore&&this.opponentWeight!==0)throw Error('Residual value requires own VP');
                 this.valueLayers=layers(data.valueModel.layers,data.valueModel.inputDim,1);
             }
         }
@@ -86,7 +87,7 @@
                 const scores=[0,1,2,3].map(p=>E.raw(stateVector,`p${p}.vp`)-this.incomeBonusWeight*E.raw(stateVector,`p${p}.income`));
                 return scores[player]-this.opponentWeight*Math.max(...scores.filter((_,p)=>p!==player));
             }
-            return run(this.valueLayers,V.features(stateVector,player,this.data.valueModel.featureVersion))[0]*100;
+            return run(this.valueLayers,V.features(stateVector,player,this.data.valueModel.featureVersion))[0]*100+(this.data.valueModel.residualScore?V.scoreAnchor(stateVector,player):0);
         }
     }
     if(node)module.exports={Network};else root.BrassWorldModel={Network};

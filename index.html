@@ -32,6 +32,8 @@
                 </div>
 
                 <label class="ai-enable"><input id="ai-enabled" type="checkbox" checked> 启用 AI 实验模块</label>
+                <p id="rules-status" class="ai-note">历史训练规则：含额外终局收入分。</p>
+                <p class="ai-note"><a href="?rules=economy-v2">经济规则校准版（实验）</a> · <a href="?rules=legacy-v1">历史训练版</a></p>
                 <p id="model-status" class="ai-note" role="status">正在加载训练权重…</p>
                 <p class="ai-note">实验 AI 可见所有当前手牌，无法读取未来牌序。世界模型会自动选择对应 2 / 3 / 4 人的训练权重。</p>
                 <button id="start-game-btn" class="btn-primary">Begin Game</button>
@@ -217,6 +219,7 @@
     </div>
 
     <!-- Scripts -->
+    <script>globalThis.BRASS_RULES = new URLSearchParams(location.search).get("rules") === "economy-v2" ? "economy-v2" : "legacy-v1";</script>
     <script src="js/gameData.js"></script>
     <script src="js/gameState.js"></script>
     <script src="js/gameLogic.js"></script>

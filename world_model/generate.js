@@ -5,10 +5,10 @@ const E = require('./encoding');
 const Legacy = require('../scripts/autorun');
 const Logic = require('../js/gameLogic');
 
-function generate({games=1000,players=4,seed=1701,out='world_model/data',ai='mixed',exploration=0.3}={}) {
+function generate({games=1000,players=4,seed=1701,out='world_model/data',ai='mixed',exploration=0.3,depth=1}={}) {
     if(!Number.isInteger(games)||games<10) throw Error('Use at least 10 complete games for train/validation/test splitting');
     if(![2,3,4].includes(players)||!Number.isInteger(seed)) throw Error('Invalid players or seed');
-    if(!['mixed','heuristic','random'].includes(ai)) throw Error('AI must be mixed, heuristic or random');
+    if(!['mixed','heuristic','random','search'].includes(ai)) throw Error('AI must be mixed, heuristic or random');
     if(!Number.isFinite(exploration)||exploration<0||exploration>1)throw Error('Exploration must be between 0 and 1');
     fs.mkdirSync(out,{recursive:true});
     if(fs.existsSync(path.join(out,'schema.json'))) throw Error('Dataset exists; choose a new --out directory');
@@ -27,14 +27,15 @@ function generate({games=1000,players=4,seed=1701,out='world_model/data',ai='mix
             while(!state.gameOver) {
                 if(++turn>1000) throw Error(`Game ${g} failed to terminate`);
                 // Retain the original bot's retry behavior for reproducible data.
-                let list=Legacy.collectCandidates(state,new Logic(state),state.currentPlayerId), action, next;
+                let list=state.rulesVersion==='economy-v2'?Sim.candidates(state):Legacy.collectCandidates(state,new Logic(state),state.currentPlayerId), action, next;
                 while(list.length) {
-                    if(ai==='random'||(ai==='mixed'&&rng.next()<exploration)) {
+                    if(ai==='random'||((ai==='mixed'||ai==='search')&&rng.next()<exploration)) {
                         const kinds=[...new Set(list.map(a=>a.action))];
                         const kind=rng.pick(kinds);
                         action=rng.pick(list.filter(a=>a.action===kind));
                         if(!action) action=rng.pick(list);
-                    } else action=list.slice().sort((a,b)=>b.score-a.score)[0];
+                    } else if(ai==='search')action=require('./planner').plan(state,{type:'search',depth,width:8}).selected;
+                    else action=list.slice().sort((a,b)=>b.score-a.score)[0];
                     try {next=Sim.step(state,action,{validate:false});break;}
                     catch {list=list.filter(a=>Sim.key(a)!==Sim.key(action));}
                 }
@@ -52,7 +53,7 @@ function generate({games=1000,players=4,seed=1701,out='world_model/data',ai='mix
         }
     } finally {fs.closeSync(dataFd);fs.closeSync(metaFd);}
     const schema={...E.schema,stateDim,actionDim,rowWidth:2*stateDim+actionDim+1,rows:row,
-        games,players,seed,ai,exploration,counts,format:'little-endian float32 [state,action,next_state,heuristic_score/100]',generatedAt:new Date().toISOString()};
+        games,players,seed,ai,exploration,depth,counts,format:'little-endian float32 [state,action,next_state,heuristic_score/100]',generatedAt:new Date().toISOString()};
     fs.writeFileSync(path.join(out,'schema.json'),JSON.stringify(schema,null,2));
     fs.writeFileSync(path.join(out,'splits.json'),JSON.stringify(splits));
     fs.writeFileSync(path.join(out,'games.json'),JSON.stringify(gameRows,null,2));

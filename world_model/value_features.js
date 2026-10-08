@@ -44,5 +44,16 @@
         });
         return base.concat(extra[actor],extra[actor].map((_,i)=>extra.reduce((n,row,p)=>n+(p===actor?0:row[i]),0)/count));
     }
-    if(typeof module!=='undefined'&&module.exports)module.exports={features,topology};else root.BrassValueFeatures={features,topology};
+    function scoreAnchor(v,actor){
+        let total=E.raw(v,`p${actor}.vp`);
+        if(E.raw(v,'gameOver')>=.5)return total;
+        const owners=E.schema.slots.map(s=>Math.round(E.raw(v,`slot.${s}.owner`)));
+        const flips=E.schema.slots.map(s=>clamp(E.raw(v,`slot.${s}.flipped`)));
+        E.schema.slots.forEach((s,i)=>{if(owners[i]===actor+1)total+=Math.max(0,E.raw(v,`slot.${s}.vp`))*flips[i];});
+        E.schema.links.forEach((id,k)=>{if(Math.round(E.raw(v,`link.${id}.owner`))!==actor+1)return;
+            total+=topology[k].merchantVP;for(const i of topology[k].slots)if(owners[i]>=1&&owners[i]<=4)total+=Math.max(0,E.raw(v,`slot.${E.schema.slots[i]}.linkVP`))*flips[i];
+        });
+        return total;
+    }
+    if(typeof module!=='undefined'&&module.exports)module.exports={features,topology,scoreAnchor};else root.BrassValueFeatures={features,topology,scoreAnchor};
 })(globalThis);

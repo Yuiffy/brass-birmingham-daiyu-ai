@@ -261,9 +261,13 @@ function collectCandidates(state, logic, playerId) {
         });
     }
 
+    if(state.rulesVersion==='economy-v2')for(const target of logic.getValidSellBundles(playerId)){
+        const cardIndex=chooseLowestValueCard(player.hand,logic.getValidCardsForAction(playerId,ACTIONS.SELL));
+        if(cardIndex!==null)candidates.push({action:ACTIONS.SELL,target,cardIndex,score:target.keys.reduce((sum,key)=>sum+sellScore(state,playerId,{tile:state.boardIndustries[key],cityId:key.slice(0,key.lastIndexOf('_'))}),0)});
+    }
     if (player.hand.length > 0) {
         const cardIndex = chooseLowestValueCard(player.hand, logic.getValidCardsForAction(playerId, ACTIONS.LOAN));
-        candidates.push({
+        if(state.canTakeLoan(playerId))candidates.push({
             action: ACTIONS.LOAN,
             cardIndex,
             score: loanScore(state, playerId),
@@ -327,7 +331,7 @@ function actionLabel(candidate) {
         case ACTIONS.DEVELOP:
             return `develop ${candidate.target.type1}${candidate.target.type2 ? ` + ${candidate.target.type2}` : ''}`;
         case ACTIONS.SELL:
-            return `sell ${candidate.target.key}`;
+            return `sell ${(candidate.target.keys||[candidate.target.key]).join(", ")}`;
         case ACTIONS.LOAN:
             return `loan`;
         case ACTIONS.SCOUT:

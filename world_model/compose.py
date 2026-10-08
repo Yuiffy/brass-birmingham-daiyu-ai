@@ -9,6 +9,7 @@ def compose(args):
     if out.exists() and any(out.iterdir()):raise ValueError('Choose an empty output directory')
     model=read_json(dynamics/'world-model.json');critic=read_json(value/'value.json')
     if model['kind']!='gated-world-model' or critic['featureVersion'] not in ['brass-value-v1','brass-value-v2']:raise ValueError('Incompatible artifacts')
+    if critic.get('schemaVersion','brass-wm-v1')!=model['schemaVersion']:raise ValueError('Cannot compose a value head from different rules')
     out.mkdir(parents=True,exist_ok=True)
     model.update(valueModel=critic,planningValue='learned')
     if args.shortlist:model['planningShortlist']=args.shortlist

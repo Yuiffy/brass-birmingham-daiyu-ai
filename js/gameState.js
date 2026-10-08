@@ -8,6 +8,7 @@ const __gameData = (typeof module !== 'undefined' && module.exports)
     : globalThis;
 
 const {
+    RULES_VERSION, incomeAtPosition, highestIncomePosition,
     INDUSTRY_TYPES,
     CARD_TYPES,
     PLAYER_COLORS,
@@ -43,6 +44,7 @@ const {
 
 class GameState {
     constructor(numPlayers, playerNames) {
+        this.rulesVersion = RULES_VERSION;
         this.numPlayers = numPlayers;
         this.playerNames = playerNames;
         this.era = ERA.CANAL;
@@ -63,6 +65,7 @@ class GameState {
 
         // Turn order starts as player order
         this.turnOrder = this.players.map((_, i) => i);
+        if (this.rulesVersion === 'economy-v2') this.shuffleArray(this.turnOrder);
 
         // Board state
         this.boardIndustries = {}; // cityId_slotIndex -> { playerId, type, level, tileData, flipped, resourceCubes }
@@ -173,6 +176,7 @@ class GameState {
         }
 
         this.shuffleArray(deck);
+        if(this.rulesVersion==='economy-v2'&&this.era===ERA.CANAL)deck.splice(0,this.numPlayers);
         this.drawDeck = deck;
     }
 
@@ -226,26 +230,40 @@ class GameState {
 
     adjustIncome(playerId, amount) {
         const player = this.players[playerId];
-        player.income = Math.min(MAX_INCOME, Math.max(MIN_INCOME, player.income + amount));
+        player.income = this.rulesVersion==='economy-v2'?Math.min(99,Math.max(0,player.income+amount)):Math.min(MAX_INCOME, Math.max(MIN_INCOME, player.income + amount));
     }
 
     getIncomeAmount(income) {
-        return income; // Income level = money earned per round
+        return this.rulesVersion==='economy-v2'?incomeAtPosition(income):income;
     }
 
     // ========================================================================
     // Market helpers
     // ========================================================================
 
+    canTakeLoan(playerId) { return this.rulesVersion!=='economy-v2'||this.getIncomeAmount(this.players[playerId].income)>=-7; }
+
+    takeLoan(playerId) {
+        if(!this.canTakeLoan(playerId))return false;
+        const player=this.players[playerId];player.money+=LOAN_AMOUNT;
+        if(this.rulesVersion==='economy-v2')player.income=highestIncomePosition(this.getIncomeAmount(player.income)-LOAN_INCOME_PENALTY);
+        else this.adjustIncome(playerId,-LOAN_INCOME_PENALTY);
+        return true;
+    }
+
+    comparePlayers(a,b) {
+        return b.vp-a.vp || (this.rulesVersion==='economy-v2' ? this.getIncomeAmount(b.income)-this.getIncomeAmount(a.income) || b.money-a.money : 0);
+    }
+
     getCoalPrice() {
-        if (this.coalMarket <= 0) return Infinity;
+        if (this.coalMarket <= 0) return this.rulesVersion==='economy-v2'?8:Infinity;
         // Price is based on which space the next coal would come from
         const spaceIndex = COAL_MARKET_PRICES.length - this.coalMarket;
         return COAL_MARKET_PRICES[spaceIndex] || Infinity;
     }
 
     getIronPrice() {
-        if (this.ironMarket <= 0) return Infinity;
+        if (this.ironMarket <= 0) return this.rulesVersion==='economy-v2'?6:Infinity;
         const spaceIndex = IRON_MARKET_PRICES.length - this.ironMarket;
         return IRON_MARKET_PRICES[spaceIndex] || Infinity;
     }
@@ -270,6 +288,18 @@ class GameState {
             this.ironMarket--;
         }
         return { cost: totalCost, success: true };
+    }
+
+    supplyNewIndustry(key) {
+        const tile=this.boardIndustries[key];if(this.rulesVersion!=='economy-v2')return;
+        if(tile.type===INDUSTRY_TYPES.BREWERY){tile.resourceCubes=this.era===ERA.CANAL?1:2;return;}
+        const iron=tile.type===INDUSTRY_TYPES.IRON_WORKS,coal=tile.type===INDUSTRY_TYPES.COAL_MINE;
+        if(!iron&&!coal)return;
+        if(coal&&![...this.getConnectedLocations(key.slice(0,key.lastIndexOf('_')))].some(isMerchantLocation))return;
+        const market=iron?'ironMarket':'coalMarket',prices=iron?IRON_MARKET_PRICES:COAL_MARKET_PRICES;
+        while(tile.resourceCubes>0&&this[market]<prices.length){
+            this.players[tile.playerId].money+=prices[prices.length-this[market]-1];this[market]++;this.consumeResource(key);
+        }
     }
 
     sellCoalToMarket(count) {
@@ -400,6 +430,11 @@ class GameState {
         // Sort by distance (nearest first)
         sources.sort((a, b) => a.distance - b.distance);
 
+        if(this.rulesVersion==='economy-v2'){
+            const cubes=sources.flatMap(src=>Array.from({length:this.boardIndustries[src.key].resourceCubes},()=>({...src})));
+            if([...visited].some(isMerchantLocation))for(let n=0;n<3;n++)cubes.push({type:'market',price:COAL_MARKET_PRICES[Math.min(COAL_MARKET_PRICES.length-1,COAL_MARKET_PRICES.length-this.coalMarket+n)],free:false});
+            return cubes;
+        }
         // Also add market as option
         if (this.coalMarket > 0) {
             sources.push({ type: 'market', price: this.getCoalPrice(), free: false });
@@ -420,6 +455,11 @@ class GameState {
             }
         }
 
+        if(this.rulesVersion==='economy-v2'){
+            const cubes=sources.flatMap(src=>Array.from({length:this.boardIndustries[src.key].resourceCubes},()=>({...src})));
+            for(let n=0;n<3;n++)cubes.push({type:'market',price:IRON_MARKET_PRICES[Math.min(IRON_MARKET_PRICES.length-1,IRON_MARKET_PRICES.length-this.ironMarket+n)],free:false});
+            return cubes;
+        }
         // Market
         if (this.ironMarket > 0) {
             sources.push({ type: 'market', price: this.getIronPrice(), free: false });
@@ -525,6 +565,7 @@ class GameState {
         // Check if era should end (current player just played their last card)
         const allHandsEmpty = this.players.every(p => p.hand.length === 0);
         if (allHandsEmpty && this.drawDeck.length === 0) {
+            if(this.rulesVersion==='economy-v2' && this.actionsThisTurn>0)return this.endRound();
             if (this.era === ERA.CANAL) {
                 return 'endCanalEra';
             } else {
@@ -592,15 +633,21 @@ class GameState {
     }
 
     endRound() {
+        this.actionsThisTurn=0;
         // Income phase
         for (const player of this.players) {
-            const incomeAmount = this.getIncomeAmount(player.income);
+            const incomeAmount = this.rulesVersion==='economy-v2' && this.era===ERA.RAIL && this.drawDeck.length===0 && this.players.every(p=>!p.hand.length)?0:this.getIncomeAmount(player.income);
             player.money += incomeAmount;
             if (player.money < 0) {
-                // Player is in debt - handle debt (simplified: just set to 0, lose VP)
-                const debt = Math.abs(player.money);
-                player.vp = Math.max(0, player.vp - debt);
-                player.money = 0;
+                if(this.rulesVersion==='economy-v2') {
+                    // Deterministic legal liquidation policy: sell the least immediately valuable asset first.
+                    const assets=Object.entries(this.boardIndustries).map(([key,tile])=>({key,tile,farm:false}))
+                        .concat(Object.entries(this.breweryFarmTiles).filter(([,t])=>t).map(([key,tile])=>({key,tile,farm:true})))
+                        .filter(a=>a.tile.playerId===player.id).sort((a,b)=>(a.tile.flipped?a.tile.tileData.vp:0)-(b.tile.flipped?b.tile.tileData.vp:0)||b.tile.tileData.cost-a.tile.tileData.cost);
+                    for(const a of assets){if(player.money>=0)break;player.money+=Math.floor(a.tile.tileData.cost/2);delete (a.farm?this.breweryFarmTiles:this.boardIndustries)[a.key];}
+                    if(player.money<0)player.vp=Math.max(0,player.vp+player.money);
+                } else player.vp = Math.max(0, player.vp - Math.abs(player.money));
+                player.money = Math.max(0,player.money);
             }
         }
 
@@ -625,6 +672,7 @@ class GameState {
         // Check if era ends (no cards left in any player's hand and draw deck is empty)
         const allHandsEmpty = this.players.every(p => p.hand.length === 0);
         if (allHandsEmpty && this.drawDeck.length === 0) {
+            if(this.rulesVersion==='economy-v2' && this.actionsThisTurn>0)return this.endRound();
             if (this.era === ERA.CANAL) {
                 return 'endCanalEra';
             } else {
@@ -664,14 +712,15 @@ class GameState {
         // Transition to rail era
         this.era = ERA.RAIL;
         this.round = 1;
-        this.isFirstRound = true;
-        this.actionsPerTurn = FIRST_ROUND_ACTIONS;
+        this.isFirstRound = this.rulesVersion!=='economy-v2';
+        this.actionsPerTurn = this.rulesVersion==='economy-v2'?ACTIONS_PER_TURN:FIRST_ROUND_ACTIONS;
         this.currentPlayerIndex = 0;
         this.actionsThisTurn = 0;
 
         // Restock merchant beer
         for (const mt of this.merchantTiles) {
             mt.hasBeer = true;
+            if(this.rulesVersion==='economy-v2')mt.bonusClaimed=false;
         }
 
         // Reshuffle all cards into draw deck
@@ -690,10 +739,8 @@ class GameState {
         const scores = this.calculateEraScore();
         this.gameOver = true;
 
-        // Add income bonus VP
-        for (const player of this.players) {
-            player.vp += player.income;
-        }
+        // Historical experiments included an unofficial income bonus.
+        if(this.rulesVersion!=='economy-v2')for (const player of this.players) player.vp += player.income;
 
         return scores;
     }

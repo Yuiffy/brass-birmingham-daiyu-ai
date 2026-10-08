@@ -57,7 +57,7 @@
             return {state:E.decodeState(v,state,{structured:world.data?.kind==='gated-world-model'}),vector:v};
         };
         const rootCache=new Map();
-        if(['world','guided'].includes(type)&&world.data?.planningCandidates==='learned-pool-v1'){
+        if((['world','guided'].includes(type)&&world.data?.planningCandidates==='learned-pool-v1')||(type==='search'&&state.rulesVersion==='economy-v2')){
             const pool=candidatePool(state,32);
             for(const a of pool)rootCache.set(Sim.key(a),transition(engine?searchRoot:state,initial,a));
             list=pool.sort((a,b)=>evaluate(rootCache.get(Sim.key(b)).vector,actor)-evaluate(rootCache.get(Sim.key(a)).vector,actor)).slice(0,width);
