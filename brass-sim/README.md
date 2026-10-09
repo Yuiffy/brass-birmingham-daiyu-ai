@@ -1,5 +1,13 @@
 # Brass: Birmingham
 
+> **维护位置（2026-10-09）：** 本项目已从 `Yuiffy/brass-birmingham-sim` 整合至
+> [`Yuiffy/brass-birmingham-daiyu-ai`](https://github.com/Yuiffy/brass-birmingham-daiyu-ai)
+> 的 `brass-sim/` 目录。原 `Yuiffy/brass-birmingham` 的全部提交也已包含在内。
+> 以下命令均在 `brass-sim/` 中执行；在仓库根目录可运行
+> `npm --prefix brass-sim start -- --port 8086` 或 `npm --prefix brass-sim test`。
+> 此 JavaScript 引擎与根目录 Rust/Svelte 引擎独立，训练权重不能直接互换。
+> 迁移范围和验证记录见[仓库整合说明](../docs/repository-consolidation.md)。
+
 ## Economy calibration experiment
 
 The optional `/?rules=economy-v2` game and `/arena.html?rules=economy-v2` arena separate corrected income, loans, era flow, market supply and multi-sale handling from historical training. They use a distinct model schema and fresh data. This remains a partial rules calibration, not a complete official-rules implementation. See [scope and limitations](docs/economy-calibration.md) and [independent score comparisons](docs/economy-training-results.md). The default URL preserves the historical rules and mature checkpoints.

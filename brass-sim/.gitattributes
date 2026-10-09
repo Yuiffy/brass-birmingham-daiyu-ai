@@ -1,5 +1,5 @@
 * text=auto
 *.json text eol=lf
 *.npz binary
-*.png binary
+*.png binary -filter
 *.f32 binary
