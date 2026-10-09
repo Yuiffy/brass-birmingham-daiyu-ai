@@ -1,0 +1,350 @@
+{
+  "engineRevision": "d3d269746863ee720cd797608ad2131edf277fae",
+  "humanIntentRows": 372,
+  "featureVersion": "public-intent-v1",
+  "engineBundleSHA256": "c3e9d993ca7466cf537e1d6a2ddfcfcd53a461fb679d8c4c4bc3f37a4ddab0b8",
+  "engineSourceTree": "05a08d19fd617ab334cd8c561212eae297ac4b8a",
+  "compiledModuleHashes": {
+    "actions/build.js": "4826483f2a0bb6933f1c0a1b1d3345ee6ef5a0cdf7f9594b192cb427f2614289",
+    "actions/develop.js": "18a62bc5aa9c3152ea74cd990080151b5e59a704752b46570712e1f2d5507d33",
+    "actions/loan.js": "6681d3343f0b3a761a6b02d2594328ecc1fac66099d64828681899cfd51d7f11",
+    "actions/network.js": "4938c363b4c1b9504fe05067beb92469f99598d2cbfe6ce306cb8e38c9c03c2c",
+    "actions/pass.js": "9893d5506725df0b668af8e028ae15cf46fee0e3819e56383b0fdf15d9e41969",
+    "actions/scout.js": "62afcd9a629221c366e430bb54402d8bd1927df6b34313d0c338bb6b812c8ab2",
+    "actions/sell.js": "3e8b2a42bebf720d6e52671aea49324d7a904e969abedd9655331b588b0357db",
+    "agents/random.js": "ba3f1c47cb75c5d17093001683f8534a8e3203c0eb9c59eb0b98dc35eb42a8af",
+    "apply.js": "0cb5a8530eca582cb03388b349af89178d62c92d398a100da5681e81a9e2c33f",
+    "data/board.js": "7cf5bb90078b3a232872a8cb0127327a703a990d6cce024bb334b45a8d35c034",
+    "data/cards.js": "c9e982c32c1e245a928f99798bfebdc6434cc5a89058494531a5d85a577a1154",
+    "data/income.js": "347e1a6b4407c7d70b285fc63d6116fdc9c83b345f506d157724ca16a5762f5e",
+    "data/market.js": "f797ec240826606adfffb242108240d0603a9939b3c9be3cee3fdf2ffad7c4a6",
+    "data/tiles.js": "5b48497c1f44a750c255b22204d874dfb9577b3c94dc4f53344a46478c103204",
+    "era.js": "d632a421d54d137b63d13fcfd8380991dc5c1d9bd34688994e429664decf1c74",
+    "errors.js": "9d5211da19bd7527d21a6fc870d9ced4fb44964f749cbeb8e1fcccfc74df1261",
+    "index.js": "c3e9d993ca7466cf537e1d6a2ddfcfcd53a461fb679d8c4c4bc3f37a4ddab0b8",
+    "market.js": "182c27b76b66e0dd29dd90660ca3a329da19760245658cd4776011003aa15c48",
+    "network.js": "ace5b07562dd10f4db76549f3e832e4ca05fa12469a5a5d4a4d101710516d216",
+    "resources.js": "2cbf83728b6214c2594ada68c88d42da20fc2500f5ae3384dc3ff1a454fe9a03",
+    "rng.js": "1057506a2838212db844619b8928cd0a5cff1211f90ff5877f78a911b4579b71",
+    "serialize.js": "b3531d8c72c37cc27a0bf314c77302ddedc8e8a00c9d2133ea2f3835aeb9df37",
+    "state.js": "71eef1a9e6dd257a943c049dfb55aeb6dac59fa2f655daf5eedea61533e7f07d",
+    "turn.js": "50f1fa6e73eb9352957d89e1daa05274ff0ba2ab0273bf4fdda80a084461a987",
+    "types.js": "459aa95f2ef3bce59f644a9b4358e8b66953e39ace2d2650959330b96c5fcbea"
+  },
+  "compileCommand": "tsc -p packages/engine/tsconfig.json --rootDir packages/engine --noEmit false --outDir audited-engine",
+  "featureNames": [
+    "era",
+    "round",
+    "players",
+    "deckSize",
+    "actionsThisTurn",
+    "ownHandSize",
+    "coalMarket",
+    "ironMarket",
+    "own.money",
+    "own.income",
+    "own.vp",
+    "own.spent",
+    "rivals.money",
+    "rivals.income",
+    "rivals.vp",
+    "rivals.spent",
+    "own.built.brewery",
+    "own.built.coalMine",
+    "own.built.cottonMill",
+    "own.built.ironWorks",
+    "own.built.manufacturer",
+    "own.built.pottery",
+    "own.unflipped.brewery",
+    "own.unflipped.coalMine",
+    "own.unflipped.cottonMill",
+    "own.unflipped.ironWorks",
+    "own.unflipped.manufacturer",
+    "own.unflipped.pottery",
+    "own.coal",
+    "own.iron",
+    "own.beer",
+    "own.canalLinks",
+    "own.railLinks",
+    "own.unsoldVP",
+    "rivals.built.brewery",
+    "rivals.built.coalMine",
+    "rivals.built.cottonMill",
+    "rivals.built.ironWorks",
+    "rivals.built.manufacturer",
+    "rivals.built.pottery",
+    "rivals.unflipped.brewery",
+    "rivals.unflipped.coalMine",
+    "rivals.unflipped.cottonMill",
+    "rivals.unflipped.ironWorks",
+    "rivals.unflipped.manufacturer",
+    "rivals.unflipped.pottery",
+    "rivals.coal",
+    "rivals.iron",
+    "rivals.beer",
+    "rivals.canalLinks",
+    "rivals.railLinks",
+    "rivals.unsoldVP",
+    "nextLevel.brewery",
+    "nextLevel.coalMine",
+    "nextLevel.cottonMill",
+    "nextLevel.ironWorks",
+    "nextLevel.manufacturer",
+    "nextLevel.pottery",
+    "merchant.cottonMill",
+    "merchant.manufacturer",
+    "merchant.pottery",
+    "ownWildLocation",
+    "ownWildIndustry"
+  ],
+  "classes": [
+    "build:brewery",
+    "build:coalMine",
+    "build:cottonMill",
+    "build:ironWorks",
+    "build:manufacturer",
+    "build:pottery",
+    "develop:brewery",
+    "develop:coalMine",
+    "develop:cottonMill",
+    "develop:ironWorks",
+    "develop:manufacturer",
+    "develop:pottery",
+    "network:1",
+    "network:2",
+    "loan",
+    "sell",
+    "scout",
+    "pass"
+  ],
+  "fullNativeReplayRequired": true,
+  "expertStatusVerified": false,
+  "jsValueTrainingRows": 0,
+  "reports": [
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/replays/brass-GM7VZA-anon.json",
+      "sha256": "adda89d852d99269f1de6d7571d99d3e4445875b2db5fd83d682d081f9f6bb31",
+      "seed": 671801658,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "train",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        37,
+        45,
+        39,
+        47
+      ],
+      "finalScores": [
+        152,
+        141,
+        129,
+        130
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/replays/brass-YATANA-anon.json",
+      "sha256": "03430426e50181be22e5d89ab5268ebb53b79b56b175d6b4761f86efc0259c74",
+      "seed": 3337793993,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "train",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        43,
+        35,
+        26,
+        42
+      ],
+      "finalScores": [
+        144,
+        139,
+        122,
+        127
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/ai-4p-heuristic-seed20260826.json",
+      "sha256": "08ca3fd278eed47ab6a781ffe20b5922a8581f8925ffa2332d78188eabc1b5f5",
+      "seed": 20260826,
+      "players": 4,
+      "humanSeats": [],
+      "actions": 124,
+      "humanActions": 0,
+      "split": "diagnostic",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        22,
+        25,
+        28,
+        27
+      ],
+      "finalScores": [
+        89,
+        102,
+        92,
+        102
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/anon-4p-human-vs-jsb-v20260902b.json",
+      "sha256": "1be50dc706ed5e737a12edde3f42f07bd356374014ae4df6356cd89155b4cd4b",
+      "seed": 1587744374,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "train",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        39,
+        40,
+        36,
+        27
+      ],
+      "finalScores": [
+        164,
+        140,
+        110,
+        112
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/anon-4p2-human-vs-jsb-v20260903.json",
+      "sha256": "b9362c95458b73f73cbc070db3cb4949e2a24a9a617aed423d55ec9bdc382117",
+      "seed": 2033812519,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "train",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        44,
+        49,
+        45,
+        35
+      ],
+      "finalScores": [
+        150,
+        150,
+        144,
+        107
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/anon-4p2-human-vs-jsb-v20260907-0908.json",
+      "sha256": "0aa88999e5eee3b5a77a15d6279694ff41f12731ddbfbef81b499a207a6d14ff",
+      "seed": 2096281028,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "validation",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        31,
+        40,
+        39,
+        36
+      ],
+      "finalScores": [
+        157,
+        136,
+        135,
+        131
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/anon-4p2-human-vs-jsb-v20260910-0908.json",
+      "sha256": "b6897ca699ef416ca20eb3bec9f4cda9b0fa1830037631c193a478221286c604",
+      "seed": 972048479,
+      "players": 4,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 124,
+      "humanActions": 62,
+      "split": "test",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        35,
+        44,
+        35,
+        33
+      ],
+      "finalScores": [
+        154,
+        124,
+        110,
+        112
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    },
+    {
+      "source": "https://github.com/Quasrain-Coder/BrassBirmingham/blob/d3d269746863ee720cd797608ad2131edf277fae/packages/server/test/fixtures/games/wq9gs6-2p-full.json",
+      "sha256": "53e62c87f972edb5c94c826fef5f9693e891490c1c9851a47e0a04dc7786e65d",
+      "seed": 1786252670,
+      "players": 2,
+      "humanSeats": [
+        0,
+        1
+      ],
+      "actions": 78,
+      "humanActions": 78,
+      "split": "diagnostic",
+      "terminal": true,
+      "nativeLegalityAudited": true,
+      "canalScores": [
+        41,
+        48
+      ],
+      "finalScores": [
+        215,
+        180
+      ],
+      "expertStatusVerified": false,
+      "jsValueLabels": false
+    }
+  ]
+}

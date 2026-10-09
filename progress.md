@@ -2246,3 +2246,30 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
   are announced through the existing live status region; closing pinned details restores focus.
 - Final production build and standard web-game startup client passed. Temporary backend 3012
   is stopped, and the normal preview remains on http://127.0.0.1:5176/ with API port 3011.
+
+## 2026-10-10 next training round (active)
+
+- PR #1 is merged at 8c69940; next work isolated on codex/brass-next-training.
+- Public native replays: six four-player human-vs-AI games fully legal and terminal, 372 human action-intent rows (248/62/62 whole-game train/validation/test). Expert status is unverified. Foreign final scores never become JS value targets.
+- Human public-feature MLP trained (best epoch 11); classification is not playing strength. Bounded optional root prior and settlement diagnostics being integrated and validated.
+- Old prediction holdout is now development diagnosis: next-player accuracy ~86%; new independent seeds required after candidate freeze.
+- Local private SQLite audit found no clean, complete usable trajectory. No private raw DB published.
+- Remaining: audit integrity/privacy/parity tests; development prior ablation; critical-field world training; freeze and independent games/predictions; document artifacts, push draft PR. No default promotion without evidence.
+
+## 2026-10-10 candidate freeze and independent evaluation
+
+- Public human prior selected weight .5 on four development seed groups. Critical categorical controls trained 100 epochs; prior prediction test is now development evidence (~86% -> 95% current-player exactness).
+- Frozen 53 source files and candidate models before fresh final seeds 217122949 (strategy), 218122949 (world), 219122949 (prediction). Protocol and frozen source archive saved in public-human-20261010.
+- Running 360 strategy games, 40 world comparison games, 40 new prediction trajectories. No tuning after final freeze. Results pending, no default promotion.
+- Tests: full 83 Node tests passed, then 2 new critical-control parity/pure-world tests passed; all 15 Python tests passed. Browser skill client plus teacher controls smoke passed; preview/execution screenshots inspected, no console errors.
+- Reference native replay audit includes exact source commit/tree and compiled JS module hashes. Private SQLite audit publishes aggregate anomalies only; zero accepted complete training trajectories.
+
+## 2026-10-10 next round complete (delivery pending)
+
+- 400 frozen games completed, plus 40 new independent synthetic prediction games / 4,960 transitions. All 400 recorded game traces replay-audited: 220 distinct seed/lineups, 27,280 legal actions, every terminal score and pre-settlement statistic matched.
+- Human intent vs three current teacher+cards: 131.433 VP, paired gain +3.667 CI [.10,7.117]. Selfplay 129.025 vs 127.767; gain +1.258 CI [-1.675,4.183], unconfirmed. Selfplay under100 2.5% vs 6.67%; >=140/150 fractions fell. Not stable140/150, no default promotion.
+- World control new/old mixed means 48.7/50.3, gain -1.6 CI [-12.625,8.225]; no playing-strength improvement. Independent next-player exactness 86.45% -> 95.04%, round 85.28% -> 97.02%. One-step control accuracy does not establish game improvement.
+- Public provenance, derived corpus, frozen models/sources, all compressed development/final games, new prediction data and validation manifests published in public-human-20261010. No private raw records or foreign implementation copied.
+- Tests: 85 unique Node tests (full suite 83 + new control 2), 15 Python tests; browser standard client and teacher controls, actual screenshot inspection, zero console errors.
+- Documentation: docs/public-human-training-results.md. Optional prior remains CLI-only; browser still previous teacher. Next investigations: action-specific board/resource/supply heads, stochastic future-card representation, more verified human games; use new holdouts if tuning again.
+- Remaining delivery: commit/push codex/brass-next-training, create draft PR, verify remote. Original Manila checkout untouched; PR #1 already merged.

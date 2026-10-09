@@ -24,7 +24,7 @@ function shard(config){
             const action=rng.next()<config.exploration?rng.pick(Sim.candidates(state,{doubleRail:!!strategy})):P.plan(state,{type,world,policy,strategy,depth:config.depth,width:8}).selected;
             const next=Sim.step(state,action).state;
             if(transitionFd!==null){
-                const values=Float32Array.from([...E.encodeState(state),...E.encodeAction(action,state),...E.encodeState(next),action.score/100]);
+                const values=Float32Array.from([...E.encodeState(state),...E.encodeAction(action,state,{version:config.actionEncoding}),...E.encodeState(next),action.score/100]);
                 fs.writeSync(transitionFd,Buffer.from(values.buffer));transitionRows++;
                 counts[action.action]=(counts[action.action]||0)+1;
                 if(action.target?.connectionIds)counts.doubleRail=(counts.doubleRail||0)+1;
@@ -41,13 +41,14 @@ function shard(config){
     return {games,rows,file:config.file,transitionGames,transitionRows,counts,transitionFile:config.transitionFile};
 }
 
-async function collect({games=800,players=4,lineup=null,strategy=null,seed=180000001,models='world_model/experiments/score-v1/models',out='world_model/data-score-league',workers=4,depth=2,stride=4,exploration=.1,transitions=null}={}){
+async function collect({games=800,players=4,lineup=null,strategy=null,seed=180000001,models='world_model/experiments/score-v1/models',out='world_model/data-score-league',workers=4,depth=2,stride=4,exploration=.1,transitions=null,actionEncoding='legacy'}={}){
     if(!Number.isInteger(games)||games<10||!Number.isInteger(players)||players<2||players>4||!Number.isInteger(workers)||workers<1||workers>16||!Number.isInteger(stride)||stride<1||!Number.isInteger(seed)||!Number.isFinite(exploration)||exploration<0||exploration>1)throw Error('Invalid collection configuration');
     if(typeof lineup==='string')lineup=lineup.split(',').map(x=>x.trim()).filter(Boolean);
     if(lineup&&(!Array.isArray(lineup)||lineup.length<players||lineup.some(t=>!['heuristic','search','neural','world','guided'].includes(t))))throw Error('Invalid replay lineup');
-    if(strategy&&!['human-guide-v1','human-chain-v2'].includes(strategy))throw Error('Invalid teacher strategy');
+    if(strategy&&!['human-guide-v1','human-chain-v2','human-card-v2'].includes(strategy))throw Error('Invalid teacher strategy');
+    if(!['legacy','resource-network-v2'].includes(actionEncoding))throw Error('Invalid action encoding');
     if(strategy&&E.schema.rulesVersion!=='economy-v2')throw Error('Teacher strategy requires economy-v2');
-    const sourceFiles=['collect_value.js','planner.js','human_strategy.js','production_chain.js','simulator.js','encoding.js','inference.js','value_features.js',
+    const sourceFiles=['collect_value.js','planner.js','human_strategy.js','human_intent.js','production_chain.js','simulator.js','encoding.js','inference.js','value_features.js',
         '../js/gameState.js','../js/gameLogic.js','../js/gameData.js','../scripts/autorun.js'];
     const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
     const sourceSHA256=Object.fromEntries(sourceFiles.map(f=>[f,sha(path.join(__dirname,f))]));
@@ -61,7 +62,7 @@ async function collect({games=800,players=4,lineup=null,strategy=null,seed=18000
     fs.mkdirSync(out,{recursive:true});const threads=[],pending=[];let completed=0;
     try{for(let i=0;i<workers;i++){
         const config={start:Math.floor(games*i/workers),end:Math.floor(games*(i+1)/workers),players,lineup,strategy,seed,models:path.resolve(models),file:path.resolve(out,`part-${i}.f32`),depth,stride,exploration,
-            transitionFile:transitions?path.resolve(transitions,`part-${i}.f32`):null};
+            transitionFile:transitions?path.resolve(transitions,`part-${i}.f32`):null,actionEncoding};
         const worker=new Worker(__filename,{workerData:config});threads.push(worker);
         pending.push(new Promise((resolve,reject)=>{let done=false;
             worker.on('message',m=>{if(m.type==='progress'){completed++;if(completed%10===0||completed===games)console.log(`Collected ${completed}/${games} complete games`);}
@@ -74,7 +75,7 @@ async function collect({games=800,players=4,lineup=null,strategy=null,seed=18000
     const fd=fs.openSync(path.join(out,'states.f32'),'wx');let rows=0;const records=[];
     try{for(const part of parts){fs.writeSync(fd,fs.readFileSync(part.file));records.push(...part.games.map(g=>({...g,start:g.start+rows,end:g.end+rows})));rows+=part.rows;}}
     finally{fs.closeSync(fd);}
-    const config={games,players,lineup,strategy,seed,models,workers,depth,stride,exploration};
+    const config={games,players,lineup,strategy,seed,models,workers,depth,stride,exploration,actionEncoding};
     const provenance={source:'synthetic-teacher-selfplay',humanDemonstrations:0,sourceSHA256};
     fs.writeFileSync(path.join(out,'schema.json'),JSON.stringify({...E.schema,stateDim:E.fields.length,rowWidth:E.fields.length+4,rows,config,artifacts,provenance,format:'float32 [observable state, four final VP labels; unused player labels are zero]'}));
     fs.writeFileSync(path.join(out,'games.json'),JSON.stringify(records));
@@ -88,7 +89,7 @@ async function collect({games=800,players=4,lineup=null,strategy=null,seed=18000
             total+=part.transitionRows;for(const [kind,n] of Object.entries(part.counts))counts[kind]=(counts[kind]||0)+n;
         }}finally{fs.closeSync(transitionFd);}
         fs.writeFileSync(path.join(transitions,'schema.json'),JSON.stringify({...E.schema,stateDim:E.fields.length,actionDim,
-            rowWidth:2*E.fields.length+actionDim+1,rows:total,games,players,seed,config,artifacts,provenance,counts,
+            rowWidth:2*E.fields.length+actionDim+1,rows:total,games,players,seed,config,artifacts,provenance,counts,actionEncoding,
             format:'little-endian float32 [state,action,next_state,heuristic_score/100]'}));
         fs.writeFileSync(path.join(transitions,'games.json'),JSON.stringify(transitionGames));
         fs.writeFileSync(path.join(transitions,'splits.json'),JSON.stringify(splits));

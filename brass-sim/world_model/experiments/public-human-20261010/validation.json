@@ -1,0 +1,44 @@
+{
+  "nodeUniqueTests": 85,
+  "nodeFullSuite": 83,
+  "additionalCriticalControlTests": 2,
+  "pythonTests": 15,
+  "browser": {
+    "standardSkillClientPassed": true,
+    "teacherControls": {
+      "paused": true,
+      "step": true,
+      "actualGuidedInspection": true,
+      "execute": true,
+      "resume": true,
+      "doubleRail": {
+        "money": 32,
+        "cards": 1,
+        "cubes": 1,
+        "links": [
+          "birmingham-oxford",
+          "birmingham-coventry"
+        ],
+        "actions": 1
+      },
+      "errors": []
+    },
+    "screenshotsInspected": [
+      "client/shot-0.png",
+      "double-preview.png",
+      "double-executed.png"
+    ]
+  },
+  "sourceFreezeVerified": true,
+  "recordedGameReplay": {
+    "games": 400,
+    "distinctSeedLineups": 220,
+    "replayedActions": 27280,
+    "allTerminalScoresAndSettlementsMatch": true,
+    "duplicatePolicy": "Identical seed and lineup records must have identical complete actions and outcomes; replay once."
+  },
+  "nativeHumanReplayGames": 6,
+  "humanRows": 372,
+  "privateCompleteTrajectoriesAccepted": 0,
+  "sourceTrainingAndFreshPredictionSeedsDisjoint": true
+}

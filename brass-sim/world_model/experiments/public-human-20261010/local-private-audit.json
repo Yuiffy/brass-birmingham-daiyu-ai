@@ -1,0 +1,125 @@
+{
+  "source": "private-local-SQLite; raw records excluded",
+  "sourceSHA256": "8fc9327256a74bf31672ed09ba12d3fb014d27c28ee53ce240462237346af647",
+  "games": 10,
+  "acceptedCompleteTrajectories": 0,
+  "reports": [
+    {
+      "gameId": 1,
+      "players": 3,
+      "events": 1,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 2,
+      "players": 3,
+      "events": 14,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 3,
+      "players": 2,
+      "events": 25,
+      "terminalSnapshotFound": false,
+      "structurallyClean": false,
+      "anomalyCounts": {
+        "same_player_after_turn_advance": 1,
+        "unconfirmed_action_session": 1
+      },
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 4,
+      "players": 3,
+      "events": 1,
+      "terminalSnapshotFound": false,
+      "structurallyClean": false,
+      "anomalyCounts": {
+        "choice_without_action_session": 1
+      },
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 5,
+      "players": 3,
+      "events": 10,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 6,
+      "players": 3,
+      "events": 1122,
+      "terminalSnapshotFound": true,
+      "structurallyClean": false,
+      "anomalyCounts": {
+        "consecutive_end_turn": 19,
+        "end_turn_without_active_turn": 19,
+        "end_turn_without_confirmed_action": 19,
+        "same_player_after_turn_advance": 9,
+        "skipped_turns": 19
+      },
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 7,
+      "players": 2,
+      "events": 0,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 8,
+      "players": 3,
+      "events": 44,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 9,
+      "players": 3,
+      "events": 9,
+      "terminalSnapshotFound": false,
+      "structurallyClean": true,
+      "anomalyCounts": {},
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    },
+    {
+      "gameId": 10,
+      "players": 2,
+      "events": 121,
+      "terminalSnapshotFound": false,
+      "structurallyClean": false,
+      "anomalyCounts": {
+        "consecutive_end_turn": 5,
+        "end_turn_without_active_turn": 5,
+        "end_turn_without_confirmed_action": 5,
+        "same_player_after_turn_advance": 4,
+        "skipped_turns": 4
+      },
+      "acceptedForCompleteTraining": false,
+      "reason": "Contaminated terminal or incomplete; native engine replay not available in this Python."
+    }
+  ]
+}

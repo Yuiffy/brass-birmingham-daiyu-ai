@@ -1,0 +1,142 @@
+{
+  "audit.json": {
+    "bytes": 10524,
+    "sha256": "802e949f84138e014deb92d9babb1a6543a424bccceed517b478056dd6ef2b96"
+  },
+  "baseline.json.gz": {
+    "bytes": 798408,
+    "sha256": "249b2527db664ba2ea79ae46c5558e03152e745b8de447213e3ef17f3330f595"
+  },
+  "critical-fixture.json": {
+    "bytes": 8183,
+    "sha256": "49442fea3d78498a9e774200c225a404b9d4ac1f69d15f626b8baa988d1e63ea"
+  },
+  "critical-training.json": {
+    "bytes": 41601,
+    "sha256": "78888ddb1412cf981045bdcc1eae96c7dc85d0a3697ea96e9bf06661de4e1eb4"
+  },
+  "critical-world-model.json": {
+    "bytes": 9649779,
+    "sha256": "f7f3471f504750a4b83e60b455930222c7f19115ce3783b538a1616c11f36549"
+  },
+  "dev-critical-world.json.gz": {
+    "bytes": 102930,
+    "sha256": "460a58a9af49fa82b3bd59bb40da9a653839e48f554bced54270cebd2b11699e"
+  },
+  "dev-intent-0.5.json.gz": {
+    "bytes": 112219,
+    "sha256": "0719944caed6f6c646a21455227f0158cb435c227205547fac76cc36d3271992"
+  },
+  "dev-intent-0.json.gz": {
+    "bytes": 108779,
+    "sha256": "6f0994c973df85274366daab1304546c55dea9c75e398b59137d196614f75011"
+  },
+  "dev-intent-1.json.gz": {
+    "bytes": 110442,
+    "sha256": "fa399801400e0c8515d011451e29945e2f604330a2b6add5366ca0adb9d93e78"
+  },
+  "dev-intent-2.json.gz": {
+    "bytes": 112250,
+    "sha256": "0bc432b6bcfa65d4d2d16906290ebaedb58243b74be4ecf229d8fc3b6ebc3ed7"
+  },
+  "development-critical-fields.json": {
+    "bytes": 5680,
+    "sha256": "e82360344c3713e259b7a305eeb696283006b9f81957da16d98bf560f06b4047"
+  },
+  "development-protocol.json": {
+    "bytes": 968,
+    "sha256": "8d486aadb6aca352390a6331545eae4acddfb45c2a27e12e51be9016107e5a26"
+  },
+  "fixture.json": {
+    "bytes": 719,
+    "sha256": "8e320a1821f91de66fa21ae175860a575f9cc0aed87f777db24bd65902a6bb32"
+  },
+  "frozen-source.zip": {
+    "bytes": 157481,
+    "sha256": "fca85f8861baad1561f613ea3090dd12ba15933ef52e83c6d3fe75ee1e18c45d"
+  },
+  "human-intent.json": {
+    "bytes": 61678,
+    "sha256": "76fca2939fa5e3592cbb5baada7fbe4d523327f22df4e2fff6d687137cc23db6"
+  },
+  "human-intents.jsonl.gz": {
+    "bytes": 15504,
+    "sha256": "8591bbe316422fc3683f51a97cb831c8a5e7f49bebf7c6d88e42219e21f3c016"
+  },
+  "local-private-audit.json": {
+    "bytes": 4100,
+    "sha256": "7c98711564066a88694a78690333ed2b5827de3d853245808769ddadb609eef6"
+  },
+  "mixed.json.gz": {
+    "bytes": 796842,
+    "sha256": "d4dc2ff13b3dc98ac1b39b332f6537bd1ddff91db8db2e6497b3c9446407ff0c"
+  },
+  "prediction-holdout.json": {
+    "bytes": 5565,
+    "sha256": "fdf3af281bbc61af8aaa5cf53767261fe88114be7d9bddbba7effed4d4840b52"
+  },
+  "protocol.json": {
+    "bytes": 9009,
+    "sha256": "da0355fba2571744ab02498a6388a5671520dd2514a3d7c6e4f1b670aee2b9f3"
+  },
+  "README.md": {
+    "bytes": 2676,
+    "sha256": "24b07c4bebf747dde2731bb36c68885ffc527e47643ba83a4760dcec25125e9f"
+  },
+  "replay-audit.json": {
+    "bytes": 246,
+    "sha256": "c0bcf00a4e910a81fc6d123eb89427677625dba239c261e61d65872fa3d578b1"
+  },
+  "selfplay.json.gz": {
+    "bytes": 786716,
+    "sha256": "892aae4bb8107d40c827d5e03a8cfcdf04d84543981deaa22f17967b56b72cc8"
+  },
+  "summary.json": {
+    "bytes": 5888,
+    "sha256": "3f7a718c609f70b6843167624a9035052ec10f2d0744e6b51b75ee624db4ddba"
+  },
+  "training.json": {
+    "bytes": 24539,
+    "sha256": "11321031d696d50d6b9e0c6a1222e69b077465638760f25dc2f6bf7f32afdea3"
+  },
+  "validation.json": {
+    "bytes": 1181,
+    "sha256": "3911a59ecff45f1b777ae89d9177371fc98783f6a270a3feb92c801067ee1443"
+  },
+  "world.json.gz": {
+    "bytes": 250163,
+    "sha256": "f7f105fed6145414720b644910e12231b18df982a8104017e359cd7d596f7ec4"
+  },
+  "reproducibility/manifest.json": {
+    "bytes": 707,
+    "sha256": "40f004c920abde04f48b74acc8d821646a52f17947dd68970f24fe9617ec91bd"
+  },
+  "reproducibility/fresh-holdout/games.json": {
+    "bytes": 14683,
+    "sha256": "d4a82f15104aede0e4b5d879d1d443b0f7321af2d59ff9af30e8d213cdc86eab"
+  },
+  "reproducibility/fresh-holdout/schema.json": {
+    "bytes": 53952,
+    "sha256": "fd01020e95abf183ae7b9576643f1388fdf3a114dd95a266eae1cad8463fe79f"
+  },
+  "reproducibility/fresh-holdout/splits.json": {
+    "bytes": 28691,
+    "sha256": "e415591ab19aefd17de887793a5aecd15e6d9c8d5f83ea8b322396ebf89ae652"
+  },
+  "reproducibility/fresh-holdout/transitions.f32.gz": {
+    "bytes": 479408,
+    "sha256": "53ff162a5f7be2f7932331d86c5567c6370421d9ff3afe57a6a5a15c37d45597"
+  },
+  "reproducibility/fresh-values/games.json": {
+    "bytes": 6552,
+    "sha256": "c109af022ff6e9b28d0d5f9d32e77a0e489fc2ae0684e41902089ffe8f601319"
+  },
+  "reproducibility/fresh-values/schema.json": {
+    "bytes": 49035,
+    "sha256": "db1efeb69721dffd48af8abc3d005648792789ad20df8d81864bc18797018b98"
+  },
+  "reproducibility/fresh-values/states.f32.gz": {
+    "bytes": 124172,
+    "sha256": "1f41bd20e3087ffe808cb54307c97988bada6cc645d2a25651f8646711658987"
+  }
+}

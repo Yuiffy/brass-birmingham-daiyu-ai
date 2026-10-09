@@ -97,7 +97,7 @@
         a.target?.cityId, a.target?.slotIndex, a.target?.industryType,
         a.target?.connectionId, a.target?.type1, a.target?.type2, a.target?.key, a.target?.keys,
         a.target?.connectionIds, a.target?.beerKey]);
-    function step(state, action, { validate = true } = {}) {
+    function step(state, action, { validate = true,captureSettlement=false } = {}) {
         if (state.gameOver) throw Error('Game is over');
         if (validate && !candidates(state,{doubleRail:!!action.target?.connectionIds,cardChoices:true}).some(a => key(a) === key(action))) {
             throw Error('Action is no longer an available candidate');
@@ -106,7 +106,10 @@
         return withRandom(next, () => {
             const result = execute(next, action);
             if (!result.success) throw Error(result.message || 'Action failed');
-            const event = bot.applyTurnResult(next, next.advanceTurn());
+            const turnResult=next.advanceTurn();
+            const beforeSettlement=captureSettlement&&['endCanalEra','endGame'].includes(turnResult)?snapshot(next):null;
+            const event = bot.applyTurnResult(next, turnResult);
+            if(beforeSettlement)event.beforeSettlement=beforeSettlement;
             return { state: next, result, event };
         });
     }
