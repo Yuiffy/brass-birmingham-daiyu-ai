@@ -2273,3 +2273,10 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Tests: 85 unique Node tests (full suite 83 + new control 2), 15 Python tests; browser standard client and teacher controls, actual screenshot inspection, zero console errors.
 - Documentation: docs/public-human-training-results.md. Optional prior remains CLI-only; browser still previous teacher. Next investigations: action-specific board/resource/supply heads, stochastic future-card representation, more verified human games; use new holdouts if tuning again.
 - Remaining delivery: commit/push codex/brass-next-training, create draft PR, verify remote. Original Manila checkout untouched; PR #1 already merged.
+
+## 2026-10-10 remote delivery
+
+- Training/testing completed and pushed on codex/brass-next-training. Draft PR #2: https://github.com/Yuiffy/brass-birmingham-daiyu-ai/pull/2.
+- PR #1 remains merged on main (8c69940). New draft was not auto-merged; experimental prior/control artifacts do not replace browser defaults.
+- Published JSON metadata uses LF, and delivery-manifest hashes match Git blob bytes; frozen-source.zip preserves execution bytes independently of checkout line-ending conversions.
+- No outstanding work for this training/test round. Future tuning must treat this holdout as development and create new independent seeds.

@@ -44,8 +44,8 @@
     "sha256": "e82360344c3713e259b7a305eeb696283006b9f81957da16d98bf560f06b4047"
   },
   "development-protocol.json": {
-    "bytes": 968,
-    "sha256": "8d486aadb6aca352390a6331545eae4acddfb45c2a27e12e51be9016107e5a26"
+    "bytes": 939,
+    "sha256": "4d5b58a7f6d76a284f3953f29a8bc1903570d8cc39af16355de5f894187b2ae7"
   },
   "fixture.json": {
     "bytes": 719,
@@ -64,8 +64,8 @@
     "sha256": "8591bbe316422fc3683f51a97cb831c8a5e7f49bebf7c6d88e42219e21f3c016"
   },
   "local-private-audit.json": {
-    "bytes": 4100,
-    "sha256": "7c98711564066a88694a78690333ed2b5827de3d853245808769ddadb609eef6"
+    "bytes": 3976,
+    "sha256": "a3fc89f5b640a895b94ade04b31d6ea71c42cae8f8d53dfe20b3ac3034a92fef"
   },
   "mixed.json.gz": {
     "bytes": 796842,
@@ -76,8 +76,8 @@
     "sha256": "fdf3af281bbc61af8aaa5cf53767261fe88114be7d9bddbba7effed4d4840b52"
   },
   "protocol.json": {
-    "bytes": 9009,
-    "sha256": "da0355fba2571744ab02498a6388a5671520dd2514a3d7c6e4f1b670aee2b9f3"
+    "bytes": 8820,
+    "sha256": "3458d8b519f647a8bd46223363fca9b61a538406b2eeac34410bbafc7261583c"
   },
   "README.md": {
     "bytes": 2676,
@@ -100,16 +100,16 @@
     "sha256": "11321031d696d50d6b9e0c6a1222e69b077465638760f25dc2f6bf7f32afdea3"
   },
   "validation.json": {
-    "bytes": 1181,
-    "sha256": "3911a59ecff45f1b777ae89d9177371fc98783f6a270a3feb92c801067ee1443"
+    "bytes": 1138,
+    "sha256": "36cc412474d0793d57a9702d48b24192ee20e8ff022b1801204b59c38e0bd79c"
   },
   "world.json.gz": {
     "bytes": 250163,
     "sha256": "f7f105fed6145414720b644910e12231b18df982a8104017e359cd7d596f7ec4"
   },
   "reproducibility/manifest.json": {
-    "bytes": 707,
-    "sha256": "40f004c920abde04f48b74acc8d821646a52f17947dd68970f24fe9617ec91bd"
+    "bytes": 699,
+    "sha256": "4e426227f3540668b46b9936a5e113a415bb9d5b9cd46512081fda3f142b267a"
   },
   "reproducibility/fresh-holdout/games.json": {
     "bytes": 14683,
