@@ -1,0 +1,27 @@
+{
+  "purpose": "Trace human evidence to synthetic scenario tests; no fabricated full human trajectories.",
+  "humanPolicyTrainingRows": 0,
+  "humanValueTrainingRows": 0,
+  "cases": [
+    {
+      "source_url": "https://boardgamers.org/yearbook23/brs.html",
+      "evidence": "partial official tournament narrative",
+      "known": ["late canal sale consumed a rival brewery's beer", "the following rail double was denied"],
+      "unknown_fields": ["all hands", "complete board", "full turn sequence", "exact resource choices"],
+      "scenario": "tests/expert-scenarios.test.js: WBC-inspired canal sale consumes persistent rival beer and denies its rail double",
+      "scenario_is_reconstruction": false,
+      "terminal_label_usable": false,
+      "confidence": "high for narrative; synthetic board is an independently authored test"
+    },
+    {
+      "source_url": "https://www.bilibili.com/video/BV14yvSBuEo6/",
+      "timestamp_seconds": 211,
+      "evidence": "visible Chinese commentary subtitle concerning paying negative income",
+      "unknown_fields": ["player concerned", "all hands", "exact cash and income", "complete board", "observed legal action"],
+      "observed_action": null,
+      "terminal_label_usable": false,
+      "policy_preference_usable": false,
+      "confidence": "low; motivates financing checks only"
+    }
+  ]
+}

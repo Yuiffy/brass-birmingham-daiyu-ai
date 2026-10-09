@@ -1,5 +1,41 @@
 Original prompt: 我想找一个工业革命伯明翰的顶级AI进行人机对练或者观察ai局，来提升我的伯明翰实力。你帮我找找有没有现成的，没有的话找找有没有开源游戏我们拿来自己训练，还没有的话我们看规则书开发一个游戏然后练ai。我们项目里有ai训练经验。
 
+## 2026-10-09 teacher training and strategy experiments
+
+- Executed docs/human-replay-next-experiment.md on codex/brass-human-strategy; preserve the unrelated Manila checkout.
+- Engine-based financing/production chains implemented and tested but did not beat the incumbent in development; retained experimental profiles.
+- Teacher: 160 synthetic human-guide-v1 self-play games, 128/16/16 whole-game split; no human training rows. Audited 10,874 extra legal training-only doubles.
+- Explicit resource-network-v2 encoding captures rail order/brewery source. Value trained 48 epochs, dynamics 40; immutable candidate hash in protocol.json.
+- Original 16-game prediction test reused for encoding design, relabeled development. New 40-game prediction holdout fully audited after model freeze: value RMSE 59.90 -> 11.91 VP; double link exact 0 -> 62.70%.
+- Formal 360 games completed, 30 fresh seed groups per setting: old selfplay 123.675, candidate selfplay 130.967, candidate vs three incumbent 127.842. Paired fixed gain +4.17 CI [-.175,8.55], not confirmed; selfplay +7.29 CI [3.025,11.658]. No default promotion or post-holdout tuning.
+- World 40-game mixed comparison completed: new 45.70, old 38.125; still poor. Public hands / partial JS rules do not establish tabletop or human strength.
+- New opt-in teacher-trained-v2 UI; only four-player AI. Browser pause/step/inspect/rethink/execute/resume/double preview verified; screenshots inspected; no console errors. Standard skill client also passed.
+- Full 76 Node + 11 Python tests pass. Published dataset/source snapshots verify and unpack all 20 manifest artifacts; additional runtime guard audit checks equivalent accepted inference.
+- Results, reproducibility, evidence limitations and remaining causal diagnostics in brass-sim/docs/human-teacher-training-results.md.
+- Remaining delivery: verify final staged evidence, commit/push same branch, update draft PR #1, verify remote SHA. Real expert replay acquisition, complete official/hidden-information rules and unsold/development causal attribution remain follow-up research, not claims of this release.
+
+## 2026-10-09 active goal: human strategy for guided search
+
+User goal: 我看网上都是说稳140 150分的。你去看他们的攻略或者教程，也可以看B站的视频教程或者比赛对局，学习他们的经验用到我们的学习增强搜索里，是不是就能达到他们的水平了？你试试
+
+- Working branch: `codex/brass-human-strategy`, managed worktree `brass-human-strategy`.
+- Research: read ChrisLuv, Erik Twice and Dave C / Skypray Huang guides; checked network rules.
+  Bilibili public API verifies the 150+ video's description says three CPU opponents; subtitles are absent.
+- Scope: calibrated JavaScript `guided` search, exact legal double rails, human action-efficiency guidance,
+  frozen-opponent comparisons and full candidate self-play on independent seeds. No human-level claim from VP alone.
+- Completed: atomic single/double network plans, canal own overbuild, same-type/higher-tier opponent overbuild;
+  source-derived strategy blends 80% guidance / 20% frozen learned value, root 64 / continuation 12.
+- Frozen holdout: 120 mixed + 120 baseline + 120 candidate self-play, 30 independent groups each.
+  Candidate mixed mean 121.61; candidate self-play 124.38; baseline self-play 78.28.
+  Paired gain +43.33 [39.97, 46.66] VP. Self-play >=140 19.17%, >=150 6.67%; stable targets NOT achieved.
+- UI: explicit experimental option in calibrated JavaScript guided search; inspection follows actual agent.
+  World dynamics / weights and Rust AI unchanged. Double preview uses real engine, not untrained dynamics.
+- Validation: 59 Node tests, 10 Python tests; provided Playwright client and four-player control/double-rail
+  smoke; screenshots inspected, controls verified. Arena final result table verified. Removed request for
+  absent calibrated prediction report (existing 404); explicitly shows that this report is unavailable.
+- Remaining research: financing / production-chain failures (heldout worst 71 VP), farm building, complete
+  resource/card/merchant choices, hidden hands and official map/industry audit. No further tuning on holdout.
+
 ## Product direction
 
 - Browser UI remains SvelteKit/TypeScript.

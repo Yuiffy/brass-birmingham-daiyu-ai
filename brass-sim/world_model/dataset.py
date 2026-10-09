@@ -31,6 +31,8 @@ class TrainingMixture:
         if replay is not None:
             if primary.schema['version']!=replay.schema['version'] or primary.schema['fields']!=replay.schema['fields'] or primary.action_dim!=replay.action_dim:
                 raise ValueError('Replay schema mismatch')
+            if primary.schema.get('actionEncoding','legacy')!=replay.schema.get('actionEncoding','legacy'):
+                raise ValueError('Replay action encoding mismatch')
             if {g['seed'] for g in primary.games}&{g['seed'] for g in replay.games}:
                 raise ValueError('Replay seeds overlap primary games')
             ids=np.asarray(replay.splits['train'],dtype='int64')

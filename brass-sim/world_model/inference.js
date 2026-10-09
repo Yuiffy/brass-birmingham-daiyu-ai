@@ -27,6 +27,7 @@
     class Network {
         constructor(data) {
             if(data.schemaVersion!==E.schema.version||data.stateDim!==E.fields.length) throw Error('Incompatible model schema');
+            if(data.actionEncoding&&!['legacy','resource-network-v2'].includes(data.actionEncoding))throw Error('Unknown model action encoding');
             this.data=data;
             const inputSize=data.stateDim+data.actionDim;
             this.layers=layers(data.layers,inputSize);

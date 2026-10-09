@@ -73,14 +73,15 @@
         return v.map((x, i) => x / fields[i].scale);
     }
 
-    function encodeAction(a, s) {
+    function encodeAction(a, s, {version='legacy'}={}) {
+        if(!['legacy','resource-network-v2'].includes(version))throw Error('Unknown action encoding');
         const t = a.target || {};
         let tile=t.tileData||t.tile?.tileData||{};
         if(t.keys){tile={};for(const key of t.keys)for(const [name,value] of Object.entries(s.boardIndustries[key]?.tileData||{}))if(typeof value==='number')tile[name]=(tile[name]||0)+value;}
         const v = actions.map(x => +(a.action === x));
         for (let p = 0; p < 4; p++) v.push(+(s.currentPlayerId === p));
         const slotKey = t.key || `${t.cityId}_${t.slotIndex}`;
-        v.push(...slots.map(x => +(t.keys?t.keys.includes(x):x === slotKey)), ...links.map(x => +(x === t.connectionId)));
+        v.push(...slots.map(x => +(t.keys?t.keys.includes(x):x === slotKey)), ...links.map(x => +(t.connectionIds?t.connectionIds.includes(x):x === t.connectionId)));
         v.push(...types.map(x => +(x === (t.industryType || t.type1 || t.tile?.type))),
             ...types.map(x => +(x === t.type2)));
         const discarded = (a.cardIndices || [a.cardIndex]).map(i => s.currentPlayer.hand[i]).filter(Boolean);
@@ -88,6 +89,18 @@
         v.push((t.cost?.total ?? t.cost ?? 0) / 50, (tile.level || 0) / 8,
             (tile.vp || 0) / 20, (tile.income || 0) / 12, (tile.costCoal || 0) / 3,
             (tile.costIron || 0) / 3, (tile.resourceCubes || 0) / 8, (tile.beersToSell || 0) / 3);
+        if(version==='resource-network-v2'&&t.connectionIds) {
+            // Keep dimensions and every legacy action unchanged. For doubles,
+            // otherwise unused slot features identify consumed brewery beer;
+            // the unused second industry vector carries six first-link ID bits.
+            // Encoding version is explicit in dataset and model metadata.
+            const slotStart=actions.length+4,typesStart=slotStart+slots.length+links.length;
+            const beer=t.beerKey?.startsWith('farm_')?'farm:'+t.beerKey.slice(5):t.beerKey;
+            if(slots.includes(beer))v[slotStart+slots.indexOf(beer)]=1;
+            const first=links.indexOf(t.connectionIds[0])+1;
+            for(let i=0;i<types.length;i++)v[typesStart+types.length+i]=(first>>i)&1;
+            v[v.length-4]=2/3;v[v.length-1]=1/3;
+        }
         return v;
     }
     const raw = (v, name) => v[indices[name]] * fields[indices[name]].scale;

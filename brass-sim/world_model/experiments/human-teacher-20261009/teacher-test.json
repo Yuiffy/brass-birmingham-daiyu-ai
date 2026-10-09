@@ -1,0 +1,106 @@
+{
+  "data": "world_model/.local-experiments/human-chain-v2/augmented-resource-v2",
+  "split": "test",
+  "games": 16,
+  "seeds": [
+    313189758,
+    313289488,
+    313389218,
+    313488948,
+    313588678,
+    313688408,
+    313788138,
+    313887868,
+    313987598,
+    314087328,
+    314187058,
+    314286788,
+    314386518,
+    314486248,
+    314585978,
+    314685708
+  ],
+  "provenance": {
+    "source": "synthetic-teacher-selfplay",
+    "humanDemonstrations": 0,
+    "sourceSHA256": {
+      "collect_value.js": "af8d3b9d3fb82d27e4684a5096168fd6732ad2ee1238e36de7b97e2e16677774",
+      "planner.js": "6c39a24c4fbc88f565a62636c110f4dc1b7d792a10fae1f722b132876ef4782c",
+      "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+      "production_chain.js": "d955dfd28067cdfa31b22ed0c114d69c1ccfc4a2dce9c046263426d8c2306faf",
+      "simulator.js": "baee44015b97e2434cdb4916243ac8d9eaa787c243d045ae69432a98fd313eb7",
+      "encoding.js": "937d8eb7611447461e8760919c7be1e7ec884a5fdafaf1ded2229bba387103d4",
+      "inference.js": "14c9beef87834d8a58cc4cddd42a650c97700cf3c00671de968547b3872e5469",
+      "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+      "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+      "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+      "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+      "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893"
+    },
+    "augmentation": "legal-engine-double-rail-counterfactuals-training-only",
+    "addedRows": 10874,
+    "parentSHA256": "b75d16cfac69ccf63393487d53b41238832f5cd0f5c75f7b2e638e160ce2ae6c",
+    "maxPerState": 6,
+    "trainingRowsContiguous": false,
+    "heldoutSuccessorsUnchanged": true,
+    "heldoutActionsReencoded": true
+  },
+  "models": {
+    "incumbent": {
+      "sha256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+      "value": {
+        "examples": 7936,
+        "rmseVP": 56.905788080384696,
+        "maeVP": 46.751989454752014
+      },
+      "transitions": {
+        "rows": 1984,
+        "mse": 0.003656642744317651,
+        "changedFieldMSE": 0.15581065016492776,
+        "allLinkFieldsExact": 0.6859879032258065,
+        "moneyMAE": 2.1318451036589274
+      },
+      "doubleRails": {
+        "rows": 103,
+        "mse": 0.006313178688287735,
+        "changedFieldMSE": 0.27439624272719565,
+        "allLinkFieldsExact": 0.0,
+        "moneyMAE": 4.869088545007613
+      },
+      "threeStepMSE": [
+        0.001801593229174614,
+        0.006213087122887373,
+        0.0061845057643949986
+      ]
+    },
+    "candidate": {
+      "sha256": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+      "value": {
+        "examples": 7936,
+        "rmseVP": 11.684801083327496,
+        "maeVP": 8.86194479898099
+      },
+      "transitions": {
+        "rows": 1984,
+        "mse": 0.0019175837514922023,
+        "changedFieldMSE": 0.07423955679307392,
+        "allLinkFieldsExact": 0.8931451612903226,
+        "moneyMAE": 1.9267546487695184
+      },
+      "doubleRails": {
+        "rows": 103,
+        "mse": 0.0017470618477091193,
+        "changedFieldMSE": 0.06510500247568253,
+        "allLinkFieldsExact": 0.6601941747572816,
+        "moneyMAE": 1.7746062135522804
+      },
+      "threeStepMSE": [
+        0.0008649625233374536,
+        0.0026496746577322483,
+        0.0032455800101161003
+      ]
+    }
+  },
+  "note": "Synthetic teacher test games, never used for checkpoint selection; prediction metrics do not certify playing strength.",
+  "evaluationRole": "development-only; reused to redesign action encoding; no longer final independent evidence"
+}
