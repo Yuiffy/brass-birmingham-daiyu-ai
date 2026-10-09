@@ -1,0 +1,10 @@
+{
+  "2p": {
+    "directory": "world_model/experiments/dynamics-2p-active/models",
+    "sha256": "2f383f7f3eb9072369da645b35c8de6d35b2c6e58d8397ac75fae820148cb489"
+  },
+  "3p": {
+    "directory": "world_model/experiments/dynamics-3p-active/models",
+    "sha256": "453a8161496666882105753d2c7cb60ea2f4fe4da2fe74ac7de86e96f9cd2708"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "selected": "geography-pool-v2",
+  "baseline": {
+    "world": {
+      "vp": 98.175,
+      "earned": 69.5875
+    },
+    "guided": {
+      "vp": 104.5375,
+      "earned": 75.05
+    }
+  },
+  "candidates": [
+    {
+      "name": "geography-pool-v1",
+      "scores": {
+        "world": {
+          "vp": 117.575,
+          "earned": 88.1
+        },
+        "guided": {
+          "vp": 126.8125,
+          "earned": 96.9
+        }
+      },
+      "meanEarned": 92.5,
+      "qualifies": true
+    },
+    {
+      "name": "geography-pool-v2",
+      "scores": {
+        "world": {
+          "vp": 112.5375,
+          "earned": 89.175
+        },
+        "guided": {
+          "vp": 127.4,
+          "earned": 100.825
+        }
+      },
+      "meanEarned": 95.0,
+      "qualifies": true
+    },
+    {
+      "name": "geography-pool-v3",
+      "scores": {
+        "world": {
+          "vp": 119.125,
+          "earned": 89.775
+        },
+        "guided": {
+          "vp": 129.9625,
+          "earned": 100.1125
+        }
+      },
+      "meanEarned": 94.94375,
+      "qualifies": true
+    }
+  ],
+  "protocol": {
+    "baseline": "world_model/experiments/score-v2/models",
+    "developmentSeed": 88000001,
+    "developmentGames": 80,
+    "finalSeed": 108000001,
+    "finalGamesPerVersionAndAgent": 400,
+    "newReplaySeed": 280000001,
+    "newReplayGames": 800,
+    "types": [
+      "heuristic",
+      "search",
+      "neural",
+      "target"
+    ],
+    "depth": 2,
+    "retainedWidth": 8,
+    "selection": "After exploratory feature and shortlist ablations, compare geography-pool-v1, replay training with income bonus excluded (v2), and replay training preserving the prior objective (v3) on development games. Choose the greater equal mean of world/guided VP excluding the engine income bonus, requiring both agents' original engine mean VP and bonus-excluded mean VP to exceed the baseline. If no candidate qualifies, keep the baseline.",
+    "developmentAmendment": "Before selection and any candidate final evaluation, add v3 to separate replay-data effects from the objective change after v2 reduced world-model development VP. No final candidate scores were available or consulted.",
+    "finalEvaluation": "Freeze selected checkpoint and planner metadata before running its final matches. Use independent seed groups with four seat rotations. Paired bootstrap over 100 seed groups. Report original engine VP, bonus-excluded VP, income bonus, era scoring components, 150+ frequency, maxima, wins and runtime. Do not use final outcomes to select a different checkpoint.",
+    "scope": "This version preserves the existing engine. Excluding its final income bonus does not correct other departures from tabletop rules. Human reports are anecdotal reference scores, not a directly comparable benchmark. Candidate pre-ranking increases computation; this study tests an upgraded player, not equal-compute architectural superiority."
+  },
+  "frozenAt": "2026-09-15T09:52:40.860248+00:00",
+  "worldModelSHA256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c",
+  "neuralPolicySHA256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+}

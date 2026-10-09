@@ -1,0 +1,18 @@
+{
+  "checked": 9,
+  "maxValueError": 3.42361861638274e-8,
+  "dynamics": [
+    {
+      "players": 2,
+      "error": 7.911526900272747e-8
+    },
+    {
+      "players": 3,
+      "error": 1.8130951262573802e-7
+    },
+    {
+      "players": 4,
+      "error": 1.301068650594317e-7
+    }
+  ]
+}

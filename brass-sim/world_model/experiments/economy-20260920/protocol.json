@@ -1,0 +1,79 @@
+{
+  "rulesVersion": "economy-v2",
+  "createdAt": "2026-09-20T10:51:11.903Z",
+  "sources": {
+    "js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "js/gameLogic.js": "96c9b15845e6e45c0643b17c34137977d6d4bf53923f808db1f210635571d3f4",
+    "scripts/autorun.js": "7acbbdb424096ffeae4e4c4a96780099bf795ea271a5f6927cba062e128a2a83",
+    "world_model/simulator.js": "c9ab148e4c7a323c68cbd0ec6e45646591db24b80f42830564de59df5b59ffa2",
+    "world_model/encoding.js": "c0310541537551f8e8bb75dda3b56cd35cecfd6a218851eb13d7e59262f436ba",
+    "world_model/planner.js": "a1dcd3b731454ab967c24ef57e03b1a0b704fba0658dcdd252e0ebfec0edfe0d",
+    "world_model/value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "world_model/value_model.py": "7d2e1215a5d5c0b7e40e37e5640b43f2bb4ddf73f63cc4f54158882c913030f1",
+    "world_model/train_value.py": "0b141e736205987c702baf6d1bd9235039ffc7b3df42abc45d260eb3ab6d0abe",
+    "world_model/train_structured.py": "7453ef448b3eaf1b5aff1737b30812f944fdf42341bdc270ee96e161db0efdfc"
+  },
+  "cases": [
+    {
+      "players": 2,
+      "data": "world_model/data-economy-20260920-2p-bootstrap",
+      "replay": "world_model/data-economy-20260920-2p-selfplay",
+      "dir": "world_model/experiments/economy-20260920/2p",
+      "seed": 1832000001,
+      "replaySeed": 1842000001,
+      "devSeed": 1852000001,
+      "testSeed": 1862000001,
+      "lineup": [
+        "guided",
+        "world"
+      ]
+    },
+    {
+      "players": 3,
+      "data": "world_model/data-economy-20260920-3p-bootstrap",
+      "replay": "world_model/data-economy-20260920-3p-selfplay",
+      "dir": "world_model/experiments/economy-20260920/3p",
+      "seed": 1833000001,
+      "replaySeed": 1843000001,
+      "devSeed": 1853000001,
+      "testSeed": 1863000001,
+      "lineup": [
+        "guided",
+        "world",
+        "guided"
+      ]
+    },
+    {
+      "players": 4,
+      "data": "world_model/data-economy-20260920-4p-bootstrap",
+      "replay": "world_model/data-economy-20260920-4p-selfplay",
+      "dir": "world_model/experiments/economy-20260920/4p",
+      "seed": 1834000001,
+      "replaySeed": 1844000001,
+      "devSeed": 1854000001,
+      "testSeed": 1864000001,
+      "lineup": [
+        "guided",
+        "world",
+        "guided",
+        "world"
+      ]
+    }
+  ],
+  "bootstrapGames": 240,
+  "selfplayGames": 160,
+  "dynamicsEpochs": 24,
+  "bootstrapValueEpochs": 40,
+  "candidateValueEpochs": 40,
+  "developmentGames": 60,
+  "finalGamesPerVersion": 120,
+  "selection": "Choose direct or residual on 60 paired development games by guided mean VP, only if better than baseline; final 120 games unused for selection. World opponents and dynamics frozen for value comparisons.",
+  "promotion": "For guided VP require positive 98.33% paired-seed confidence lower bound across 3 player counts, with nonnegative table mean gain. No comparison to old scoring.",
+  "limits": "Economy and specified selling corrections only. Not a complete official-rules implementation. Both guided seats change in 3P and 4P.",
+  "seedAudit": {
+    "historicalSeeds": 16050,
+    "newSeeds": 1395,
+    "overlap": 0
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-09-17T07:43:26.573467+00:00",
+  "gamesPerRun": 120,
+  "depth": 2,
+  "width": 8,
+  "seeds": {
+    "2p": 102000001,
+    "3p": 103000001
+  },
+  "baseline": "world_model/models",
+  "candidateDirs": {
+    "2p": "world_model/experiments/dynamics-2p-active/models",
+    "3p": "world_model/experiments/dynamics-3p-active/models"
+  },
+  "selection": "Best validation prediction score from 24 epochs, with 25% old-distribution reference. Value weights and planning settings frozen.",
+  "primaryMetric": "world average VP; also report bonus-excluded VP and guided/all-seat scores",
+  "bootstrap": "paired seed-group percentile CI, 20000 draws",
+  "baselineSHA256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c"
+}

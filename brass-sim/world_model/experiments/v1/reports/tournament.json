@@ -1,0 +1,3371 @@
+{
+  "config": {
+    "games": 100,
+    "seed": 800001,
+    "depth": 2,
+    "width": 8,
+    "types": [
+      "heuristic",
+      "search",
+      "neural",
+      "world"
+    ]
+  },
+  "completedGames": 100,
+  "cancelled": false,
+  "balancedSeats": true,
+  "rows": [
+    {
+      "type": "heuristic",
+      "games": 100,
+      "wins": 17,
+      "vp": 7531,
+      "moves": 3176,
+      "thinkingMs": 4.945699999695265,
+      "averageVP": 75.31,
+      "winRate": 0.17,
+      "millisecondsPerMove": 0.00155721032735997
+    },
+    {
+      "type": "search",
+      "games": 100,
+      "wins": 37.5,
+      "vp": 8513,
+      "moves": 3266,
+      "thinkingMs": 46085.47110000051,
+      "averageVP": 85.13,
+      "winRate": 0.375,
+      "millisecondsPerMove": 14.110677005511485
+    },
+    {
+      "type": "neural",
+      "games": 100,
+      "wins": 21,
+      "vp": 7818,
+      "moves": 3194,
+      "thinkingMs": 784.798499999697,
+      "averageVP": 78.18,
+      "winRate": 0.21,
+      "millisecondsPerMove": 0.24571023794605418
+    },
+    {
+      "type": "world",
+      "games": 100,
+      "wins": 24.5,
+      "vp": 7899,
+      "moves": 3164,
+      "thinkingMs": 64600.28679999976,
+      "averageVP": 78.99,
+      "winRate": 0.245,
+      "millisecondsPerMove": 20.417284070796384
+    }
+  ],
+  "games": [
+    {
+      "game": 1,
+      "seed": 800001,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 73
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 81
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 68
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 67
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 2,
+      "seed": 800001,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 94
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 62
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 85
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 80
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 3,
+      "seed": 800001,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 54
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 91
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 84
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 73
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 4,
+      "seed": 800001,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 81
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 77
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 63
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 78
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 5,
+      "seed": 809974,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 57
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 54
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 83
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 74
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 6,
+      "seed": 809974,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 118
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 116
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 92
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 107
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 7,
+      "seed": 809974,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 86
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 111
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 112
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 114
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 8,
+      "seed": 809974,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 63
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 88
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 80
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 9,
+      "seed": 819947,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 95
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 83
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 94
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 76
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 10,
+      "seed": 819947,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 82
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 47
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 105
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 80
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 11,
+      "seed": 819947,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 70
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 80
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 77
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 12,
+      "seed": 819947,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 68
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 70
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 104
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 82
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 13,
+      "seed": 829920,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 58
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 75
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 67
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 79
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 14,
+      "seed": 829920,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 77
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 80
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 88
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 15,
+      "seed": 829920,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 94
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 78
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 104
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 100
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 16,
+      "seed": 829920,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 96
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 91
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 71
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 17,
+      "seed": 839893,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 72
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 113
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 83
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 77
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 18,
+      "seed": 839893,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 117
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 93
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 100
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 76
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 19,
+      "seed": 839893,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 67
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 70
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 73
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 86
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 20,
+      "seed": 839893,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 81
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 48
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 68
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 95
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 21,
+      "seed": 849866,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 98
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 83
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 69
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 66
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 22,
+      "seed": 849866,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 75
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 123
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 94
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 74
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 23,
+      "seed": 849866,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 92
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 84
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 62
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 86
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 24,
+      "seed": 849866,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 116
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 84
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 123
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 98
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 25,
+      "seed": 859839,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 76
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 82
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 90
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 115
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 26,
+      "seed": 859839,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 83
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 102
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 96
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 58
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 27,
+      "seed": 859839,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 77
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 56
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 86
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 28,
+      "seed": 859839,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 66
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 82
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 77
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 88
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 29,
+      "seed": 869812,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 84
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 95
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 105
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 84
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 30,
+      "seed": 869812,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 71
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 97
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 104
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 95
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 31,
+      "seed": 869812,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 50
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 54
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 66
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 91
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 32,
+      "seed": 869812,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 64
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 72
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 60
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 80
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 33,
+      "seed": 879785,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 83
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 111
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 63
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 77
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 34,
+      "seed": 879785,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 74
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 107
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 85
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 54
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 35,
+      "seed": 879785,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 91
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 83
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 71
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 128
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 36,
+      "seed": 879785,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 29
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 61
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 74
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 37,
+      "seed": 889758,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 66
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 72
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 89
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 84
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 38,
+      "seed": 889758,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 84
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 83
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 65
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 77
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 39,
+      "seed": 889758,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 90
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 98
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 60
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 81
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 40,
+      "seed": 889758,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 68
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 88
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 85
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 66
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 41,
+      "seed": 899731,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 99
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 88
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 51
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 42,
+      "seed": 899731,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 89
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 79
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 82
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 43,
+      "seed": 899731,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 74
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 93
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 43
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 62
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 44,
+      "seed": 899731,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 69
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 86
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 71
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 69
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 45,
+      "seed": 909704,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 97
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 73
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 90
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 74
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 46,
+      "seed": 909704,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 72
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 72
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 86
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 49
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 47,
+      "seed": 909704,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 77
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 77
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 89
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 70
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 48,
+      "seed": 909704,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 73
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 92
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 99
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 77
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 49,
+      "seed": 919677,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 64
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 74
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 93
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 60
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 50,
+      "seed": 919677,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 114
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 67
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 100
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 73
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 51,
+      "seed": 919677,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 64
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 79
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 65
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 75
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 52,
+      "seed": 919677,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 63
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 85
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 66
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 53
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 53,
+      "seed": 929650,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 60
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 91
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 83
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 71
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 54,
+      "seed": 929650,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 107
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 83
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 41
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 79
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 55,
+      "seed": 929650,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 65
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 42
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 64
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 47
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 56,
+      "seed": 929650,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 91
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 105
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 100
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 60
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 57,
+      "seed": 939623,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 76
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 91
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 76
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 63
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 58,
+      "seed": 939623,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 97
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 60
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 94
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 61
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 59,
+      "seed": 939623,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 53
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 55
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 71
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 84
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 60,
+      "seed": 939623,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 95
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 65
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 92
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 91
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 61,
+      "seed": 949596,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 63
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 43
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 42
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 52
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 62,
+      "seed": 949596,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 91
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 80
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 96
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 81
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 63,
+      "seed": 949596,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 52
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 87
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 65
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 124
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 64,
+      "seed": 949596,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 45
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 78
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 61
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 49
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 65,
+      "seed": 959569,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 90
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 85
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 64
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 89
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 66,
+      "seed": 959569,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 107
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 94
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 94
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 97
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 67,
+      "seed": 959569,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 80
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 55
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 77
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 92
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 68,
+      "seed": 959569,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 86
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 76
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 68
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 93
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 69,
+      "seed": 969542,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 59
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 79
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 57
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 67
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 70,
+      "seed": 969542,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 136
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 78
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 126
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 125
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 71,
+      "seed": 969542,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 72
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 49
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 54
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 84
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 72,
+      "seed": 969542,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 71
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 46
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 66
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 69
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 73,
+      "seed": 979515,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 50
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 66
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 56
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 50
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 74,
+      "seed": 979515,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 119
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 72
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 90
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 74
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 75,
+      "seed": 979515,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 111
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 78
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 78
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 117
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 76,
+      "seed": 979515,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 72
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 64
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 55
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 65
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 77,
+      "seed": 989488,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 55
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 82
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 80
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 52
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 78,
+      "seed": 989488,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 104
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 66
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 81
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 85
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 79,
+      "seed": 989488,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 47
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 79
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 58
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 82
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 80,
+      "seed": 989488,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 39
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 71
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 88
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 67
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 81,
+      "seed": 999461,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 76
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 91
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 68
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 76
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 82,
+      "seed": 999461,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 76
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 76
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 88
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 83,
+      "seed": 999461,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 85
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 113
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 92
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 82
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 84,
+      "seed": 999461,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 59
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 73
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 63
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 64
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 85,
+      "seed": 1009434,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 62
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 102
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 74
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 105
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 86,
+      "seed": 1009434,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 74
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 107
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 98
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 95
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 87,
+      "seed": 1009434,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 79
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 66
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 57
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 88,
+      "seed": 1009434,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 84
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 50
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 80
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 80
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 89,
+      "seed": 1019407,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 76
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 93
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 102
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 66
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 90,
+      "seed": 1019407,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 94
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 84
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 101
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 62
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 91,
+      "seed": 1019407,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 121
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 99
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 100
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 109
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 92,
+      "seed": 1019407,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 52
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 96
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 75
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 77
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 93,
+      "seed": 1029380,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 85
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 92
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 99
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 64
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 94,
+      "seed": 1029380,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 87
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 90
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 74
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 67
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 95,
+      "seed": 1029380,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 97
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 88
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 80
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 94
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 96,
+      "seed": 1029380,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 103
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 65
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 64
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 94
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 97,
+      "seed": 1039353,
+      "seats": [
+        "heuristic",
+        "search",
+        "neural",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "heuristic",
+          "vp": 63
+        },
+        {
+          "seat": 1,
+          "type": "search",
+          "vp": 66
+        },
+        {
+          "seat": 2,
+          "type": "neural",
+          "vp": 76
+        },
+        {
+          "seat": 3,
+          "type": "world",
+          "vp": 51
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 98,
+      "seed": 1039353,
+      "seats": [
+        "search",
+        "neural",
+        "world",
+        "heuristic"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "search",
+          "vp": 63
+        },
+        {
+          "seat": 1,
+          "type": "neural",
+          "vp": 33
+        },
+        {
+          "seat": 2,
+          "type": "world",
+          "vp": 70
+        },
+        {
+          "seat": 3,
+          "type": "heuristic",
+          "vp": 102
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 99,
+      "seed": 1039353,
+      "seats": [
+        "neural",
+        "world",
+        "heuristic",
+        "search"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "neural",
+          "vp": 94
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 81
+        },
+        {
+          "seat": 2,
+          "type": "heuristic",
+          "vp": 62
+        },
+        {
+          "seat": 3,
+          "type": "search",
+          "vp": 71
+        }
+      ],
+      "moves": 128
+    },
+    {
+      "game": 100,
+      "seed": 1039353,
+      "seats": [
+        "world",
+        "heuristic",
+        "search",
+        "neural"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 103
+        },
+        {
+          "seat": 1,
+          "type": "heuristic",
+          "vp": 87
+        },
+        {
+          "seat": 2,
+          "type": "search",
+          "vp": 124
+        },
+        {
+          "seat": 3,
+          "type": "neural",
+          "vp": 102
+        }
+      ],
+      "moves": 128
+    }
+  ],
+  "notes": [
+    "Same seed reused across a complete rotation of seats; ties share one win.",
+    "Search uses original engine transitions with sampled unknown future cards. World model uses learned transitions only.",
+    "Both planners use the same root shortlist, depth, width and state evaluation; wall-clock cost is reported, not equalized.",
+    "This small tournament is an experimental comparison, not evidence of general playing strength."
+  ]
+}

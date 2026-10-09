@@ -1,0 +1,6131 @@
+{
+  "config": {
+    "games": 120,
+    "players": 2,
+    "seed": 102000001,
+    "depth": 2,
+    "width": 8,
+    "types": [
+      "guided",
+      "world"
+    ]
+  },
+  "models": {
+    "world": {
+      "kind": "gated-world-model",
+      "epoch": 43,
+      "datasetGames": 10400,
+      "trainingRows": 57600,
+      "planningValue": "learned",
+      "valueEpoch": 184,
+      "valueObjective": "score[player] - 0.0 * max(score[opponents]); score = finalVP - 1.0 * finalIncomeBonus",
+      "valueFeatures": "brass-value-v2",
+      "shortlist": "score-diverse-v2",
+      "candidateSelection": "learned-pool-v1",
+      "continuation": "legacy"
+    },
+    "policy": {
+      "kind": "heuristic-distillation-policy",
+      "epoch": 47,
+      "datasetGames": 10000,
+      "trainingRows": 1024000,
+      "planningValue": "heuristic",
+      "shortlist": "legacy",
+      "candidateSelection": "legacy",
+      "continuation": "legacy"
+    }
+  },
+  "completedGames": 120,
+  "cancelled": false,
+  "balancedSeats": true,
+  "rows": [
+    {
+      "type": "guided",
+      "games": 120,
+      "wins": 70,
+      "vp": 15793,
+      "moves": 4742,
+      "thinkingMs": 287513.11549999984,
+      "averageVP": 131.60833333333332,
+      "winRate": 0.5833333333333334,
+      "millisecondsPerMove": 60.63119264023615
+    },
+    {
+      "type": "world",
+      "games": 120,
+      "wins": 50,
+      "vp": 14832,
+      "moves": 4858,
+      "thinkingMs": 393732.2932000002,
+      "averageVP": 123.6,
+      "winRate": 0.4166666666666667,
+      "millisecondsPerMove": 81.04822832441337
+    }
+  ],
+  "games": [
+    {
+      "game": 1,
+      "seed": 102000001,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 28,
+            "railIndustry": 25,
+            "railLinks": 20,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "sell": 1,
+              "develop": 3,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 14,
+            "railIndustry": 32,
+            "railLinks": 22,
+            "actions": {
+              "network": 17,
+              "pass": 1,
+              "build": 11,
+              "sell": 5,
+              "develop": 5,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 2,
+      "seed": 102000001,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 135,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 105,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 20,
+            "railIndustry": 38,
+            "railLinks": 28,
+            "actions": {
+              "network": 20,
+              "build": 13,
+              "develop": 5,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 133,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 103,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 27,
+            "railIndustry": 30,
+            "railLinks": 26,
+            "actions": {
+              "build": 15,
+              "network": 20,
+              "sell": 4,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 3,
+      "seed": 102009974,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 32,
+            "railIndustry": 37,
+            "railLinks": 36,
+            "actions": {
+              "network": 22,
+              "build": 13,
+              "develop": 1,
+              "sell": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 122,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 27,
+            "railIndustry": 29,
+            "railLinks": 21,
+            "actions": {
+              "network": 20,
+              "pass": 1,
+              "develop": 3,
+              "build": 12,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 4,
+      "seed": 102009974,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 153,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 123,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 24,
+            "railIndustry": 38,
+            "railLinks": 29,
+            "actions": {
+              "network": 19,
+              "build": 12,
+              "sell": 6,
+              "develop": 4,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 119,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 89,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 36,
+            "railIndustry": 16,
+            "railLinks": 21,
+            "actions": {
+              "build": 16,
+              "network": 20,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 5,
+      "seed": 102019947,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 136,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 106,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 35,
+            "railIndustry": 33,
+            "railLinks": 23,
+            "actions": {
+              "network": 19,
+              "build": 11,
+              "sell": 5,
+              "develop": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 12,
+            "railIndustry": 25,
+            "railLinks": 36,
+            "actions": {
+              "network": 24,
+              "pass": 1,
+              "build": 13,
+              "sell": 1,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 6,
+      "seed": 102019947,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 142,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 112,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 26,
+            "railIndustry": 37,
+            "railLinks": 35,
+            "actions": {
+              "network": 17,
+              "build": 12,
+              "sell": 5,
+              "develop": 5,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 30,
+            "railIndustry": 23,
+            "railLinks": 25,
+            "actions": {
+              "build": 13,
+              "network": 24,
+              "develop": 1,
+              "sell": 1,
+              "pass": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 7,
+      "seed": 102029920,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 180,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 150,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 29,
+            "railIndustry": 57,
+            "railLinks": 43,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "sell": 4,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 137,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 107,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 22,
+            "railIndustry": 36,
+            "railLinks": 29,
+            "actions": {
+              "network": 17,
+              "pass": 1,
+              "develop": 5,
+              "build": 13,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 8,
+      "seed": 102029920,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 19,
+            "railIndustry": 54,
+            "railLinks": 25,
+            "actions": {
+              "network": 14,
+              "build": 14,
+              "sell": 6,
+              "develop": 6,
+              "pass": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 123,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 93,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 37,
+            "railIndustry": 20,
+            "railLinks": 24,
+            "actions": {
+              "build": 14,
+              "network": 21,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 9,
+      "seed": 102039893,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 25,
+            "railIndustry": 17,
+            "railLinks": 20,
+            "actions": {
+              "network": 16,
+              "build": 17,
+              "develop": 2,
+              "sell": 2,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 27,
+            "railIndustry": 30,
+            "railLinks": 32,
+            "actions": {
+              "network": 23,
+              "pass": 2,
+              "develop": 3,
+              "build": 11,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 10,
+      "seed": 102039893,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 166,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 136,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 28,
+            "railIndustry": 54,
+            "railLinks": 33,
+            "actions": {
+              "network": 16,
+              "build": 17,
+              "sell": 4,
+              "develop": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 180,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 150,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 33,
+            "railIndustry": 59,
+            "railLinks": 42,
+            "actions": {
+              "build": 13,
+              "network": 19,
+              "sell": 5,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 11,
+      "seed": 102049866,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 154,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 124,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 37,
+            "railIndustry": 40,
+            "railLinks": 23,
+            "actions": {
+              "network": 23,
+              "build": 13,
+              "develop": 1,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 117,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 26,
+            "railIndustry": 15,
+            "railLinks": 23,
+            "actions": {
+              "network": 16,
+              "pass": 1,
+              "build": 16,
+              "develop": 2,
+              "sell": 4,
+              "scout": 2,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 12,
+      "seed": 102049866,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 20,
+            "railIndustry": 19,
+            "railLinks": 23,
+            "actions": {
+              "network": 20,
+              "build": 13,
+              "sell": 2,
+              "develop": 4,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 25,
+            "railIndustry": 26,
+            "railLinks": 19,
+            "actions": {
+              "build": 13,
+              "network": 19,
+              "develop": 3,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 13,
+      "seed": 102059839,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 147,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 117,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 35,
+            "railIndustry": 28,
+            "railLinks": 32,
+            "actions": {
+              "network": 23,
+              "build": 14,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 148,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 118,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 15,
+            "railIndustry": 56,
+            "railLinks": 20,
+            "actions": {
+              "network": 11,
+              "pass": 1,
+              "build": 15,
+              "develop": 6,
+              "sell": 9
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 14,
+      "seed": 102059839,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 18,
+            "railIndustry": 38,
+            "railLinks": 18,
+            "actions": {
+              "network": 16,
+              "build": 15,
+              "develop": 4,
+              "sell": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 123,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 93,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 16,
+            "railIndustry": 30,
+            "railLinks": 28,
+            "actions": {
+              "build": 14,
+              "network": 22,
+              "scout": 1,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 15,
+      "seed": 102069812,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 173,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 143,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 37,
+            "railIndustry": 49,
+            "railLinks": 37,
+            "actions": {
+              "network": 20,
+              "build": 13,
+              "develop": 2,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 29,
+            "railIndustry": 47,
+            "railLinks": 38,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "develop": 3,
+              "build": 15,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 16,
+      "seed": 102069812,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 121,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 21,
+            "railIndustry": 33,
+            "railLinks": 14,
+            "actions": {
+              "network": 14,
+              "build": 13,
+              "develop": 5,
+              "sell": 4,
+              "loan": 3,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 10,
+            "railIndustry": 32,
+            "railLinks": 29,
+            "actions": {
+              "build": 13,
+              "network": 23,
+              "develop": 3,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 17,
+      "seed": 102079785,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 137,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 107,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 37,
+            "railIndustry": 23,
+            "railLinks": 31,
+            "actions": {
+              "network": 24,
+              "build": 12,
+              "develop": 1,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 131,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 104,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 23,
+            "railIndustry": 44,
+            "railLinks": 16,
+            "actions": {
+              "network": 13,
+              "pass": 2,
+              "build": 15,
+              "develop": 4,
+              "sell": 4,
+              "scout": 1,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 18,
+      "seed": 102079785,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 121,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 91,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 31,
+            "railIndustry": 32,
+            "railLinks": 16,
+            "actions": {
+              "network": 16,
+              "build": 17,
+              "develop": 2,
+              "loan": 1,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 164,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 134,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 15,
+            "railIndustry": 42,
+            "railLinks": 45,
+            "actions": {
+              "build": 14,
+              "develop": 6,
+              "network": 17,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 19,
+      "seed": 102089758,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 127,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 97,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 46,
+            "railIndustry": 22,
+            "railLinks": 13,
+            "actions": {
+              "network": 18,
+              "build": 18,
+              "sell": 2,
+              "develop": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 139,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 112,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 20,
+            "railIndustry": 27,
+            "railLinks": 40,
+            "actions": {
+              "network": 21,
+              "pass": 1,
+              "develop": 6,
+              "build": 8,
+              "sell": 3,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 20,
+      "seed": 102089758,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 126,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 96,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 10,
+            "railIndustry": 47,
+            "railLinks": 27,
+            "actions": {
+              "build": 16,
+              "loan": 1,
+              "network": 14,
+              "develop": 5,
+              "sell": 5,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 119,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 91,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 21,
+            "railIndustry": 21,
+            "railLinks": 28,
+            "actions": {
+              "network": 22,
+              "build": 10,
+              "develop": 5,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 21,
+      "seed": 102099731,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 140,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 110,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 34,
+            "railIndustry": 22,
+            "railLinks": 34,
+            "actions": {
+              "network": 22,
+              "build": 13,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 164,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 134,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 18,
+            "railIndustry": 53,
+            "railLinks": 40,
+            "actions": {
+              "network": 20,
+              "pass": 1,
+              "develop": 2,
+              "build": 14,
+              "sell": 4,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 22,
+      "seed": 102099731,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 138,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 108,
+          "components": {
+            "canalIndustry": 23,
+            "canalLinks": 16,
+            "railIndustry": 46,
+            "railLinks": 23,
+            "actions": {
+              "network": 13,
+              "build": 15,
+              "sell": 6,
+              "loan": 1,
+              "develop": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 29,
+            "railIndustry": 23,
+            "railLinks": 22,
+            "actions": {
+              "build": 14,
+              "network": 23,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 23,
+      "seed": 102109704,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 58,
+          "incomeBonus": 19,
+          "vpWithoutIncomeBonus": 39,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 20,
+            "railIndustry": 3,
+            "railLinks": 13,
+            "actions": {
+              "network": 23,
+              "build": 13,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 123,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 93,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 14,
+            "railIndustry": 29,
+            "railLinks": 22,
+            "actions": {
+              "network": 18,
+              "pass": 2,
+              "build": 15,
+              "sell": 4,
+              "develop": 2,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 24,
+      "seed": 102109704,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 148,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 118,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 20,
+            "railIndustry": 44,
+            "railLinks": 23,
+            "actions": {
+              "network": 15,
+              "build": 16,
+              "develop": 4,
+              "sell": 6,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 132,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 102,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 36,
+            "railIndustry": 22,
+            "railLinks": 27,
+            "actions": {
+              "network": 20,
+              "develop": 1,
+              "build": 15,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 25,
+      "seed": 102119677,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 123,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 93,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 18,
+            "railIndustry": 19,
+            "railLinks": 39,
+            "actions": {
+              "network": 27,
+              "build": 8,
+              "sell": 1,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 19,
+            "railIndustry": 28,
+            "railLinks": 18,
+            "actions": {
+              "network": 16,
+              "build": 17,
+              "develop": 5,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 26,
+      "seed": 102119677,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 101,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 22,
+            "railIndustry": 22,
+            "railLinks": 28,
+            "actions": {
+              "network": 21,
+              "build": 15,
+              "develop": 3,
+              "pass": 1,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 11,
+            "railIndustry": 44,
+            "railLinks": 23,
+            "actions": {
+              "build": 15,
+              "network": 14,
+              "develop": 5,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 27,
+      "seed": 102129650,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 28,
+            "railIndustry": 5,
+            "railLinks": 27,
+            "actions": {
+              "network": 23,
+              "build": 12,
+              "sell": 2,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 147,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 117,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 25,
+            "railIndustry": 45,
+            "railLinks": 27,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "develop": 3,
+              "build": 13,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 28,
+      "seed": 102129650,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 28,
+            "railIndustry": 10,
+            "railLinks": 10,
+            "actions": {
+              "network": 20,
+              "build": 14,
+              "sell": 3,
+              "develop": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 133,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 103,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 46,
+            "railIndustry": 10,
+            "railLinks": 18,
+            "actions": {
+              "build": 16,
+              "network": 22,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 29,
+      "seed": 102139623,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 19,
+            "railIndustry": 31,
+            "railLinks": 13,
+            "actions": {
+              "network": 21,
+              "build": 15,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 85,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 55,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 13,
+            "railIndustry": 15,
+            "railLinks": 23,
+            "actions": {
+              "network": 21,
+              "pass": 2,
+              "build": 11,
+              "develop": 5,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 30,
+      "seed": 102139623,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 18,
+            "railIndustry": 52,
+            "railLinks": 22,
+            "actions": {
+              "network": 14,
+              "build": 17,
+              "develop": 3,
+              "sell": 7,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 154,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 124,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 30,
+            "railIndustry": 26,
+            "railLinks": 46,
+            "actions": {
+              "build": 7,
+              "develop": 5,
+              "network": 24,
+              "pass": 1,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 31,
+      "seed": 102149596,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 150,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 120,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 32,
+            "railIndustry": 32,
+            "railLinks": 32,
+            "actions": {
+              "network": 22,
+              "build": 14,
+              "develop": 1,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 21,
+            "railIndustry": 36,
+            "railLinks": 12,
+            "actions": {
+              "network": 15,
+              "pass": 1,
+              "build": 15,
+              "develop": 2,
+              "sell": 3,
+              "scout": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 32,
+      "seed": 102149596,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 102,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 72,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 29,
+            "railIndustry": 0,
+            "railLinks": 18,
+            "actions": {
+              "network": 21,
+              "build": 13,
+              "develop": 3,
+              "scout": 2,
+              "sell": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 25,
+            "railIndustry": 27,
+            "railLinks": 14,
+            "actions": {
+              "network": 20,
+              "develop": 3,
+              "build": 12,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 33,
+      "seed": 102159569,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 35,
+            "railIndustry": 30,
+            "railLinks": 27,
+            "actions": {
+              "network": 23,
+              "build": 11,
+              "develop": 2,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 159,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 129,
+          "components": {
+            "canalIndustry": 34,
+            "canalLinks": 14,
+            "railIndustry": 48,
+            "railLinks": 29,
+            "actions": {
+              "network": 15,
+              "pass": 1,
+              "build": 15,
+              "develop": 5,
+              "sell": 5,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 34,
+      "seed": 102159569,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 19,
+            "railIndustry": 22,
+            "railLinks": 25,
+            "actions": {
+              "network": 23,
+              "build": 13,
+              "develop": 3,
+              "pass": 2,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 99,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 24,
+            "railIndustry": 10,
+            "railLinks": 17,
+            "actions": {
+              "network": 20,
+              "develop": 2,
+              "build": 14,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 35,
+      "seed": 102169542,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 156,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 126,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 23,
+            "railIndustry": 68,
+            "railLinks": 15,
+            "actions": {
+              "network": 15,
+              "build": 14,
+              "sell": 7,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 7,
+            "railIndustry": 31,
+            "railLinks": 37,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "develop": 6,
+              "build": 12,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 36,
+      "seed": 102169542,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 133,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 106,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 18,
+            "railIndustry": 48,
+            "railLinks": 21,
+            "actions": {
+              "network": 13,
+              "build": 17,
+              "scout": 3,
+              "sell": 5,
+              "develop": 3,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 18,
+            "railIndustry": 17,
+            "railLinks": 38,
+            "actions": {
+              "build": 11,
+              "develop": 4,
+              "network": 23
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 37,
+      "seed": 102179515,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 33,
+            "railIndustry": 27,
+            "railLinks": 36,
+            "actions": {
+              "network": 27,
+              "build": 9,
+              "sell": 4,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 136,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 106,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 12,
+            "railIndustry": 42,
+            "railLinks": 23,
+            "actions": {
+              "network": 12,
+              "pass": 1,
+              "develop": 4,
+              "build": 16,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 38,
+      "seed": 102179515,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 127,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 97,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 17,
+            "railIndustry": 45,
+            "railLinks": 19,
+            "actions": {
+              "network": 13,
+              "build": 17,
+              "sell": 5,
+              "develop": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 25,
+            "railIndustry": 23,
+            "railLinks": 31,
+            "actions": {
+              "build": 13,
+              "network": 25,
+              "develop": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 39,
+      "seed": 102189488,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 192,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 162,
+          "components": {
+            "canalIndustry": 35,
+            "canalLinks": 31,
+            "railIndustry": 58,
+            "railLinks": 38,
+            "actions": {
+              "network": 22,
+              "build": 14,
+              "scout": 1,
+              "sell": 4,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 24,
+            "railIndustry": 25,
+            "railLinks": 22,
+            "actions": {
+              "network": 17,
+              "pass": 1,
+              "develop": 6,
+              "build": 11,
+              "sell": 2,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 40,
+      "seed": 102189488,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 162,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 132,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 28,
+            "railIndustry": 47,
+            "railLinks": 29,
+            "actions": {
+              "network": 19,
+              "build": 14,
+              "develop": 2,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 139,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 109,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 38,
+            "railIndustry": 27,
+            "railLinks": 27,
+            "actions": {
+              "build": 12,
+              "network": 24,
+              "sell": 4,
+              "pass": 1,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 41,
+      "seed": 102199461,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 88,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 63,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 13,
+            "railIndustry": 33,
+            "railLinks": 10,
+            "actions": {
+              "network": 14,
+              "build": 18,
+              "develop": 6,
+              "scout": 1,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 95,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 22,
+            "railIndustry": 17,
+            "railLinks": 15,
+            "actions": {
+              "network": 16,
+              "pass": 2,
+              "build": 14,
+              "sell": 2,
+              "develop": 6
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 42,
+      "seed": 102199461,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 144,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 114,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 15,
+            "railIndustry": 50,
+            "railLinks": 23,
+            "actions": {
+              "network": 14,
+              "build": 16,
+              "sell": 5,
+              "develop": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 149,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 119,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 40,
+            "railIndustry": 26,
+            "railLinks": 41,
+            "actions": {
+              "build": 10,
+              "network": 26,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 43,
+      "seed": 102209434,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 151,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 121,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 27,
+            "railIndustry": 40,
+            "railLinks": 35,
+            "actions": {
+              "network": 23,
+              "build": 10,
+              "sell": 5,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 112,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 12,
+            "railIndustry": 38,
+            "railLinks": 24,
+            "actions": {
+              "network": 16,
+              "pass": 2,
+              "develop": 4,
+              "build": 17,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 44,
+      "seed": 102209434,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 30,
+            "railIndustry": 29,
+            "railLinks": 27,
+            "actions": {
+              "network": 21,
+              "build": 13,
+              "develop": 1,
+              "pass": 2,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 142,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 112,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 32,
+            "railIndustry": 42,
+            "railLinks": 27,
+            "actions": {
+              "build": 15,
+              "network": 18,
+              "develop": 3,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 45,
+      "seed": 102219407,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 133,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 103,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 19,
+            "railIndustry": 32,
+            "railLinks": 36,
+            "actions": {
+              "network": 23,
+              "build": 11,
+              "develop": 2,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 81,
+          "incomeBonus": 14,
+          "vpWithoutIncomeBonus": 67,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 6,
+            "railIndustry": 33,
+            "railLinks": 28,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "build": 10,
+              "develop": 3,
+              "loan": 4,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 46,
+      "seed": 102219407,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 30,
+            "canalLinks": 23,
+            "railIndustry": 27,
+            "railLinks": 15,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "sell": 4,
+              "develop": 2,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 110,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 80,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 28,
+            "railIndustry": 14,
+            "railLinks": 30,
+            "actions": {
+              "build": 14,
+              "network": 23,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 47,
+      "seed": 102229380,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 164,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 134,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 39,
+            "railIndustry": 62,
+            "railLinks": 19,
+            "actions": {
+              "network": 16,
+              "build": 14,
+              "develop": 5,
+              "sell": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 142,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 112,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 23,
+            "railIndustry": 29,
+            "railLinks": 34,
+            "actions": {
+              "network": 19,
+              "pass": 2,
+              "build": 13,
+              "sell": 2,
+              "scout": 1,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 48,
+      "seed": 102229380,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 27,
+            "railIndustry": 32,
+            "railLinks": 13,
+            "actions": {
+              "network": 15,
+              "build": 14,
+              "develop": 6,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 151,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 121,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 38,
+            "railIndustry": 31,
+            "railLinks": 32,
+            "actions": {
+              "build": 14,
+              "network": 21,
+              "sell": 3,
+              "scout": 1,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 49,
+      "seed": 102239353,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 35,
+            "railIndustry": 27,
+            "railLinks": 53,
+            "actions": {
+              "network": 26,
+              "build": 10,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 161,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 131,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 12,
+            "railIndustry": 63,
+            "railLinks": 30,
+            "actions": {
+              "network": 15,
+              "pass": 1,
+              "develop": 4,
+              "build": 15,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 50,
+      "seed": 102239353,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 100,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 8,
+            "railIndustry": 32,
+            "railLinks": 14,
+            "actions": {
+              "network": 11,
+              "build": 18,
+              "develop": 3,
+              "scout": 1,
+              "sell": 3,
+              "pass": 1,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 22,
+            "railIndustry": 15,
+            "railLinks": 28,
+            "actions": {
+              "network": 27,
+              "develop": 3,
+              "build": 11,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 51,
+      "seed": 102249326,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 99,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 23,
+            "railIndustry": 10,
+            "railLinks": 29,
+            "actions": {
+              "network": 25,
+              "build": 11,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 127,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 21,
+            "railIndustry": 26,
+            "railLinks": 26,
+            "actions": {
+              "network": 18,
+              "pass": 1,
+              "build": 12,
+              "develop": 3,
+              "sell": 4,
+              "loan": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 52,
+      "seed": 102249326,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 135,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 105,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 26,
+            "railIndustry": 32,
+            "railLinks": 21,
+            "actions": {
+              "network": 17,
+              "build": 16,
+              "sell": 4,
+              "develop": 2,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 155,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 125,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 42,
+            "railIndustry": 27,
+            "railLinks": 34,
+            "actions": {
+              "build": 11,
+              "network": 25,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 53,
+      "seed": 102259299,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 147,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 117,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 33,
+            "railIndustry": 31,
+            "railLinks": 41,
+            "actions": {
+              "network": 27,
+              "build": 13,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 137,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 107,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 11,
+            "railIndustry": 39,
+            "railLinks": 28,
+            "actions": {
+              "network": 14,
+              "pass": 1,
+              "develop": 6,
+              "build": 12,
+              "sell": 4,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 54,
+      "seed": 102259299,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 150,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 120,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 29,
+            "railIndustry": 42,
+            "railLinks": 29,
+            "actions": {
+              "network": 17,
+              "build": 11,
+              "sell": 4,
+              "pass": 1,
+              "develop": 3,
+              "scout": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 166,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 136,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 36,
+            "railIndustry": 41,
+            "railLinks": 31,
+            "actions": {
+              "build": 17,
+              "network": 20,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 55,
+      "seed": 102269272,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 138,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 108,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 23,
+            "railIndustry": 36,
+            "railLinks": 29,
+            "actions": {
+              "network": 20,
+              "build": 15,
+              "develop": 1,
+              "sell": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 11,
+            "railIndustry": 40,
+            "railLinks": 30,
+            "actions": {
+              "network": 18,
+              "pass": 1,
+              "build": 13,
+              "develop": 5,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 56,
+      "seed": 102269272,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 19,
+            "railIndustry": 19,
+            "railLinks": 23,
+            "actions": {
+              "network": 21,
+              "build": 12,
+              "develop": 3,
+              "pass": 4,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 29,
+            "railIndustry": 29,
+            "railLinks": 22,
+            "actions": {
+              "build": 13,
+              "network": 21,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 57,
+      "seed": 102279245,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 119,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 89,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 23,
+            "railIndustry": 26,
+            "railLinks": 32,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "develop": 1,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 127,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 97,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 20,
+            "railIndustry": 19,
+            "railLinks": 28,
+            "actions": {
+              "network": 20,
+              "pass": 1,
+              "build": 14,
+              "develop": 2,
+              "sell": 3,
+              "scout": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 58,
+      "seed": 102279245,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 101,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 23,
+            "railIndustry": 17,
+            "railLinks": 19,
+            "actions": {
+              "network": 24,
+              "build": 10,
+              "sell": 3,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 22,
+            "railIndustry": 25,
+            "railLinks": 20,
+            "actions": {
+              "build": 17,
+              "network": 22,
+              "develop": 2,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 59,
+      "seed": 102289218,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 158,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 128,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 24,
+            "railIndustry": 69,
+            "railLinks": 9,
+            "actions": {
+              "network": 12,
+              "build": 21,
+              "develop": 1,
+              "sell": 5,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 100,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 17,
+            "railIndustry": 19,
+            "railLinks": 31,
+            "actions": {
+              "network": 21,
+              "pass": 2,
+              "develop": 3,
+              "build": 10,
+              "sell": 2,
+              "loan": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 60,
+      "seed": 102289218,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 79,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 50,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 14,
+            "railIndustry": 2,
+            "railLinks": 13,
+            "actions": {
+              "network": 26,
+              "build": 10,
+              "develop": 2,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 92,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 25,
+            "railIndustry": 12,
+            "railLinks": 15,
+            "actions": {
+              "build": 18,
+              "network": 21,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 61,
+      "seed": 102299191,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 172,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 142,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 32,
+            "railIndustry": 46,
+            "railLinks": 42,
+            "actions": {
+              "network": 24,
+              "build": 11,
+              "develop": 3,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 131,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 101,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 19,
+            "railIndustry": 36,
+            "railLinks": 33,
+            "actions": {
+              "network": 18,
+              "pass": 1,
+              "build": 13,
+              "develop": 2,
+              "sell": 6
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 62,
+      "seed": 102299191,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 11,
+            "railIndustry": 32,
+            "railLinks": 19,
+            "actions": {
+              "network": 20,
+              "build": 14,
+              "develop": 4,
+              "scout": 1,
+              "sell": 2,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 107,
+          "incomeBonus": 25,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 21,
+            "railIndustry": 22,
+            "railLinks": 26,
+            "actions": {
+              "build": 10,
+              "network": 23,
+              "sell": 2,
+              "develop": 2,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 63,
+      "seed": 102309164,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 142,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 112,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 29,
+            "railIndustry": 38,
+            "railLinks": 25,
+            "actions": {
+              "network": 19,
+              "build": 12,
+              "sell": 5,
+              "develop": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 172,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 142,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 19,
+            "railIndustry": 57,
+            "railLinks": 49,
+            "actions": {
+              "network": 20,
+              "pass": 1,
+              "build": 15,
+              "develop": 3,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 64,
+      "seed": 102309164,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 127,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 97,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 8,
+            "railIndustry": 39,
+            "railLinks": 19,
+            "actions": {
+              "network": 9,
+              "build": 13,
+              "develop": 8,
+              "sell": 7,
+              "scout": 1,
+              "loan": 1,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 105,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 38,
+            "railIndustry": 14,
+            "railLinks": 20,
+            "actions": {
+              "network": 24,
+              "build": 13,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 65,
+      "seed": 102319137,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 173,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 143,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 23,
+            "railIndustry": 50,
+            "railLinks": 40,
+            "actions": {
+              "network": 20,
+              "build": 12,
+              "scout": 1,
+              "sell": 5,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 115,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 18,
+            "railIndustry": 32,
+            "railLinks": 29,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "develop": 5,
+              "build": 13,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 66,
+      "seed": 102319137,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 148,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 121,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 24,
+            "railIndustry": 36,
+            "railLinks": 37,
+            "actions": {
+              "network": 21,
+              "build": 15,
+              "develop": 2,
+              "pass": 1,
+              "sell": 2,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 145,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 115,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 28,
+            "railIndustry": 32,
+            "railLinks": 30,
+            "actions": {
+              "build": 11,
+              "network": 17,
+              "develop": 5,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 67,
+      "seed": 102329110,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 15,
+            "railIndustry": 28,
+            "railLinks": 37,
+            "actions": {
+              "network": 23,
+              "build": 15
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 97,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 10,
+            "railIndustry": 27,
+            "railLinks": 19,
+            "actions": {
+              "network": 17,
+              "pass": 1,
+              "build": 12,
+              "develop": 6,
+              "sell": 5,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 68,
+      "seed": 102329110,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 22,
+            "railIndustry": 39,
+            "railLinks": 23,
+            "actions": {
+              "build": 13,
+              "loan": 1,
+              "network": 21,
+              "develop": 3,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 161,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 131,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 14,
+            "railIndustry": 55,
+            "railLinks": 33,
+            "actions": {
+              "network": 16,
+              "build": 11,
+              "sell": 6,
+              "develop": 6,
+              "pass": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 69,
+      "seed": 102339083,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 122,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 33,
+            "railIndustry": 20,
+            "railLinks": 19,
+            "actions": {
+              "network": 21,
+              "build": 12,
+              "sell": 4,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 24,
+            "railIndustry": 29,
+            "railLinks": 16,
+            "actions": {
+              "network": 16,
+              "pass": 2,
+              "build": 17,
+              "sell": 3,
+              "develop": 2,
+              "scout": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 70,
+      "seed": 102339083,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 19,
+            "railIndustry": 51,
+            "railLinks": 32,
+            "actions": {
+              "network": 16,
+              "build": 15,
+              "develop": 3,
+              "sell": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 150,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 120,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 24,
+            "railIndustry": 38,
+            "railLinks": 45,
+            "actions": {
+              "build": 12,
+              "network": 25,
+              "develop": 2,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 71,
+      "seed": 102349056,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 149,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 119,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 25,
+            "railIndustry": 44,
+            "railLinks": 20,
+            "actions": {
+              "network": 17,
+              "build": 13,
+              "develop": 4,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 18,
+            "railIndustry": 15,
+            "railLinks": 32,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "build": 12,
+              "develop": 2,
+              "sell": 4,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 72,
+      "seed": 102349056,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 21,
+            "railIndustry": 24,
+            "railLinks": 19,
+            "actions": {
+              "network": 17,
+              "build": 16,
+              "sell": 3,
+              "develop": 5,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 21,
+            "railIndustry": 30,
+            "railLinks": 29,
+            "actions": {
+              "build": 13,
+              "network": 21,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 73,
+      "seed": 102359029,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 170,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 140,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 22,
+            "railIndustry": 67,
+            "railLinks": 31,
+            "actions": {
+              "network": 17,
+              "build": 14,
+              "develop": 5,
+              "sell": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 6,
+            "canalLinks": 27,
+            "railIndustry": 24,
+            "railLinks": 17,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "build": 13,
+              "sell": 2,
+              "develop": 2,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 74,
+      "seed": 102359029,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 20,
+            "railIndustry": 47,
+            "railLinks": 32,
+            "actions": {
+              "network": 17,
+              "build": 11,
+              "sell": 4,
+              "pass": 1,
+              "develop": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 163,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 133,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 35,
+            "railIndustry": 39,
+            "railLinks": 39,
+            "actions": {
+              "build": 14,
+              "network": 23,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 75,
+      "seed": 102369002,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 156,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 126,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 21,
+            "railIndustry": 61,
+            "railLinks": 27,
+            "actions": {
+              "network": 17,
+              "build": 15,
+              "develop": 2,
+              "sell": 6
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 163,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 133,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 27,
+            "railIndustry": 43,
+            "railLinks": 30,
+            "actions": {
+              "network": 17,
+              "pass": 1,
+              "develop": 7,
+              "build": 11,
+              "sell": 2,
+              "scout": 1,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 76,
+      "seed": 102369002,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 20,
+            "railIndustry": 22,
+            "railLinks": 16,
+            "actions": {
+              "network": 14,
+              "build": 13,
+              "sell": 6,
+              "develop": 4,
+              "scout": 1,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 122,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 29,
+            "railIndustry": 26,
+            "railLinks": 26,
+            "actions": {
+              "build": 15,
+              "network": 23,
+              "develop": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 77,
+      "seed": 102378975,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 112,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 84,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 35,
+            "railIndustry": 17,
+            "railLinks": 13,
+            "actions": {
+              "network": 20,
+              "build": 16,
+              "sell": 2,
+              "scout": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 104,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 5,
+            "canalLinks": 5,
+            "railIndustry": 35,
+            "railLinks": 29,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "develop": 3,
+              "build": 15,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 78,
+      "seed": 102378975,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 28,
+            "railIndustry": 12,
+            "railLinks": 24,
+            "actions": {
+              "network": 22,
+              "build": 14,
+              "sell": 2,
+              "loan": 1,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 26,
+            "canalLinks": 18,
+            "railIndustry": 43,
+            "railLinks": 9,
+            "actions": {
+              "build": 18,
+              "network": 12,
+              "develop": 5,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 79,
+      "seed": 102388948,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 21,
+            "railIndustry": 34,
+            "railLinks": 27,
+            "actions": {
+              "network": 18,
+              "build": 11,
+              "sell": 3,
+              "develop": 8
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 103,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 73,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 13,
+            "railIndustry": 23,
+            "railLinks": 26,
+            "actions": {
+              "network": 21,
+              "pass": 1,
+              "develop": 3,
+              "build": 14,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 80,
+      "seed": 102388948,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 78,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 48,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 12,
+            "railIndustry": 16,
+            "railLinks": 17,
+            "actions": {
+              "network": 21,
+              "build": 13,
+              "develop": 6,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 14,
+            "railIndustry": 39,
+            "railLinks": 22,
+            "actions": {
+              "build": 11,
+              "network": 20,
+              "develop": 4,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 81,
+      "seed": 102398921,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 22,
+            "railIndustry": 30,
+            "railLinks": 22,
+            "actions": {
+              "network": 20,
+              "build": 14,
+              "develop": 4,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 133,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 103,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 23,
+            "railIndustry": 31,
+            "railLinks": 20,
+            "actions": {
+              "network": 14,
+              "pass": 1,
+              "build": 15,
+              "sell": 4,
+              "develop": 5,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 82,
+      "seed": 102398921,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 118,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 6,
+            "railIndustry": 37,
+            "railLinks": 26,
+            "actions": {
+              "network": 12,
+              "build": 16,
+              "sell": 4,
+              "loan": 1,
+              "scout": 2,
+              "develop": 2,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 30,
+            "railIndustry": 29,
+            "railLinks": 23,
+            "actions": {
+              "network": 24,
+              "build": 12,
+              "develop": 4,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 83,
+      "seed": 102408894,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 110,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 80,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 26,
+            "railIndustry": 14,
+            "railLinks": 20,
+            "actions": {
+              "network": 20,
+              "build": 15,
+              "develop": 2,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 115,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 24,
+            "railIndustry": 19,
+            "railLinks": 18,
+            "actions": {
+              "network": 20,
+              "pass": 2,
+              "develop": 5,
+              "build": 12,
+              "sell": 2,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 84,
+      "seed": 102408894,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 112,
+          "incomeBonus": 24,
+          "vpWithoutIncomeBonus": 88,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 24,
+            "railIndustry": 22,
+            "railLinks": 22,
+            "actions": {
+              "network": 17,
+              "build": 11,
+              "develop": 2,
+              "sell": 2,
+              "scout": 2,
+              "loan": 4,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 91,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 62,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 28,
+            "railIndustry": 7,
+            "railLinks": 10,
+            "actions": {
+              "network": 21,
+              "build": 9,
+              "develop": 2,
+              "sell": 1,
+              "scout": 2,
+              "pass": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 85,
+      "seed": 102418867,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 160,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 130,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 25,
+            "railIndustry": 26,
+            "railLinks": 54,
+            "actions": {
+              "network": 26,
+              "build": 10,
+              "sell": 5,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 6,
+            "railIndustry": 62,
+            "railLinks": 38,
+            "actions": {
+              "network": 14,
+              "pass": 1,
+              "develop": 4,
+              "build": 16,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 86,
+      "seed": 102418867,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 28,
+            "canalLinks": 20,
+            "railIndustry": 17,
+            "railLinks": 25,
+            "actions": {
+              "network": 18,
+              "build": 14,
+              "develop": 4,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 158,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 128,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 32,
+            "railIndustry": 38,
+            "railLinks": 37,
+            "actions": {
+              "build": 12,
+              "network": 23,
+              "sell": 4,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 87,
+      "seed": 102428840,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 131,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 101,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 20,
+            "railIndustry": 34,
+            "railLinks": 30,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "sell": 5
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 16,
+            "railIndustry": 28,
+            "railLinks": 23,
+            "actions": {
+              "network": 21,
+              "pass": 1,
+              "develop": 4,
+              "build": 13,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 88,
+      "seed": 102428840,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 119,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 89,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 14,
+            "railIndustry": 38,
+            "railLinks": 13,
+            "actions": {
+              "network": 10,
+              "build": 15,
+              "sell": 4,
+              "develop": 6,
+              "pass": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 31,
+            "railIndustry": 7,
+            "railLinks": 30,
+            "actions": {
+              "build": 13,
+              "network": 26,
+              "develop": 2,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 89,
+      "seed": 102438813,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 23,
+            "railIndustry": 22,
+            "railLinks": 26,
+            "actions": {
+              "network": 24,
+              "build": 12,
+              "develop": 3,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 98,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 68,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 17,
+            "railIndustry": 33,
+            "railLinks": 11,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "build": 12,
+              "develop": 5,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 90,
+      "seed": 102438813,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 148,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 118,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 25,
+            "railIndustry": 42,
+            "railLinks": 18,
+            "actions": {
+              "network": 15,
+              "build": 16,
+              "develop": 4,
+              "sell": 4,
+              "loan": 1,
+              "scout": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 119,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 89,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 27,
+            "railIndustry": 22,
+            "railLinks": 37,
+            "actions": {
+              "network": 21,
+              "build": 13,
+              "sell": 2,
+              "develop": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 91,
+      "seed": 102448786,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 89,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 59,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 20,
+            "railIndustry": 10,
+            "railLinks": 22,
+            "actions": {
+              "network": 23,
+              "build": 16,
+              "develop": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 122,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 22,
+            "railIndustry": 25,
+            "railLinks": 26,
+            "actions": {
+              "network": 18,
+              "pass": 1,
+              "build": 10,
+              "develop": 5,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 92,
+      "seed": 102448786,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 30,
+            "railIndustry": 17,
+            "railLinks": 31,
+            "actions": {
+              "network": 25,
+              "build": 11,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 169,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 139,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 26,
+            "railIndustry": 50,
+            "railLinks": 30,
+            "actions": {
+              "network": 17,
+              "build": 17,
+              "develop": 3,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 93,
+      "seed": 102458759,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 34,
+            "railIndustry": 12,
+            "railLinks": 24,
+            "actions": {
+              "network": 23,
+              "build": 14,
+              "develop": 1,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 120,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 90,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 13,
+            "railIndustry": 35,
+            "railLinks": 21,
+            "actions": {
+              "network": 20,
+              "pass": 1,
+              "build": 15,
+              "develop": 1,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 94,
+      "seed": 102458759,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 103,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 14,
+            "railIndustry": 17,
+            "railLinks": 28,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "pass": 3,
+              "sell": 1,
+              "scout": 1,
+              "develop": 1,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 86,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 56,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 24,
+            "railIndustry": 13,
+            "railLinks": 16,
+            "actions": {
+              "network": 22,
+              "develop": 4,
+              "build": 10,
+              "sell": 1,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 95,
+      "seed": 102468732,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 25,
+            "railIndustry": 36,
+            "railLinks": 26,
+            "actions": {
+              "network": 21,
+              "build": 15,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 108,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 78,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 20,
+            "railIndustry": 21,
+            "railLinks": 24,
+            "actions": {
+              "network": 22,
+              "pass": 2,
+              "build": 10,
+              "develop": 4,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 96,
+      "seed": 102468732,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 106,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 76,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 12,
+            "railIndustry": 24,
+            "railLinks": 36,
+            "actions": {
+              "network": 22,
+              "develop": 4,
+              "build": 14
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 19,
+            "railIndustry": 35,
+            "railLinks": 10,
+            "actions": {
+              "build": 14,
+              "network": 18,
+              "develop": 3,
+              "sell": 4,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 97,
+      "seed": 102478705,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 130,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 100,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 38,
+            "railIndustry": 36,
+            "railLinks": 19,
+            "actions": {
+              "network": 16,
+              "build": 16,
+              "sell": 4,
+              "pass": 2,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 21,
+            "railIndustry": 51,
+            "railLinks": 24,
+            "actions": {
+              "network": 14,
+              "pass": 1,
+              "build": 16,
+              "develop": 4,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 98,
+      "seed": 102478705,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 147,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 117,
+          "components": {
+            "canalIndustry": 19,
+            "canalLinks": 20,
+            "railIndustry": 43,
+            "railLinks": 31,
+            "actions": {
+              "network": 15,
+              "build": 15,
+              "pass": 3,
+              "develop": 3,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 143,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 113,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 34,
+            "railIndustry": 34,
+            "railLinks": 32,
+            "actions": {
+              "network": 19,
+              "build": 13,
+              "develop": 2,
+              "sell": 6
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 99,
+      "seed": 102488678,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 110,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 80,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 27,
+            "railIndustry": 17,
+            "railLinks": 19,
+            "actions": {
+              "network": 22,
+              "build": 13,
+              "sell": 3,
+              "develop": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 100,
+          "incomeBonus": 29,
+          "vpWithoutIncomeBonus": 71,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 17,
+            "railIndustry": 23,
+            "railLinks": 19,
+            "actions": {
+              "network": 19,
+              "pass": 2,
+              "build": 12,
+              "develop": 5,
+              "loan": 1,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 100,
+      "seed": 102488678,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 182,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 152,
+          "components": {
+            "canalIndustry": 34,
+            "canalLinks": 17,
+            "railIndustry": 68,
+            "railLinks": 33,
+            "actions": {
+              "network": 16,
+              "build": 13,
+              "develop": 4,
+              "sell": 5,
+              "pass": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 151,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 121,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 36,
+            "railIndustry": 26,
+            "railLinks": 39,
+            "actions": {
+              "network": 22,
+              "build": 13,
+              "develop": 1,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 101,
+      "seed": 102498651,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 174,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 144,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 28,
+            "railIndustry": 35,
+            "railLinks": 53,
+            "actions": {
+              "network": 20,
+              "build": 15,
+              "sell": 3,
+              "scout": 1,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 147,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 117,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 17,
+            "railIndustry": 44,
+            "railLinks": 41,
+            "actions": {
+              "network": 16,
+              "pass": 1,
+              "develop": 4,
+              "build": 15,
+              "sell": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 102,
+      "seed": 102498651,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 131,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 101,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 24,
+            "railIndustry": 38,
+            "railLinks": 22,
+            "actions": {
+              "develop": 3,
+              "network": 17,
+              "build": 14,
+              "sell": 7,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 27,
+            "railIndustry": 26,
+            "railLinks": 32,
+            "actions": {
+              "network": 24,
+              "build": 10,
+              "develop": 4
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 103,
+      "seed": 102508624,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 115,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 85,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 23,
+            "railIndustry": 29,
+            "railLinks": 21,
+            "actions": {
+              "network": 21,
+              "build": 13,
+              "develop": 2,
+              "pass": 1,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 95,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 16,
+            "railIndustry": 17,
+            "railLinks": 15,
+            "actions": {
+              "network": 21,
+              "pass": 1,
+              "develop": 2,
+              "build": 15,
+              "sell": 2,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 104,
+      "seed": 102508624,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 25,
+            "canalLinks": 26,
+            "railIndustry": 25,
+            "railLinks": 11,
+            "actions": {
+              "network": 14,
+              "build": 22,
+              "sell": 3,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 114,
+          "incomeBonus": 28,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 36,
+            "railIndustry": 7,
+            "railLinks": 26,
+            "actions": {
+              "build": 7,
+              "network": 24,
+              "develop": 6,
+              "sell": 2,
+              "loan": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 105,
+      "seed": 102518597,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 37,
+            "railIndustry": 19,
+            "railLinks": 51,
+            "actions": {
+              "network": 23,
+              "build": 9,
+              "develop": 3,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 128,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 98,
+          "components": {
+            "canalIndustry": 20,
+            "canalLinks": 8,
+            "railIndustry": 40,
+            "railLinks": 26,
+            "actions": {
+              "network": 14,
+              "pass": 4,
+              "build": 17,
+              "develop": 3,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 106,
+      "seed": 102518597,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 58,
+          "incomeBonus": 20,
+          "vpWithoutIncomeBonus": 38,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 12,
+            "railIndustry": 7,
+            "railLinks": 16,
+            "actions": {
+              "network": 23,
+              "build": 13,
+              "develop": 3,
+              "loan": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 109,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 79,
+          "components": {
+            "canalIndustry": 3,
+            "canalLinks": 7,
+            "railIndustry": 36,
+            "railLinks": 29,
+            "actions": {
+              "build": 13,
+              "network": 21,
+              "develop": 4,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 107,
+      "seed": 102528570,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 129,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 99,
+          "components": {
+            "canalIndustry": 24,
+            "canalLinks": 25,
+            "railIndustry": 27,
+            "railLinks": 19,
+            "actions": {
+              "network": 17,
+              "build": 16,
+              "develop": 2,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 113,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 83,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 14,
+            "railIndustry": 43,
+            "railLinks": 18,
+            "actions": {
+              "network": 16,
+              "pass": 1,
+              "build": 15,
+              "develop": 5,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 108,
+      "seed": 102528570,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 105,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 75,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 25,
+            "railIndustry": 18,
+            "railLinks": 18,
+            "actions": {
+              "network": 17,
+              "build": 15,
+              "pass": 3,
+              "develop": 3,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 169,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 139,
+          "components": {
+            "canalIndustry": 32,
+            "canalLinks": 28,
+            "railIndustry": 43,
+            "railLinks": 36,
+            "actions": {
+              "network": 22,
+              "develop": 3,
+              "build": 12,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 109,
+      "seed": 102538543,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 96,
+          "incomeBonus": 22,
+          "vpWithoutIncomeBonus": 74,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 21,
+            "railIndustry": 22,
+            "railLinks": 18,
+            "actions": {
+              "network": 20,
+              "build": 14,
+              "develop": 1,
+              "sell": 2,
+              "scout": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 122,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 92,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 13,
+            "railIndustry": 37,
+            "railLinks": 28,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "develop": 4,
+              "build": 12,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 110,
+      "seed": 102538543,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 148,
+          "incomeBonus": 27,
+          "vpWithoutIncomeBonus": 121,
+          "components": {
+            "canalIndustry": 29,
+            "canalLinks": 35,
+            "railIndustry": 34,
+            "railLinks": 23,
+            "actions": {
+              "network": 16,
+              "build": 12,
+              "sell": 4,
+              "scout": 1,
+              "loan": 2,
+              "pass": 3,
+              "develop": 4
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 136,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 106,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 26,
+            "railIndustry": 43,
+            "railLinks": 19,
+            "actions": {
+              "build": 16,
+              "network": 16,
+              "develop": 1,
+              "sell": 5
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 111,
+      "seed": 102548516,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 125,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 95,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 20,
+            "railIndustry": 26,
+            "railLinks": 32,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 13,
+            "canalLinks": 7,
+            "railIndustry": 45,
+            "railLinks": 21,
+            "actions": {
+              "network": 15,
+              "pass": 2,
+              "develop": 6,
+              "build": 15,
+              "sell": 3,
+              "scout": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 112,
+      "seed": 102548516,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 131,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 101,
+          "components": {
+            "canalIndustry": 27,
+            "canalLinks": 15,
+            "railIndustry": 42,
+            "railLinks": 17,
+            "actions": {
+              "network": 14,
+              "build": 16,
+              "sell": 5,
+              "develop": 6,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 127,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 97,
+          "components": {
+            "canalIndustry": 7,
+            "canalLinks": 36,
+            "railIndustry": 22,
+            "railLinks": 28,
+            "actions": {
+              "build": 11,
+              "network": 22,
+              "sell": 2,
+              "develop": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 113,
+      "seed": 102558489,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 145,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 115,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 20,
+            "railIndustry": 54,
+            "railLinks": 26,
+            "actions": {
+              "network": 18,
+              "build": 13,
+              "sell": 8,
+              "develop": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 134,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 104,
+          "components": {
+            "canalIndustry": 14,
+            "canalLinks": 18,
+            "railIndustry": 39,
+            "railLinks": 33,
+            "actions": {
+              "network": 22,
+              "pass": 1,
+              "build": 13,
+              "develop": 3,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 114,
+      "seed": 102558489,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 128,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 98,
+          "components": {
+            "canalIndustry": 18,
+            "canalLinks": 20,
+            "railIndustry": 43,
+            "railLinks": 17,
+            "actions": {
+              "network": 15,
+              "build": 16,
+              "sell": 4,
+              "develop": 6,
+              "pass": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 124,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 94,
+          "components": {
+            "canalIndustry": 11,
+            "canalLinks": 29,
+            "railIndustry": 24,
+            "railLinks": 26,
+            "actions": {
+              "build": 14,
+              "network": 18,
+              "develop": 3,
+              "sell": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 115,
+      "seed": 102568462,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 9,
+            "canalLinks": 19,
+            "railIndustry": 27,
+            "railLinks": 26,
+            "actions": {
+              "network": 24,
+              "build": 14,
+              "develop": 3,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 91,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 61,
+          "components": {
+            "canalIndustry": 6,
+            "canalLinks": 13,
+            "railIndustry": 24,
+            "railLinks": 14,
+            "actions": {
+              "network": 19,
+              "pass": 1,
+              "build": 12,
+              "sell": 4,
+              "develop": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 116,
+      "seed": 102568462,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 116,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 86,
+          "components": {
+            "canalIndustry": 0,
+            "canalLinks": 20,
+            "railIndustry": 38,
+            "railLinks": 24,
+            "actions": {
+              "network": 21,
+              "build": 14,
+              "develop": 3,
+              "sell": 2
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 134,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 104,
+          "components": {
+            "canalIndustry": 16,
+            "canalLinks": 18,
+            "railIndustry": 37,
+            "railLinks": 33,
+            "actions": {
+              "build": 14,
+              "network": 20,
+              "sell": 4,
+              "scout": 1,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 117,
+      "seed": 102578435,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 111,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 81,
+          "components": {
+            "canalIndustry": 22,
+            "canalLinks": 13,
+            "railIndustry": 23,
+            "railLinks": 23,
+            "actions": {
+              "network": 17,
+              "build": 12,
+              "develop": 6,
+              "sell": 3
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 117,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 87,
+          "components": {
+            "canalIndustry": 4,
+            "canalLinks": 26,
+            "railIndustry": 31,
+            "railLinks": 22,
+            "actions": {
+              "network": 25,
+              "pass": 3,
+              "build": 11,
+              "develop": 2,
+              "sell": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 118,
+      "seed": 102578435,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 99,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 69,
+          "components": {
+            "canalIndustry": 8,
+            "canalLinks": 16,
+            "railIndustry": 17,
+            "railLinks": 24,
+            "actions": {
+              "network": 21,
+              "build": 16,
+              "develop": 4,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 95,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 65,
+          "components": {
+            "canalIndustry": 15,
+            "canalLinks": 25,
+            "railIndustry": 17,
+            "railLinks": 8,
+            "actions": {
+              "network": 20,
+              "build": 13,
+              "sell": 2,
+              "scout": 2,
+              "develop": 1
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 119,
+      "seed": 102588408,
+      "seats": [
+        "guided",
+        "world"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "guided",
+          "vp": 112,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 82,
+          "components": {
+            "canalIndustry": 12,
+            "canalLinks": 27,
+            "railIndustry": 15,
+            "railLinks": 28,
+            "actions": {
+              "network": 25,
+              "build": 14,
+              "sell": 1
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "world",
+          "vp": 93,
+          "incomeBonus": 23,
+          "vpWithoutIncomeBonus": 70,
+          "components": {
+            "canalIndustry": 10,
+            "canalLinks": 12,
+            "railIndustry": 27,
+            "railLinks": 21,
+            "actions": {
+              "network": 18,
+              "pass": 1,
+              "develop": 5,
+              "build": 11,
+              "sell": 2,
+              "loan": 3
+            }
+          }
+        }
+      ],
+      "moves": 80
+    },
+    {
+      "game": 120,
+      "seed": 102588408,
+      "seats": [
+        "world",
+        "guided"
+      ],
+      "scores": [
+        {
+          "seat": 0,
+          "type": "world",
+          "vp": 146,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 116,
+          "components": {
+            "canalIndustry": 17,
+            "canalLinks": 29,
+            "railIndustry": 48,
+            "railLinks": 22,
+            "actions": {
+              "network": 17,
+              "build": 11,
+              "sell": 7,
+              "develop": 7
+            }
+          }
+        },
+        {
+          "seat": 1,
+          "type": "guided",
+          "vp": 159,
+          "incomeBonus": 30,
+          "vpWithoutIncomeBonus": 129,
+          "components": {
+            "canalIndustry": 21,
+            "canalLinks": 34,
+            "railIndustry": 50,
+            "railLinks": 20,
+            "actions": {
+              "build": 19,
+              "network": 17,
+              "sell": 2
+            }
+          }
+        }
+      ],
+      "moves": 80
+    }
+  ],
+  "notes": [
+    "Same seed reused across a complete rotation of seats; ties share one win. With repeated types, row.games counts player appearances and winRate is per player appearance.",
+    "Search uses original engine transitions with sampled unknown future cards. World model uses learned transitions only.",
+    "Depth and retained width are shared. learned-pool-v1 ranks up to 32 roots; diverse-pool-12 considers up to 12 subsequent actions instead of 3. Wall-clock cost is reported, not equalized.",
+    "VP follows this existing engine, including an end-game income bonus absent from the full tabletop rules. vpWithoutIncomeBonus only removes that bonus; it does not correct other rules differences.",
+    "Classic search uses heuristic state evaluation. Guided search uses learned terminal value with real engine transitions. World uses the value function recorded in model metadata.",
+    "Results measure this implementation, observation setting, opponent lineup and compute budget; they do not establish general architectural superiority.",
+    "Whole seed groups run on independent workers; timings include CPU contention."
+  ],
+  "execution": {
+    "workers": 4
+  },
+  "artifacts": {
+    "world-model.json": {
+      "directory": "world_model/experiments/dynamics-2p-active/models",
+      "sha256": "2f383f7f3eb9072369da645b35c8de6d35b2c6e58d8397ac75fae820148cb489"
+    },
+    "neural-policy.json": {
+      "directory": "world_model/experiments/dynamics-2p-active/models",
+      "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+    }
+  }
+}
