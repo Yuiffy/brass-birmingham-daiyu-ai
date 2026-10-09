@@ -3,10 +3,12 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads');
 process.env.BRASS_RULES='economy-v2';
 const Sim=require('./simulator'),Planner=require('./planner'),{Network}=require('./inference');
-const profiles={baseline:{},double:{strategy:'double-rail-v1'},human:{strategy:'human-guide-v1'}};
+const profiles={baseline:{},double:{strategy:'double-rail-v1'},human:{strategy:'human-guide-v1'},chain:{strategy:'human-chain-v2'},finance:{strategy:'human-finance-v2'},cards:{strategy:'human-card-v2'},
+    trained:{strategy:'human-guide-v1'},trainedchain:{strategy:'human-chain-v2'},trainedcards:{strategy:'human-card-v2'},world:{type:'world',doubleRail:true},oldworld:{type:'world'}};
 
 function runGroup(config,group) {
     const world=new Network(JSON.parse(fs.readFileSync(config.model,'utf8')));
+    const candidate=config.candidateModel?new Network(JSON.parse(fs.readFileSync(config.candidateModel,'utf8'))):world;
     const players=config.lineup.length,records=[];
     for(let rotation=0;rotation<players;rotation++) {
         const seats=config.lineup.map((_,p)=>config.lineup[(p+rotation)%players]);
@@ -16,7 +18,8 @@ function runGroup(config,group) {
             actions:{},doubleRails:0,thinkingMs:0,trace:[]}));
         while(!state.gameOver) {
             const actor=state.currentPlayerId,profile=seats[actor],d=details[actor],era=state.era;
-            const result=Planner.plan(state,{type:'guided',world,depth:config.depth,width:config.width,
+            const selectedWorld=['trained','trainedchain','trainedcards','world'].includes(profile)?candidate:world;
+            const result=Planner.plan(state,{type:'guided',world:selectedWorld,depth:config.depth,width:config.width,
                 knowledgeWeight:config.weight,...profiles[profile]});
             if(!result.selected)throw Error('No selected action');
             const a=result.selected;d.thinkingMs+=result.elapsedMs;
@@ -64,10 +67,11 @@ async function benchmark(config) {
     if(players<2||players>4||config.lineup.some(p=>!profiles[p])||config.games%players||config.games<players||
         !Number.isInteger(config.workers)||config.workers<1||config.workers>16)throw Error('Use complete rotations, 2–4 seats and 1–16 workers');
     const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-    const sources=['human_strategy.js','planner.js','simulator.js','encoding.js','value_features.js','inference.js',
+    const sources=['human_strategy.js','production_chain.js','planner.js','simulator.js','encoding.js','value_features.js','inference.js',
         '../js/gameLogic.js','../js/gameState.js','../js/gameData.js','../scripts/autorun.js','human_benchmark.js'];
     const sourceSHA256=Object.fromEntries(sources.map(f=>[f,sha(path.join(__dirname,f))]));
     const modelSHA256=sha(config.model);
+    const candidateModelSHA256=config.candidateModel?sha(config.candidateModel):null;
     const groups=config.games/players,count=Math.min(config.workers,groups),threads=[];
     let completed=0;
     try {
@@ -81,10 +85,10 @@ async function benchmark(config) {
             worker.on('error',reject);worker.on('exit',code=>{if(!done)reject(Error('Worker exited without records: '+code));});
         })));
         const records=output.flat().sort((a,b)=>a.group-b.group||a.rotation-b.rotation);
-        if(sources.some(f=>sourceSHA256[f]!==sha(path.join(__dirname,f)))||modelSHA256!==sha(config.model))
+        if(sources.some(f=>sourceSHA256[f]!==sha(path.join(__dirname,f)))||modelSHA256!==sha(config.model)||candidateModelSHA256&&candidateModelSHA256!==sha(config.candidateModel))
             throw Error('Source or model changed during the benchmark; discard this run');
         return {generatedAt:new Date().toISOString(),config,rules:'economy-v2-network-corrected',
-            sourceSHA256,modelSHA256,independentSeedGroups:groups,completedGames:records.length,
+            sourceSHA256,modelSHA256,candidateModelSHA256,independentSeedGroups:groups,completedGames:records.length,
             rows:summarize(records),games:records,
             notes:['All scores use the same calibrated engine without terminal income bonuses.',
                 'Baseline weights are immutable. One complete seat rotation stays within each seed group.',
@@ -104,7 +108,8 @@ if(!isMainThread) {
     const config={games:Number(options.games||8),seed:Number(options.seed||209100001),depth:Number(options.depth||2),
         width:Number(options.width||8),weight:Number(options.weight||.8),workers:Number(options.workers||4),
         lineup:(options.lineup||'human,baseline,baseline,baseline').split(','),
-        model:path.resolve(options.models||`world_model/experiments/economy-20260920/${players}p/direct/world-model.json`)};
+        model:path.resolve(options.models||`world_model/experiments/economy-20260920/${players}p/direct/world-model.json`),
+        candidateModel:options.candidate?path.resolve(options.candidate):null};
     benchmark(config).then(report=>{
         const out=options.out||'world_model/.local-experiments/human-guide/trial.json';
         fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2));

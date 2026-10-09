@@ -30,11 +30,26 @@
         })();
         return loading;
     };
-    api.getWorld=players=>api.worldByPlayers[players]||null;
+    let teacherLoading=null;
+    api.loadTeacher=()=>{
+        if(api.teacherWorld)return Promise.resolve(true);
+        if(teacherLoading)return teacherLoading;
+        teacherLoading=(async()=>{
+            try {const url='world_model/experiments/human-teacher-20261009/models/world-model.json',r=await fetch(url);
+                if(!r.ok)throw Error(`${url}: HTTP ${r.status}`);
+                api.teacherWorld=new BrassWorldModel.Network(await r.json());api.teacherError=null;return true;
+            }catch(e){api.teacherError=e.message;return false;}finally{teacherLoading=null;}
+        })();return teacherLoading;
+    };
+    api.getWorld=(players,profile)=>profile==='teacher-trained-v2'?(players===4?api.teacherWorld||null:null):api.worldByPlayers[players]||null;
     api.getPolicy=players=>api.policyByPlayers[players]||null;
-    api.getGuided=players=>api.guidedByPlayers[players]||api.getWorld(players);
+    api.getGuided=(players,profile)=>profile==='teacher-trained-v2'?api.getWorld(players,profile):api.guidedByPlayers[players]||api.getWorld(players);
     api.readyFor=(kinds,players=4)=>{
         if(!document.getElementById('ai-enabled').checked)return true;
+        if(document.getElementById('guided-strategy')?.value==='teacher-trained-v2'&&kinds.some(t=>t==='world'||t==='guided')) {
+            if(players!==4){document.getElementById('model-status').textContent='教师训练版目前仅支持四人局。';return false;}
+            if(!api.teacherWorld){document.getElementById('model-status').textContent='教师训练权重尚未就绪。'+(api.teacherError||'');return false;}
+        }
         const world=api.getWorld(players),missing=(kinds.includes('world')&&!world)||(kinds.includes('neural')&&!api.getPolicy(players));
         if((kinds.includes('guided')||kinds.includes('world'))&&!world){document.getElementById('model-status').textContent=`${players} 人模型尚未加载。`;return false;}
         if(kinds.includes('guided')&&!api.getGuided(players)?.valueLayers){document.getElementById('model-status').textContent='学习增强搜索需要已训练的局面估值权重。';return false;}
@@ -46,7 +61,12 @@
         const corrected=globalThis.BRASS_RULES==='economy-v2';
         const strategy=document.getElementById('guided-strategy');
         strategy.disabled=!corrected;
-        if(corrected&&new URLSearchParams(location.search).get('strategy')==='human-guide-v1')strategy.value='human-guide-v1';
+        const requested=new URLSearchParams(location.search).get('strategy');
+        if(corrected&&['human-guide-v1','teacher-trained-v2'].includes(requested))strategy.value=requested;
+        strategy.addEventListener('change',()=>{if(strategy.value==='teacher-trained-v2')api.loadTeacher().then(ok=>{
+            status.textContent=ok?'四人教师训练权重已就绪（实验）。':`教师权重加载失败：${api.teacherError}`;
+        });});
+        if(strategy.value==='teacher-trained-v2')api.loadTeacher();
         document.getElementById('rules-status').textContent=corrected?'经济规则校准版：无终局收入加分，收入轨/贷款/时代/市场已修正；仍非完整官方规则，不能直接与真人比赛分数比较。':'历史训练版：保留旧规则与权重，含额外终局收入分。';
         if(corrected)document.querySelectorAll('a[href="arena.html"]').forEach(a=>a.href='arena.html?rules=economy-v2');
         const setEnabled=()=>{
@@ -56,6 +76,7 @@
         };
         enabled.addEventListener('change',setEnabled);setEnabled();
         document.querySelectorAll('.count-btn').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.player-ai-select').forEach(s=>s.disabled=!enabled.checked)));
+        if(strategy.value==='teacher-trained-v2')document.querySelector('.count-btn[data-count="4"]')?.click();
         document.getElementById('ai-demo-btn').addEventListener('click',async()=>{
             const button=document.getElementById('ai-demo-btn');button.disabled=true;enabled.checked=true;
             try{
@@ -70,7 +91,8 @@
     class Controller {
         constructor(state,ui,kinds){
             this.state=state;this.ui=ui;this.kinds=state.players.map((_,i)=>kinds[i]||'human');
-            this.strategy=state.rulesVersion==='economy-v2'&&document.getElementById('guided-strategy')?.value==='human-guide-v1'?'human-guide-v1':null;
+            this.profile=state.rulesVersion==='economy-v2'?document.getElementById('guided-strategy')?.value:null;
+            this.strategy=this.profile==='teacher-trained-v2'?'human-card-v2':this.profile==='human-guide-v1'?'human-guide-v1':null;
             this.running=true;this.timer=null;this.disposed=false;this.selection=null;
             const panel=document.createElement('div');panel.id='ai-toolbar';
             panel.innerHTML='<span id="ai-turn-label"></span><button class="ai-button" id="ai-pause">暂停 AI</button><button class="ai-button" id="ai-step">AI 走一步</button><button class="ai-button" id="ai-inspect">AI 推演 / 预测对照</button><a href="arena.html" target="_blank" rel="noopener">对战实验室 ↗</a>';
@@ -95,10 +117,10 @@
             const type=this.kinds[this.state.currentPlayerId];
             const active=type!=='human'&&!this.state.gameOver;
             document.getElementById('game-screen').classList.toggle('ai-turn',active);
-            document.getElementById('ai-turn-label').textContent=`${this.state.currentPlayer.name} · ${P.TYPES[type]}${type==='guided'&&this.strategy?' · 攻略增强':''}${this.state.gameOver?' · 已结束':''}`;
+            document.getElementById('ai-turn-label').textContent=`${this.state.currentPlayer.name} · ${P.TYPES[type]}${this.profile==='teacher-trained-v2'?' · 教师训练':type==='guided'&&this.strategy?' · 攻略增强':''}${this.state.gameOver?' · 已结束':''}`;
             document.getElementById('ai-pause').textContent=this.running?'暂停 AI':'继续 AI';
             document.getElementById('ai-step').disabled=!active;
-            document.getElementById('ai-inspect').disabled=this.state.gameOver||!api.getWorld(this.state.numPlayers);
+            document.getElementById('ai-inspect').disabled=this.state.gameOver||!api.getWorld(this.state.numPlayers,this.profile);
             if(active&&this.running&&!this.dialog.open&&!this.state.gameOver&&document.getElementById('scoring-overlay').classList.contains('hidden'))this.timer=setTimeout(()=>this.move(),650);
         }
         move(){
@@ -108,7 +130,7 @@
             catch(e){this.running=false;this.ui.showToast(e.message,'error');this.refresh();}
         }
         planOptions(type,depth){
-            return {type,world:type==='guided'?api.getGuided(this.state.numPlayers):api.getWorld(this.state.numPlayers),
+            return {type,world:type==='guided'?api.getGuided(this.state.numPlayers,this.profile):api.getWorld(this.state.numPlayers,this.profile),
                 policy:api.getPolicy(this.state.numPlayers),depth,width:8,strategy:type==='guided'?this.strategy||null:null};
         }
         apply(action){
@@ -121,14 +143,14 @@
             this.ui.refresh();
         }
         inspect(){
-            const world=api.getWorld(this.state.numPlayers);if(!world||this.state.gameOver)return;
+            const world=api.getWorld(this.state.numPlayers,this.profile);if(!world||this.state.gameOver)return;
             this.previewToken=JSON.stringify(Sim.snapshot(this.state));
             try{
                 const depth=Number(document.getElementById('ai-depth').value);
                 const active=this.kinds[this.state.currentPlayerId],type=active==='human'?'world':active;
                 const result=P.plan(this.state,this.planOptions(type,depth));this.preview=result;
                 this.dialog?.querySelector('h2')?.replaceChildren(document.createTextNode(type==='guided'||type==='search'?'规则推演与局面估值':'在模型中想象未来'));
-                document.getElementById('ai-plan-info').textContent=`${P.TYPES[type]}${result.strategy?' · 攻略增强':''} · 预比较 ${result.candidatePoolSize} 个动作 · ${depth} 步上限 · ${fmt(result.elapsedMs)} ms`;
+                document.getElementById('ai-plan-info').textContent=`${P.TYPES[type]}${this.profile==='teacher-trained-v2'?' · 教师训练＋保牌':result.strategy?' · 攻略增强':''} · 预比较 ${result.candidatePoolSize} 个动作 · ${depth} 步上限 · ${fmt(result.elapsedMs)} ms`;
                 document.getElementById('ai-candidates').innerHTML=result.branches.map((b,i)=>`<button class="candidate-button ${i===0?'best':''}" data-index="${i}"><span>${i===0?'推荐 · ':''}${esc(b.label)}</span><b>${fmt(b.score)}</b><small>${b.steps.map(s=>esc(s.label)).join(' → ')}${b.steps.length<depth?' · 预测状态无后续候选，提前停止':''}</small></button>`).join('');
                 document.querySelectorAll('.candidate-button').forEach(b=>b.onclick=()=>this.compare(Number(b.dataset.index)));
                 if(result.branches.length)this.compare(0);
@@ -137,19 +159,20 @@
         compare(index){
             if(this.previewToken!==JSON.stringify(Sim.snapshot(this.state))){document.getElementById('ai-comparison').textContent='棋局已变化，请重新推演。';return;}
             const branch=this.preview.branches[index],before=E.encodeState(this.state),action=branch.action;
-            if(action.target?.connectionIds){
+            const world=api.getWorld(this.state.numPlayers,this.profile);
+            if(action.target?.connectionIds&&world.data?.actionEncoding!=='resource-network-v2'){
                 const truth=E.encodeState(Sim.step(this.state,action).state);
                 const rows=E.fields.map((f,i)=>({name:f.name,b:before[i]*f.scale,t:truth[i]*f.scale})).filter(r=>Math.abs(r.t-r.b)>.1);
                 document.getElementById('ai-comparison').innerHTML=`<p><strong>${esc(branch.label)}</strong></p><p class="ai-note" id="ai-truth-status">规则引擎预览（尚未执行）。现有世界模型未训练双铁路，本动作展示真实模拟变化。</p><button class="ai-button primary" id="ai-execute">执行真实动作</button><div class="comparison-scroll"><table class="ai-table"><thead><tr><th>字段</th><th>当前</th><th>真实结果</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${fmt(r.b)}</td><td>${fmt(r.t)}</td></tr>`).join('')}</tbody></table></div>`;
                 this.bindExecute(action);return;
             }
-            const world=api.getWorld(this.state.numPlayers),predicted=world.predict(before,E.encodeAction(action,this.state)),truth=E.encodeState(Sim.step(this.state,action).state);
+            const predicted=world.predict(before,E.encodeAction(action,this.state,{version:world.data?.actionEncoding||'legacy'})),truth=E.encodeState(Sim.step(this.state,action).state);
             const rows=E.fields.map((f,i)=>({name:f.name,b:before[i]*f.scale,p:predicted[i]*f.scale,t:truth[i]*f.scale,group:f.group}))
                 .filter(r=>Math.abs(r.t-r.b)>.1||Math.abs(r.p-r.b)>.5)
                 .sort((a,b)=>{const priority={money:0,income:1,vp:2,currentPlayer:3};return (priority[a.group]??4)-(priority[b.group]??4)||Math.abs(b.t-b.p)-Math.abs(a.t-a.p);});
             let actualState=Sim.clone(this.state),imagined=before.slice(),nextAction=action,errors=[];
             for(let d=1;d<=5;d++){
-                const encodedAction=E.encodeAction(nextAction,actualState);
+                const encodedAction=E.encodeAction(nextAction,actualState,{version:world.data?.actionEncoding||'legacy'});
                 imagined=world.predict(imagined,encodedAction);
                 actualState=Sim.step(actualState,nextAction).state;
                 const expected=E.encodeState(actualState),mae=expected.reduce((sum,v,i)=>sum+Math.abs(v-imagined[i]),0)/expected.length;

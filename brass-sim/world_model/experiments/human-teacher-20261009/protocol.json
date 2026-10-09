@@ -1,0 +1,54 @@
+{
+  "createdAt": "2026-10-09T15:12:47.241Z",
+  "candidate": "trainedcards",
+  "incumbent": "human-guide-v1",
+  "seed": 449744394,
+  "predictionSeed": 995048391,
+  "settings": {
+    "games": 120,
+    "groups": 30,
+    "depth": 2,
+    "width": 8,
+    "knowledgeWeight": 0.8,
+    "rules": "economy-v2"
+  },
+  "lineups": {
+    "mixed": [
+      "trainedcards",
+      "human",
+      "human",
+      "human"
+    ],
+    "baseline": [
+      "human",
+      "human",
+      "human",
+      "human"
+    ],
+    "selfplay": [
+      "trainedcards",
+      "trainedcards",
+      "trainedcards",
+      "trainedcards"
+    ]
+  },
+  "candidateSHA256": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+  "worldComparison": {
+    "games": 40,
+    "lineup": [
+      "world",
+      "oldworld",
+      "human",
+      "trainedcards"
+    ],
+    "seed": 450744394
+  },
+  "checks": [
+    "paired gain confidence interval",
+    "self-play gain",
+    "under100 tail",
+    "140/150 proportions",
+    "runtime cost"
+  ],
+  "policy": "No tuning after frozen independent game results; previous teacher test is developmental for action-encoding redesign."
+}

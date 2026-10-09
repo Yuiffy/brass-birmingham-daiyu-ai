@@ -2,25 +2,28 @@
 const {chromium}=require(process.env.BRASS_PLAYWRIGHT_MODULE||'playwright');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 (async()=>{
- const directory=path.resolve('output/human-strategy/controls');fs.mkdirSync(directory,{recursive:true});
+ const profile=process.env.BRASS_SMOKE_PROFILE||'human-guide-v1',teacher=profile==='teacher-trained-v2';
+ const directory=path.resolve(teacher?'output/human-teacher/controls':'output/human-strategy/controls');fs.mkdirSync(directory,{recursive:true});
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
-  await page.goto(process.env.BRASS_DEMO_URL||'http://127.0.0.1:8097/?rules=economy-v2&strategy=human-guide-v1');
+  await page.goto(process.env.BRASS_DEMO_URL||`http://127.0.0.1:8097/?rules=economy-v2&strategy=${profile}`);
   await page.waitForFunction(()=>BrassAI.getGuided(4)?.valueLayers);
+  if(teacher)await page.waitForFunction(()=>BrassAI.teacherWorld?.valueLayers);
   await page.locator('.count-btn[data-count="4"]').click();
-  assert.equal(await page.locator('#guided-strategy').inputValue(),'human-guide-v1');
+  assert.equal(await page.locator('#guided-strategy').inputValue(),profile);
   for(const select of await page.locator('.player-ai-select').all())await select.selectOption('guided');
   await page.locator('#start-game-btn').click();await page.locator('#ai-pause').click();
   const snapshot=()=>page.evaluate(()=>JSON.stringify(BrassSimulator.snapshot(gameState)));
   const paused=await snapshot();await page.waitForTimeout(1200);assert.equal(await snapshot(),paused);
   await page.locator('#ai-step').click();assert.notEqual(await snapshot(),paused);
-  assert.equal(await page.evaluate(()=>brassController.lastPlan.strategy),'human-guide-v1');
+  assert.equal(await page.evaluate(()=>brassController.lastPlan.strategy),teacher?'human-card-v2':'human-guide-v1');
+  if(teacher)assert.equal(await page.evaluate(()=>brassController.planOptions('guided',2).world.data.actionEncoding),'resource-network-v2');
   await page.locator('#ai-inspect').click();
   assert.equal(await page.evaluate(()=>brassController.preview.type),'guided');
-  assert.equal(await page.evaluate(()=>brassController.preview.strategy),'human-guide-v1');
+  assert.equal(await page.evaluate(()=>brassController.preview.strategy),teacher?'human-card-v2':'human-guide-v1');
   const preview=await snapshot();await page.locator('#ai-rethink').click();assert.equal(await snapshot(),preview);
   await page.screenshot({path:path.join(directory,'guided-inspect.png')});
   await page.locator('#ai-execute').click();assert.notEqual(await snapshot(),preview);
@@ -43,7 +46,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
    if(!action)throw Error('Double rail missing');
    brassController.preview.branches=[{action,label:BrassSimulator.label(action)}];brassController.compare(0);
   });
-  assert.match(await page.locator('#ai-truth-status').textContent(),/未训练双铁路/);
+  if(teacher)assert.equal(await page.locator('#ai-comparison').getByText('模型预测',{exact:true}).count(),1);
+  else assert.match(await page.locator('#ai-truth-status').textContent(),/未训练双铁路/);
   await page.screenshot({path:path.join(directory,'double-preview.png')});
   const before=await page.evaluate(()=>({money:gameState.players[0].money,cards:gameState.players[0].hand.length}));
   await page.locator('#ai-execute').click();

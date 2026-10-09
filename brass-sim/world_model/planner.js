@@ -4,6 +4,7 @@
     const Sim=node?require('./simulator'):root.BrassSimulator;
     const E=node?require('./encoding'):root.BrassEncoding;
     const Human=node?require('./human_strategy'):root.BrassHumanStrategy;
+    const Chain=node?require('./production_chain'):root.BrassProductionChain;
     const TYPES={human:'人类玩家',heuristic:'原启发式 AI',search:'搜索树逻辑型',neural:'神经网络型',world:'世界模型型',guided:'学习增强搜索'};
     function shortlist(state,width=8,version='legacy'){
         const all=Sim.candidates(state).sort((a,b)=>b.score-a.score);
@@ -46,35 +47,43 @@
         const shortlistVersion=['world','guided'].includes(type)?world.data?.planningShortlist||'legacy':'legacy';
         const continuationVersion=['world','guided'].includes(type)?world.data?.planningContinuation||'legacy':'legacy';
         strategy=strategy||world?.data?.planningStrategy||null;
-        if(strategy&&!['human-guide-v1','double-rail-v1'].includes(strategy))throw Error('Unknown strategy profile');
+        if(strategy&&!['human-guide-v1','human-chain-v2','human-finance-v2','human-card-v2','double-rail-v1'].includes(strategy))throw Error('Unknown strategy profile');
         if(strategy&&(type!=='guided'||state.rulesVersion!=='economy-v2'))throw Error('Strategy profiles require calibrated guided search');
         if(!Number.isFinite(knowledgeWeight)||knowledgeWeight<0||knowledgeWeight>1)throw Error('Invalid knowledge weight');
-        const human=strategy==='human-guide-v1';
-        const options={doubleRail:doubleRail||!!strategy};
+        const human=['human-guide-v1','human-chain-v2','human-finance-v2','human-card-v2'].includes(strategy);
+        const knowledge=['human-chain-v2','human-finance-v2'].includes(strategy)?Chain:Human;
+        const options={doubleRail:doubleRail||!!strategy||!!world?.data?.planningDoubleRail,retainCards:['human-chain-v2','human-card-v2'].includes(strategy)};
         const started=performance.now(),actor=state.currentPlayerId,initial=E.encodeState(state);
+        const productionPlans=strategy==='human-chain-v2'?Chain.plans(state,actor):[];
+        const chainBonus=action=>Math.max(0,...productionPlans.filter(p=>{
+            const first=p.trace[0];
+            return first.action===action.action&&
+                (first.action==='loan'||first.action==='develop'&&first.target.type1===action.target.type1&&first.target.type2===action.target.type2||
+                 first.action==='build'&&first.target.cityId===action.target.cityId&&first.target.slotIndex===action.target.slotIndex&&first.target.industryType===action.target.industryType);
+        }).map(p=>p.score*(state.era==='canal'?.5:.25)));
         let list=shortlist(state,width,shortlistVersion);
         const branches=[];
         const engine=type==='search'||type==='guided';
         const learned=type==='guided'||type==='world'&&world.data?.planningValue==='learned';
         const values=new WeakMap();
         const evaluate=(v,p,s)=>{
-            if(human&&s.gameOver)return Human.evaluate(s,p);
+            if(human&&s.gameOver)return knowledge.evaluate(s,p);
             if(!human)return learned?world.estimateValue(v,p):E.value(v,p);
             let cached=values.get(s);if(!cached){cached=new Map();values.set(s,cached);}
-            if(!cached.has(p))cached.set(p,(1-knowledgeWeight)*world.estimateValue(v,p)+knowledgeWeight*Human.evaluate(s,p));
+            if(!cached.has(p))cached.set(p,(1-knowledgeWeight)*world.estimateValue(v,p)+knowledgeWeight*knowledge.evaluate(s,p));
             return cached.get(p);
         };
         const searchRoot=engine?informationLimitedCopy(state):null;
         const transition=(state,vector,action)=>{
             if(engine){const next=Sim.step(state,action,{validate:false}).state;return {state:next,vector:E.encodeState(next)};}
-            const v=world.predict(vector,E.encodeAction(action,state));
+            const v=world.predict(vector,E.encodeAction(action,state,{version:world.data?.actionEncoding||'legacy'}));
             return {state:E.decodeState(v,state,{structured:world.data?.kind==='gated-world-model'}),vector:v};
         };
         const rootCache=new Map();
         if(strategy||(['world','guided'].includes(type)&&world.data?.planningCandidates==='learned-pool-v1')||(type==='search'&&state.rulesVersion==='economy-v2')){
             const pool=candidatePool(state,strategy?64:32,options);
             for(const a of pool)rootCache.set(Sim.key(a),transition(engine?searchRoot:state,initial,a));
-            list=pool.sort((a,b)=>evaluate(rootCache.get(Sim.key(b)).vector,actor,rootCache.get(Sim.key(b)).state)-evaluate(rootCache.get(Sim.key(a)).vector,actor,rootCache.get(Sim.key(a)).state)).slice(0,width);
+            list=pool.sort((a,b)=>evaluate(rootCache.get(Sim.key(b)).vector,actor,rootCache.get(Sim.key(b)).state)+chainBonus(b)-evaluate(rootCache.get(Sim.key(a)).vector,actor,rootCache.get(Sim.key(a)).state)-chainBonus(a)).slice(0,width);
         }
         for(const action of list) {
             if(type==='heuristic'||type==='neural') {
@@ -112,10 +121,10 @@
                 beam=expanded.sort((a,b)=>b.score-a.score).slice(0,2);
             }
             const best=beam.sort((a,b)=>b.score-a.score)[0];
-            branches.push({action,label:Sim.label(action),score:best.score,steps:best.steps});
+            branches.push({action,label:Sim.label(action),score:best.score+chainBonus(action),steps:best.steps});
         }
         branches.sort((a,b)=>b.score-a.score);
-        return {type,depth,width,strategy,knowledgeWeight:human?knowledgeWeight:0,candidatePoolSize:rootCache.size||list.length,branches,selected:branches[0]?.action,elapsedMs:performance.now()-started};
+        return {type,depth,width,strategy,knowledgeWeight:human?knowledgeWeight:0,productionPlans,candidatePoolSize:rootCache.size||list.length,branches,selected:branches[0]?.action,elapsedMs:performance.now()-started};
     }
     const api={TYPES,plan,shortlist,candidatePool,informationLimitedCopy};
     if(node)module.exports=api;else root.BrassPlanner=api;

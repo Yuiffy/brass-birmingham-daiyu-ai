@@ -1,0 +1,26 @@
+[
+  {
+    "file": "mixed.json.gz",
+    "sha256": "69693545b9977eab62e4b556d2380ee7c933d9d32c6b7edc5d060ce04fc578d1",
+    "uncompressedSHA256": "8893652f2a9202e5da89e374a36d86d75c8d62fae9f70c8e780498e7c2ee577c",
+    "completedGames": 120
+  },
+  {
+    "file": "baseline.json.gz",
+    "sha256": "29bbc32259980eedf16ee0b94b89b69807916679e6d4e9a5d6c9dd6e69f5ce9f",
+    "uncompressedSHA256": "08a4faed04be2eb98458af31e5d89c818c465754f718abfdbb74240562a43d12",
+    "completedGames": 120
+  },
+  {
+    "file": "selfplay.json.gz",
+    "sha256": "2496d4ad9fb1426423e3b0e9133ba7319b98978fb91837a6040d2bf88fab204e",
+    "uncompressedSHA256": "784f8edaa45c23bdfe82eb84ef07298f33dc824d83c7b14b95fa18d9d555363f",
+    "completedGames": 120
+  },
+  {
+    "file": "world-comparison.json.gz",
+    "sha256": "4ee2c7b214b8fe4f1fb1895636240c34a1d7fb81fbf0e71a9fedadc76cf05044",
+    "uncompressedSHA256": "10f2e535e96cbd9d35c4a29270d30aad523ee60720e4ceb359ff4cdabd8357cf",
+    "completedGames": 40
+  }
+]

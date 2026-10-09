@@ -1,0 +1,140 @@
+{
+  "completedGames": 40,
+  "independentSeedGroups": 10,
+  "modelSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+  "candidateModelSHA256": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+  "rows": [
+    {
+      "profile": "world",
+      "appearances": 40,
+      "meanVP": 45.7,
+      "medianVP": 52,
+      "p10": 0,
+      "p90": 66,
+      "minVP": 0,
+      "maxVP": 102,
+      "under100": 39,
+      "atLeast140": 0,
+      "atLeast150": 0,
+      "winShare": 0,
+      "averageMoney": 14.225,
+      "doubleRails": 0.775,
+      "millisecondsPerMove": 370.5238065322577,
+      "meanActions": {
+        "loan": 5.399999999999999,
+        "network": 3.3250000000000006,
+        "build": 11.974999999999996,
+        "sell": 1.4500000000000004,
+        "develop": 3.975,
+        "scout": 1.4000000000000001,
+        "pass": 3.4749999999999983
+      },
+      "canalIndustry": 6.625,
+      "canalLinks": 1.2,
+      "railIndustry": 24.55,
+      "railLinks": 12.475
+    },
+    {
+      "profile": "oldworld",
+      "appearances": 40,
+      "meanVP": 38.125,
+      "medianVP": 43,
+      "p10": 3,
+      "p90": 62,
+      "minVP": 0,
+      "maxVP": 78,
+      "under100": 40,
+      "atLeast140": 0,
+      "atLeast150": 0,
+      "winShare": 0,
+      "averageMoney": 34.075,
+      "doubleRails": 0,
+      "millisecondsPerMove": 185.8665792741936,
+      "meanActions": {
+        "build": 9.15,
+        "loan": 4.85,
+        "network": 4.550000000000001,
+        "develop": 5.6750000000000025,
+        "pass": 3.6749999999999994,
+        "scout": 1.5749999999999997,
+        "sell": 1.525
+      },
+      "canalIndustry": 8.15,
+      "canalLinks": 4.975,
+      "railIndustry": 15.55,
+      "railLinks": 8.8
+    },
+    {
+      "profile": "human",
+      "appearances": 40,
+      "meanVP": 128.2,
+      "medianVP": 127,
+      "p10": 111,
+      "p90": 148,
+      "minVP": 92,
+      "maxVP": 157,
+      "under100": 1,
+      "atLeast140": 0.25,
+      "atLeast150": 0.05,
+      "winShare": 0.4,
+      "averageMoney": 14.95,
+      "doubleRails": 2.9,
+      "millisecondsPerMove": 346.77052233870984,
+      "meanActions": {
+        "develop": 2.1500000000000004,
+        "build": 8.874999999999998,
+        "network": 13.100000000000001,
+        "sell": 2.5499999999999994,
+        "loan": 3.4250000000000003,
+        "scout": 0.7250000000000002,
+        "pass": 0.175
+      },
+      "canalIndustry": 21.55,
+      "canalLinks": 24.125,
+      "railIndustry": 38.125,
+      "railLinks": 41.475
+    },
+    {
+      "profile": "trainedcards",
+      "appearances": 40,
+      "meanVP": 135.05,
+      "medianVP": 136,
+      "p10": 114,
+      "p90": 158,
+      "minVP": 104,
+      "maxVP": 177,
+      "under100": 0,
+      "atLeast140": 0.35,
+      "atLeast150": 0.25,
+      "winShare": 0.6,
+      "averageMoney": 14.625,
+      "doubleRails": 2.675,
+      "millisecondsPerMove": 359.86992596774195,
+      "meanActions": {
+        "develop": 2.4750000000000005,
+        "network": 10.125000000000002,
+        "loan": 3.825000000000001,
+        "build": 11.425000000000002,
+        "sell": 2.6500000000000012,
+        "scout": 0.45000000000000007,
+        "pass": 0.05
+      },
+      "canalIndustry": 23.95,
+      "canalLinks": 18.225,
+      "railIndustry": 54.35,
+      "railLinks": 35.95
+    }
+  ],
+  "worldGain": {
+    "meanVP": 7.575,
+    "meanVP95CI": [
+      1.4,
+      13.375
+    ]
+  },
+  "notes": [
+    "Same mixed lineup, four seat rotations per seed group; not a pure-world self-play score.",
+    "New world has changed dynamics, value and double-rail availability; this is a package comparison.",
+    "Predicted branches can still leave the teacher training distribution; higher prediction accuracy does not certify playing strength."
+  ]
+}

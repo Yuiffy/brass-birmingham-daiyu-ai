@@ -63,6 +63,20 @@ test('successful planning isolates spending, resource flips and income from the 
  assert.deepEqual(Sim.snapshot(s),before);
 });
 
+test('new model action encoding distinguishes rail order and brewery source without changing legacy',()=>{
+ const s=fixture();const ids=['birmingham-oxford','birmingham-coventry'];
+ const a={action:'network',cardIndex:0,target:{connectionIds:ids,beerKey:'birmingham_0'}};
+ const b={...a,target:{...a.target,connectionIds:ids.slice().reverse()}};
+ assert.deepEqual(E.encodeAction(a,s),E.encodeAction(b,s));
+ const options={version:'resource-network-v2'};
+ assert.notDeepEqual(E.encodeAction(a,s,options),E.encodeAction(b,s,options));
+ const c={...a,target:{...a.target,beerKey:'nuneaton_0'}};
+ assert.notDeepEqual(E.encodeAction(a,s,options),E.encodeAction(c,s,options));
+ const single=Sim.candidates(s)[0];assert.deepEqual(E.encodeAction(single,s,options),E.encodeAction(single,s));
+ assert.equal(E.encodeAction(a,s,options).length,E.encodeAction(a,s).length);
+ assert.ok(E.schema.links.length<64);assert.equal(E.schema.types.length,6);
+});
+
 test('canal overbuild replaces an owned lower tier while preserving one tile per city',()=>{
  const s=Sim.create(4,203010020),p=s.players[0];p.money=100;
  s.currentPlayerIndex=s.turnOrder.indexOf(0);

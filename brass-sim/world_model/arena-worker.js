@@ -1,6 +1,6 @@
 globalThis.BRASS_RULES=typeof location!=='undefined'&&new URL(location.href).searchParams.get('rules')==='economy-v2'?'economy-v2':'legacy-v1';
 importScripts('../js/gameData.js','../js/gameState.js','../js/gameLogic.js','../scripts/autorun.js',
-    'simulator.js','encoding.js','value_features.js','inference.js','human_strategy.js','planner.js','tournament.js','runtime_models.js');
+    'simulator.js','encoding.js','value_features.js','inference.js','human_strategy.js','production_chain.js','planner.js','tournament.js','runtime_models.js');
 let cancelled=false;
 onmessage=async({data})=>{
     if(data.type==='cancel'){cancelled=true;return;}
