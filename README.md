@@ -4,6 +4,13 @@
 > 用精确规则模型和配对模拟研究船长竞拍价格。在 `manila/` 中运行 `npm start`，打开
 > `http://127.0.0.1:5180`。其规则与 AI 独立于伯明翰，不需要加载伯明翰模型。
 
+> **仓库整合（2026-10-09）：** 原 `brass-birmingham` 与 `brass-birmingham-sim` 的
+> JavaScript 游戏、自动对局、世界模型、训练权重和实验报告已合入
+> [brass-sim/](brass-sim/README.md)，并保留原提交历史。运行
+> `npm --prefix brass-sim start -- --port 8086`，打开 `http://127.0.0.1:8086`；
+> 经济规则校准版入口为 `http://127.0.0.1:8086/?rules=economy-v2`。
+> 详见[整合说明](docs/repository-consolidation.md)。
+
 `Brass Birmingham Daiyu AI` is an unofficial browser game and AI analysis project for
 **Brass: Birmingham**. It is a public AGPL-3.0 fork of
 [`artyom-morozov/fast_brass`](https://github.com/artyom-morozov/fast_brass), extending the Rust

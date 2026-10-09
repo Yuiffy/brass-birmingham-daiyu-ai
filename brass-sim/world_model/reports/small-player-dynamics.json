@@ -1,0 +1,771 @@
+{
+  "generatedAt": "2026-09-17T07:55:47.538350+00:00",
+  "protocol": {
+    "createdAt": "2026-09-17T07:43:26.573467+00:00",
+    "gamesPerRun": 120,
+    "depth": 2,
+    "width": 8,
+    "seeds": {
+      "2p": 102000001,
+      "3p": 103000001
+    },
+    "baseline": "world_model/models",
+    "candidateDirs": {
+      "2p": "world_model/experiments/dynamics-2p-active/models",
+      "3p": "world_model/experiments/dynamics-3p-active/models"
+    },
+    "selection": "Best validation prediction score from 24 epochs, with 25% old-distribution reference. Value weights and planning settings frozen.",
+    "primaryMetric": "world average VP; also report bonus-excluded VP and guided/all-seat scores",
+    "bootstrap": "paired seed-group percentile CI, 20000 draws",
+    "baselineSHA256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c"
+  },
+  "runs": [
+    {
+      "players": 2,
+      "modelDirectory": "world_model/experiments/dynamics-2p-active/models",
+      "worldModelSHA256": "2f383f7f3eb9072369da645b35c8de6d35b2c6e58d8397ac75fae820148cb489",
+      "valueAndPlanningFrozen": true,
+      "collection": {
+        "games": 400,
+        "transitions": 32000,
+        "splits": {
+          "train": 320,
+          "validation": 40,
+          "test": 40
+        },
+        "config": {
+          "games": 400,
+          "players": 2,
+          "lineup": [
+            "guided",
+            "world"
+          ],
+          "seed": 100000001,
+          "models": "world_model/models",
+          "workers": 6,
+          "depth": 2,
+          "stride": 4,
+          "exploration": 0.08
+        }
+      },
+      "training": {
+        "selectedEpoch": 43,
+        "epochsRun": 24,
+        "trainingRows": 57600,
+        "config": {
+          "data": "world_model/data-dynamics-2p-new-transitions",
+          "validation_data": "world_model/data-dynamics-2p-new-transitions",
+          "out": "world_model/experiments/dynamics-2p-active/models",
+          "epochs": 24,
+          "hidden": 128,
+          "batch_size": 512,
+          "lr": 0.0002,
+          "seed": 42,
+          "policy": "world_model/models/neural-policy.json",
+          "resume": "world_model/models",
+          "replay": "world_model/data-10k",
+          "replay_stride": 32,
+          "reference_data": "world_model/data",
+          "reference_weight": 0.25,
+          "reference_games": 100
+        },
+        "initialSelectionScore": 0.003723339389734607,
+        "bestSelectionScore": 0.0010339333421733954
+      },
+      "prediction": {
+        "baseline": {
+          "testGames": 40,
+          "testTransitions": 3200,
+          "normalizedMSE": 0.003888995386660099,
+          "currentPlayerAccuracy": 0.7546875,
+          "changeF1": 0.6121247683180121,
+          "rollout": [
+            {
+              "depth": 1,
+              "normalizedMAE": 0.006417557131499052,
+              "normalizedRMSE": 0.05653209611773491,
+              "persistenceMAE": 0.0045970589853823185,
+              "windows": 400
+            },
+            {
+              "depth": 2,
+              "normalizedMAE": 0.012654623948037624,
+              "normalizedRMSE": 0.08141542226076126,
+              "persistenceMAE": 0.009381289593875408,
+              "windows": 400
+            },
+            {
+              "depth": 3,
+              "normalizedMAE": 0.015423720702528954,
+              "normalizedRMSE": 0.08718537539243698,
+              "persistenceMAE": 0.012847891077399254,
+              "windows": 400
+            },
+            {
+              "depth": 4,
+              "normalizedMAE": 0.01797371357679367,
+              "normalizedRMSE": 0.09576267749071121,
+              "persistenceMAE": 0.015043526887893677,
+              "windows": 400
+            },
+            {
+              "depth": 5,
+              "normalizedMAE": 0.02023264393210411,
+              "normalizedRMSE": 0.10035115480422974,
+              "persistenceMAE": 0.01882031559944153,
+              "windows": 400
+            }
+          ]
+        },
+        "candidate": {
+          "testGames": 40,
+          "testTransitions": 3200,
+          "normalizedMSE": 0.0009355180081911385,
+          "currentPlayerAccuracy": 0.9478125,
+          "changeF1": 0.8718095456106215,
+          "rollout": [
+            {
+              "depth": 1,
+              "normalizedMAE": 0.0007840237230993807,
+              "normalizedRMSE": 0.01719764806330204,
+              "persistenceMAE": 0.0045970589853823185,
+              "windows": 400
+            },
+            {
+              "depth": 2,
+              "normalizedMAE": 0.0028118998743593693,
+              "normalizedRMSE": 0.036592766642570496,
+              "persistenceMAE": 0.009381289593875408,
+              "windows": 400
+            },
+            {
+              "depth": 3,
+              "normalizedMAE": 0.0035313882399350405,
+              "normalizedRMSE": 0.04076484963297844,
+              "persistenceMAE": 0.012847891077399254,
+              "windows": 400
+            },
+            {
+              "depth": 4,
+              "normalizedMAE": 0.005137914791703224,
+              "normalizedRMSE": 0.04866060987114906,
+              "persistenceMAE": 0.015043526887893677,
+              "windows": 400
+            },
+            {
+              "depth": 5,
+              "normalizedMAE": 0.005804504733532667,
+              "normalizedRMSE": 0.051498111337423325,
+              "persistenceMAE": 0.01882031559944153,
+              "windows": 400
+            }
+          ]
+        },
+        "testGameSeeds": [
+          100089758,
+          100189488,
+          100289218,
+          100388948,
+          100488678,
+          100588408,
+          100688138,
+          100787868,
+          100887598,
+          100987328,
+          101087058,
+          101186788,
+          101286518,
+          101386248,
+          101485978,
+          101585708,
+          101685438,
+          101785168,
+          101884898,
+          101984628,
+          102084358,
+          102184088,
+          102283818,
+          102383548,
+          102483278,
+          102583008,
+          102682738,
+          102782468,
+          102882198,
+          102981928,
+          103081658,
+          103181388,
+          103281118,
+          103380848,
+          103480578,
+          103580308,
+          103680038,
+          103779768,
+          103879498,
+          103979228
+        ],
+        "mseReductionFraction": 0.7594448141028604
+      },
+      "tournament": {
+        "generatedAt": "2026-09-17T07:50:57.261537+00:00",
+        "config": {
+          "games": 120,
+          "players": 2,
+          "seed": 102000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world"
+          ]
+        },
+        "independentSeedGroups": 60,
+        "bootstrapSamples": 20000,
+        "bootstrapSeed": 92017,
+        "artifacts": {
+          "baseline": {
+            "world-model.json": {
+              "directory": "world_model/models",
+              "sha256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c"
+            },
+            "neural-policy.json": {
+              "directory": "world_model/models",
+              "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+            }
+          },
+          "candidate": {
+            "world-model.json": {
+              "directory": "world_model/experiments/dynamics-2p-active/models",
+              "sha256": "2f383f7f3eb9072369da645b35c8de6d35b2c6e58d8397ac75fae820148cb489"
+            },
+            "neural-policy.json": {
+              "directory": "world_model/experiments/dynamics-2p-active/models",
+              "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+            }
+          }
+        },
+        "results": {
+          "guided": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 132.15,
+              "earnedVP": 102.725,
+              "medianVP": 132.0,
+              "p90VP": 162.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.9583333333333334,
+              "atLeast150": 0.20833333333333334,
+              "winRate": 0.8291666666666667
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 131.60833333333332,
+              "earnedVP": 101.93333333333334,
+              "medianVP": 129.0,
+              "p90VP": 164.0,
+              "maxVP": 192.0,
+              "atLeast100": 0.9166666666666666,
+              "atLeast150": 0.25833333333333336,
+              "winRate": 0.5833333333333334
+            },
+            "gain": {
+              "vp": {
+                "mean": -0.5416666666666666,
+                "ci95": [
+                  -5.708333333333333,
+                  4.716666666666667
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": -0.7916666666666666,
+                "ci95": [
+                  -5.825208333333333,
+                  4.283541666666649
+                ]
+              }
+            }
+          },
+          "world": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 104.05833333333334,
+              "earnedVP": 75.65,
+              "medianVP": 104.0,
+              "p90VP": 135.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.5833333333333334,
+              "atLeast150": 0.041666666666666664,
+              "winRate": 0.17083333333333334
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 123.6,
+              "earnedVP": 94.34166666666667,
+              "medianVP": 121.0,
+              "p90VP": 150.0,
+              "maxVP": 182.0,
+              "atLeast100": 0.9,
+              "atLeast150": 0.10833333333333334,
+              "winRate": 0.4166666666666667
+            },
+            "gain": {
+              "vp": {
+                "mean": 19.541666666666668,
+                "ci95": [
+                  14.316666666666666,
+                  24.675
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 18.691666666666666,
+                "ci95": [
+                  13.6,
+                  23.625
+                ]
+              }
+            }
+          },
+          "all": {
+            "baseline": {
+              "appearances": 240,
+              "averageVP": 118.10416666666667,
+              "earnedVP": 89.1875,
+              "medianVP": 117.0,
+              "p90VP": 154.0,
+              "maxVP": 193.0,
+              "atLeast100": 0.7708333333333334,
+              "atLeast150": 0.125
+            },
+            "candidate": {
+              "appearances": 240,
+              "averageVP": 127.60416666666667,
+              "earnedVP": 98.1375,
+              "medianVP": 125.0,
+              "p90VP": 160.0,
+              "maxVP": 192.0,
+              "atLeast100": 0.9083333333333333,
+              "atLeast150": 0.18333333333333332
+            },
+            "gain": {
+              "vp": {
+                "mean": 9.5,
+                "ci95": [
+                  5.279166666666667,
+                  13.662604166666657
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 8.95,
+                "ci95": [
+                  4.829166666666667,
+                  13.000104166666658
+                ]
+              }
+            }
+          }
+        },
+        "notes": [
+          "95% percentile bootstrap over paired seed groups, retaining all seats and rotations together.",
+          "Repeated entrants and identical lineups are not independent observations.",
+          "When both agents change weights, gains describe the whole lineup; a weaker opponent can raise another agent's score.",
+          "VP without the terminal income bonus is still this simulator's score, not an official-rules correction."
+        ],
+        "sources": {
+          "baseline": "world_model/experiments/dynamics-small-study/tournament-2p-default.json",
+          "candidate": "world_model/experiments/dynamics-small-study/tournament-2p-candidate.json"
+        }
+      }
+    },
+    {
+      "players": 3,
+      "modelDirectory": "world_model/experiments/dynamics-3p-active/models",
+      "worldModelSHA256": "453a8161496666882105753d2c7cb60ea2f4fe4da2fe74ac7de86e96f9cd2708",
+      "valueAndPlanningFrozen": true,
+      "collection": {
+        "games": 400,
+        "transitions": 43200,
+        "splits": {
+          "train": 320,
+          "validation": 40,
+          "test": 40
+        },
+        "config": {
+          "games": 400,
+          "players": 3,
+          "lineup": [
+            "guided",
+            "world",
+            "guided"
+          ],
+          "seed": 101000001,
+          "models": "world_model/models",
+          "workers": 6,
+          "depth": 2,
+          "stride": 4,
+          "exploration": 0.08
+        }
+      },
+      "training": {
+        "selectedEpoch": 47,
+        "epochsRun": 24,
+        "trainingRows": 66560,
+        "config": {
+          "data": "world_model/data-dynamics-3p-new-transitions",
+          "validation_data": "world_model/data-dynamics-3p-new-transitions",
+          "out": "world_model/experiments/dynamics-3p-active/models",
+          "epochs": 24,
+          "hidden": 128,
+          "batch_size": 512,
+          "lr": 0.0002,
+          "seed": 42,
+          "policy": "world_model/models/neural-policy.json",
+          "resume": "world_model/models",
+          "replay": "world_model/data-10k",
+          "replay_stride": 32,
+          "reference_data": "world_model/data",
+          "reference_weight": 0.25,
+          "reference_games": 100
+        },
+        "initialSelectionScore": 0.002503031009002178,
+        "bestSelectionScore": 0.0013945241255632933
+      },
+      "prediction": {
+        "baseline": {
+          "testGames": 40,
+          "testTransitions": 4320,
+          "normalizedMSE": 0.002547147683799267,
+          "currentPlayerAccuracy": 0.8414351851851852,
+          "changeF1": 0.6806224691868885,
+          "rollout": [
+            {
+              "depth": 1,
+              "normalizedMAE": 0.005743923131376505,
+              "normalizedRMSE": 0.05192037671804428,
+              "persistenceMAE": 0.007884418591856956,
+              "windows": 520
+            },
+            {
+              "depth": 2,
+              "normalizedMAE": 0.007282871752977371,
+              "normalizedRMSE": 0.05670515075325966,
+              "persistenceMAE": 0.010762535966932774,
+              "windows": 520
+            },
+            {
+              "depth": 3,
+              "normalizedMAE": 0.011367776431143284,
+              "normalizedRMSE": 0.07365702092647552,
+              "persistenceMAE": 0.01501193456351757,
+              "windows": 520
+            },
+            {
+              "depth": 4,
+              "normalizedMAE": 0.012906139716506004,
+              "normalizedRMSE": 0.0782821774482727,
+              "persistenceMAE": 0.017670512199401855,
+              "windows": 520
+            },
+            {
+              "depth": 5,
+              "normalizedMAE": 0.018025614321231842,
+              "normalizedRMSE": 0.09822887182235718,
+              "persistenceMAE": 0.021523186936974525,
+              "windows": 520
+            }
+          ]
+        },
+        "candidate": {
+          "testGames": 40,
+          "testTransitions": 4320,
+          "normalizedMSE": 0.0013074938906356692,
+          "currentPlayerAccuracy": 0.9358796296296297,
+          "changeF1": 0.8561411070404323,
+          "rollout": [
+            {
+              "depth": 1,
+              "normalizedMAE": 0.0021264490205794573,
+              "normalizedRMSE": 0.03147979453206062,
+              "persistenceMAE": 0.007884418591856956,
+              "windows": 520
+            },
+            {
+              "depth": 2,
+              "normalizedMAE": 0.0028628830332309008,
+              "normalizedRMSE": 0.036423515528440475,
+              "persistenceMAE": 0.010762535966932774,
+              "windows": 520
+            },
+            {
+              "depth": 3,
+              "normalizedMAE": 0.005597705952823162,
+              "normalizedRMSE": 0.05403158441185951,
+              "persistenceMAE": 0.01501193456351757,
+              "windows": 520
+            },
+            {
+              "depth": 4,
+              "normalizedMAE": 0.006350804585963488,
+              "normalizedRMSE": 0.055920738726854324,
+              "persistenceMAE": 0.017670512199401855,
+              "windows": 520
+            },
+            {
+              "depth": 5,
+              "normalizedMAE": 0.009350448846817017,
+              "normalizedRMSE": 0.06955213844776154,
+              "persistenceMAE": 0.021523186936974525,
+              "windows": 520
+            }
+          ]
+        },
+        "testGameSeeds": [
+          101089758,
+          101189488,
+          101289218,
+          101388948,
+          101488678,
+          101588408,
+          101688138,
+          101787868,
+          101887598,
+          101987328,
+          102087058,
+          102186788,
+          102286518,
+          102386248,
+          102485978,
+          102585708,
+          102685438,
+          102785168,
+          102884898,
+          102984628,
+          103084358,
+          103184088,
+          103283818,
+          103383548,
+          103483278,
+          103583008,
+          103682738,
+          103782468,
+          103882198,
+          103981928,
+          104081658,
+          104181388,
+          104281118,
+          104380848,
+          104480578,
+          104580308,
+          104680038,
+          104779768,
+          104879498,
+          104979228
+        ],
+        "mseReductionFraction": 0.4866831244408092
+      },
+      "tournament": {
+        "generatedAt": "2026-09-17T07:54:29.187859+00:00",
+        "config": {
+          "games": 120,
+          "players": 3,
+          "seed": 103000001,
+          "depth": 2,
+          "width": 8,
+          "types": [
+            "guided",
+            "world",
+            "guided"
+          ]
+        },
+        "independentSeedGroups": 40,
+        "bootstrapSamples": 20000,
+        "bootstrapSeed": 92017,
+        "artifacts": {
+          "baseline": {
+            "world-model.json": {
+              "directory": "world_model/models",
+              "sha256": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c"
+            },
+            "neural-policy.json": {
+              "directory": "world_model/models",
+              "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+            }
+          },
+          "candidate": {
+            "world-model.json": {
+              "directory": "world_model/experiments/dynamics-3p-active/models",
+              "sha256": "453a8161496666882105753d2c7cb60ea2f4fe4da2fe74ac7de86e96f9cd2708"
+            },
+            "neural-policy.json": {
+              "directory": "world_model/experiments/dynamics-3p-active/models",
+              "sha256": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca"
+            }
+          }
+        },
+        "results": {
+          "guided": {
+            "baseline": {
+              "appearances": 240,
+              "averageVP": 130.38333333333333,
+              "earnedVP": 100.74166666666666,
+              "medianVP": 130.0,
+              "p90VP": 158.0,
+              "maxVP": 191.0,
+              "atLeast100": 0.9291666666666667,
+              "atLeast150": 0.19166666666666668,
+              "winRate": 0.42291666666666666
+            },
+            "candidate": {
+              "appearances": 240,
+              "averageVP": 131.925,
+              "earnedVP": 102.25833333333334,
+              "medianVP": 133.0,
+              "p90VP": 159.0,
+              "maxVP": 182.0,
+              "atLeast100": 0.9416666666666667,
+              "atLeast150": 0.20416666666666666,
+              "winRate": 0.34791666666666665
+            },
+            "gain": {
+              "vp": {
+                "mean": 1.5416666666666656,
+                "ci95": [
+                  -2.7458333333333322,
+                  5.833333333333329
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 1.5166666666666686,
+                "ci95": [
+                  -2.6876041666666652,
+                  5.704166666666668
+                ]
+              }
+            }
+          },
+          "world": {
+            "baseline": {
+              "appearances": 120,
+              "averageVP": 117.25,
+              "earnedVP": 87.95833333333333,
+              "medianVP": 117.0,
+              "p90VP": 142.0,
+              "maxVP": 161.0,
+              "atLeast100": 0.85,
+              "atLeast150": 0.058333333333333334,
+              "winRate": 0.15416666666666667
+            },
+            "candidate": {
+              "appearances": 120,
+              "averageVP": 129.38333333333333,
+              "earnedVP": 99.79166666666667,
+              "medianVP": 127.5,
+              "p90VP": 153.0,
+              "maxVP": 183.0,
+              "atLeast100": 0.95,
+              "atLeast150": 0.13333333333333333,
+              "winRate": 0.30416666666666664
+            },
+            "gain": {
+              "vp": {
+                "mean": 12.133333333333331,
+                "ci95": [
+                  6.524999999999997,
+                  17.666666666666664
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 11.833333333333337,
+                "ci95": [
+                  6.2581250000000015,
+                  17.308541666666653
+                ]
+              }
+            }
+          },
+          "all": {
+            "baseline": {
+              "appearances": 360,
+              "averageVP": 126.00555555555556,
+              "earnedVP": 96.48055555555555,
+              "medianVP": 126.0,
+              "p90VP": 155.0,
+              "maxVP": 191.0,
+              "atLeast100": 0.9027777777777778,
+              "atLeast150": 0.14722222222222223
+            },
+            "candidate": {
+              "appearances": 360,
+              "averageVP": 131.07777777777778,
+              "earnedVP": 101.43611111111112,
+              "medianVP": 131.0,
+              "p90VP": 158.0,
+              "maxVP": 183.0,
+              "atLeast100": 0.9444444444444444,
+              "atLeast150": 0.18055555555555555
+            },
+            "gain": {
+              "vp": {
+                "mean": 5.072222222222223,
+                "ci95": [
+                  0.8554861111111123,
+                  9.25
+                ]
+              },
+              "vpWithoutIncomeBonus": {
+                "mean": 4.955555555555556,
+                "ci95": [
+                  0.7944444444444443,
+                  9.069513888888885
+                ]
+              }
+            }
+          }
+        },
+        "notes": [
+          "95% percentile bootstrap over paired seed groups, retaining all seats and rotations together.",
+          "Repeated entrants and identical lineups are not independent observations.",
+          "When both agents change weights, gains describe the whole lineup; a weaker opponent can raise another agent's score.",
+          "VP without the terminal income bonus is still this simulator's score, not an official-rules correction."
+        ],
+        "sources": {
+          "baseline": "world_model/experiments/dynamics-small-study/tournament-3p-default.json",
+          "candidate": "world_model/experiments/dynamics-small-study/tournament-3p-candidate.json"
+        }
+      }
+    }
+  ],
+  "checks": {
+    "evaluationSeedsDisjointFromAllExistingDatasets": true,
+    "frozenCriticPolicyPlanningVerified": true,
+    "modelHashesMatchTournamentReports": true,
+    "javascriptPythonInferenceMaxAbsoluteErrorBelow": 1e-05,
+    "pairedStatisticsSelfAndMismatchChecksPassed": true
+  },
+  "sourceSHA256": {
+    "world_model/train_structured.py": "7453ef448b3eaf1b5aff1737b30812f944fdf42341bdc270ee96e161db0efdfc",
+    "world_model/compare_strong.py": "190dc901a6cbaddd85e853fceb181c6c00ca4622faa21e22e65a910f6984a41b",
+    "world_model/planner.js": "367b9a3ae9b9fb8a6a7ab54d08437090c26a17586f1c3b1f2717ff9b2500ed14",
+    "world_model/inference.js": "b44546b006c9d0ea4c1ce9720871b1996068713c225dba410e9019859de0a28a",
+    "world_model/encoding.js": "ca2bbb2250113e51294b9c0796a50ed9a803e3bbe779cffbca7624916d899d59",
+    "world_model/tournament.js": "03184894340e12a60523962c14f4135066c621a81a7714bf59293083e27c00cb"
+  },
+  "decision": "Promoted 2P/3P dynamics to game and current arena by player count. Preserve the 4P checkpoint and explicit CLI model selection.",
+  "notes": [
+    "Only guided/world play in these new collections and evaluations. Training retains old training transitions as replay.",
+    "All 800 collected games are stored; fitting uses 320 games per player count, validation 40, test 40. Total new transitions: 75200.",
+    "480 tournament games: default/candidate each 120 games for each player count, with fixed guided weights and fixed depth 2/width 8.",
+    "World dynamics changed; guided critic and real-engine planning are identical across each pair. Match trajectories naturally differ.",
+    "Paired confidence intervals retain complete seed groups; 60 independent groups for 2P and 40 for 3P.",
+    "This establishes improvement in the tested simulator and lineups, not convergence or official-tabletop/human performance."
+  ],
+  "runtimeIntegration": {
+    "integratedAt": "2026-09-17T08:33:32.891836+00:00",
+    "registry": "world_model/runtime_models.js",
+    "players": {
+      "2": "experiments/dynamics-2p-active/models",
+      "3": "experiments/dynamics-3p-active/models",
+      "4": "models"
+    },
+    "nodeTests": 29,
+    "pythonTests": 9
+  }
+}

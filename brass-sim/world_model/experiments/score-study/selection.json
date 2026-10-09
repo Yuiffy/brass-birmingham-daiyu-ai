@@ -1,0 +1,37 @@
+{
+  "protocol": {
+    "developmentSeed": 48000001,
+    "developmentGamesPerType": 80,
+    "finalSeed": 68000001,
+    "finalGamesPerType": 400,
+    "primaryMetric": "absolute mean final VP",
+    "selection": "Choose the highest equally weighted mean VP across world and guided in development, requiring neither type to fall below its baseline development VP. Final candidate scores are not consulted.",
+    "candidates": [
+      "score-v1",
+      "score-v2"
+    ]
+  },
+  "baseline": {
+    "world": 83.0125,
+    "guided": 85.45
+  },
+  "candidates": [
+    {
+      "name": "score-v1",
+      "scores": {
+        "world": 86.95,
+        "guided": 86.975
+      }
+    },
+    {
+      "name": "score-v2",
+      "scores": {
+        "world": 94.4,
+        "guided": 105.525
+      }
+    }
+  ],
+  "selected": "score-v2",
+  "sha256": "90dc99f69b4ffe58cfe7783820d189626c4e1aba3900a036f6f7f96b45fcd2d1",
+  "reason": "Highest development mean final VP for both AI modes; final candidate evaluation not yet run"
+}

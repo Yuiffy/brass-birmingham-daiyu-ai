@@ -1,0 +1,12 @@
+{
+  "developmentSeed": 48000001,
+  "developmentGamesPerType": 80,
+  "finalSeed": 68000001,
+  "finalGamesPerType": 400,
+  "primaryMetric": "absolute mean final VP",
+  "selection": "Choose the highest equally weighted mean VP across world and guided in development, requiring neither type to fall below its baseline development VP. Final candidate scores are not consulted.",
+  "candidates": [
+    "score-v1",
+    "score-v2"
+  ]
+}

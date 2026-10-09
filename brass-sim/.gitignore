@@ -1,0 +1,10 @@
+node_modules/
+package-lock.json
+.DS_Store
+*.log
+screenshots/capture.js
+progress.md
+world_model/data*/
+world_model/.local-experiments/
+__pycache__/
+.venv/

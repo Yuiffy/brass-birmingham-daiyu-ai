@@ -1,0 +1,12 @@
+{
+  "players": 4,
+  "seed": 1884000001,
+  "games": 120,
+  "guidedModels": "world_model/experiments/economy-20260920/4p/direct",
+  "guidedSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+  "candidateModels": "world_model/experiments/economy-20260920/4p/direct",
+  "candidateSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+  "selection": "Critic chosen on earlier guided development games; world-stage seeds are new and unused for selection.",
+  "rulesVersion": "economy-v2",
+  "ci": "98.33% within the separate three-player-count world-stage family; not joint coverage with the prior guided family."
+}

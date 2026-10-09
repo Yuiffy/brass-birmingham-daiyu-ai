@@ -1,0 +1,195 @@
+{
+  "protocol": {
+    "players": 4,
+    "seed": 1884000001,
+    "games": 120,
+    "guidedModels": "world_model/experiments/economy-20260920/4p/direct",
+    "guidedSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+    "candidateModels": "world_model/experiments/economy-20260920/4p/direct",
+    "candidateSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+    "selection": "Critic chosen on earlier guided development games; world-stage seeds are new and unused for selection.",
+    "rulesVersion": "economy-v2",
+    "ci": "98.33% within the separate three-player-count world-stage family; not joint coverage with the prior guided family."
+  },
+  "comparison": {
+    "generatedAt": "2026-09-20T11:38:25.618338+00:00",
+    "config": {
+      "games": 120,
+      "players": 4,
+      "seed": 1884000001,
+      "depth": 2,
+      "width": 8,
+      "types": [
+        "guided",
+        "world",
+        "guided",
+        "world"
+      ],
+      "rulesVersion": "economy-v2"
+    },
+    "independentSeedGroups": 30,
+    "bootstrapSamples": 20000,
+    "bootstrapSeed": 92017,
+    "artifacts": {
+      "baseline": {
+        "world-model.json": {
+          "directory": "world_model/experiments/economy-20260920/4p/baseline",
+          "sha256": "31c4954baa8c368ef202ec843b9de1acec6da5b3074fa8f62beedfe5ae68b3e3"
+        },
+        "neural-policy.json": {
+          "directory": "world_model/experiments/economy-20260920/4p/baseline",
+          "sha256": "5a99c07b7deace017c84be220c0ef6272a85f8a7f30b605effa48fa4a3930cff"
+        },
+        "guided": {
+          "directory": "world_model/experiments/economy-20260920/4p/direct",
+          "sha256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd"
+        }
+      },
+      "candidate": {
+        "world-model.json": {
+          "directory": "world_model/experiments/economy-20260920/4p/direct",
+          "sha256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd"
+        },
+        "neural-policy.json": {
+          "directory": "world_model/experiments/economy-20260920/4p/direct",
+          "sha256": "5a99c07b7deace017c84be220c0ef6272a85f8a7f30b605effa48fa4a3930cff"
+        },
+        "guided": {
+          "directory": "world_model/experiments/economy-20260920/4p/direct",
+          "sha256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd"
+        }
+      }
+    },
+    "results": {
+      "guided": {
+        "baseline": {
+          "appearances": 240,
+          "averageVP": 57.925,
+          "earnedVP": 57.925,
+          "medianVP": 59.5,
+          "p90VP": 87.0,
+          "maxVP": 98.0,
+          "atLeast100": 0.0,
+          "atLeast150": 0.0,
+          "winRate": 0.49166666666666664
+        },
+        "candidate": {
+          "appearances": 240,
+          "averageVP": 70.81666666666666,
+          "earnedVP": 70.81666666666666,
+          "medianVP": 71.0,
+          "p90VP": 94.0,
+          "maxVP": 122.0,
+          "atLeast100": 0.06666666666666667,
+          "atLeast150": 0.0,
+          "winRate": 0.5
+        },
+        "gain": {
+          "vp": {
+            "mean": 12.891666666666667,
+            "ci95": [
+              8.541666666666666,
+              17.441666666666666
+            ]
+          },
+          "vpWithoutIncomeBonus": {
+            "mean": 12.891666666666667,
+            "ci95": [
+              8.541666666666666,
+              17.441666666666666
+            ]
+          }
+        }
+      },
+      "world": {
+        "baseline": {
+          "appearances": 240,
+          "averageVP": 13.866666666666667,
+          "earnedVP": 13.866666666666667,
+          "medianVP": 3.5,
+          "p90VP": 36.0,
+          "maxVP": 49.0,
+          "atLeast100": 0.0,
+          "atLeast150": 0.0,
+          "winRate": 0.008333333333333333
+        },
+        "candidate": {
+          "appearances": 240,
+          "averageVP": 27.833333333333332,
+          "earnedVP": 27.833333333333332,
+          "medianVP": 30.0,
+          "p90VP": 52.0,
+          "maxVP": 81.0,
+          "atLeast100": 0.0,
+          "atLeast150": 0.0,
+          "winRate": 0
+        },
+        "gain": {
+          "vp": {
+            "mean": 13.966666666666667,
+            "ci95": [
+              9.308333333333334,
+              18.791874999999983
+            ]
+          },
+          "vpWithoutIncomeBonus": {
+            "mean": 13.966666666666667,
+            "ci95": [
+              9.308333333333334,
+              18.791874999999983
+            ]
+          }
+        }
+      },
+      "all": {
+        "baseline": {
+          "appearances": 480,
+          "averageVP": 35.895833333333336,
+          "earnedVP": 35.895833333333336,
+          "medianVP": 35.0,
+          "p90VP": 75.0,
+          "maxVP": 98.0,
+          "atLeast100": 0.0,
+          "atLeast150": 0.0
+        },
+        "candidate": {
+          "appearances": 480,
+          "averageVP": 49.325,
+          "earnedVP": 49.325,
+          "medianVP": 49.0,
+          "p90VP": 86.0,
+          "maxVP": 122.0,
+          "atLeast100": 0.03333333333333333,
+          "atLeast150": 0.0
+        },
+        "gain": {
+          "vp": {
+            "mean": 13.429166666666667,
+            "ci95": [
+              9.75,
+              17.45427083333332
+            ]
+          },
+          "vpWithoutIncomeBonus": {
+            "mean": 13.429166666666667,
+            "ci95": [
+              9.75,
+              17.45427083333332
+            ]
+          }
+        }
+      }
+    },
+    "notes": [
+      "95% percentile bootstrap over paired seed groups, retaining all seats and rotations together.",
+      "Repeated entrants and identical lineups are not independent observations.",
+      "When both agents change weights, gains describe the whole lineup; a weaker opponent can raise another agent's score.",
+      "VP without the terminal income bonus is still this simulator's score, not an official-rules correction."
+    ]
+  },
+  "adjustedWorldCI": [
+    8.216666666666667,
+    19.730694444444453
+  ],
+  "promotionEligible": true
+}

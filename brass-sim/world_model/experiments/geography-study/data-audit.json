@@ -1,0 +1,27 @@
+{
+  "games": 1600,
+  "rows": 52800,
+  "splits": {
+    "train": 1280,
+    "validation": 160,
+    "test": 160
+  },
+  "allValuesFinite": true,
+  "allFinalLabelsMatchCompletedStates": true,
+  "uniqueSeeds": true,
+  "noBaseReplayOverlap": true,
+  "noTrainingEvaluationOverlap": true,
+  "baselineResultsUnchangedAfterTelemetry": {
+    "world": true,
+    "guided": true
+  },
+  "files": {
+    "js/gameData.js": "4efc27ec8bbe5d023eeea3b97aba733e518f019e189b7c5dd27c47bcfd8277bc",
+    "js/gameState.js": "b38272a08ee93d7e39c71af6bc25fdc0878f63db3490b13885affda12aea2cf9",
+    "js/gameLogic.js": "9d5a595140744f9ea33e3b73c259603ef5df9dd721d3f824b27326d9905bbb19",
+    "scripts/autorun.js": "da55b24213f93f611ace49c7106ff0b83f989eb3f5fdcb322eee6db09d69ad96",
+    "world_model/planner.js": "13607072dc0377f38db687bd665418e574b87478680ba3ae24a799052c322a20",
+    "world_model/value_features.js": "8325d4e91c3d83a6a7d6dd05d43e5f0700c726c27091a5d83968f4cc6cd6ad87",
+    "world_model/value_model.py": "485ff9a7c9d12b582fb4e0fa4c610f74f03a36f37826adf0b973ecacf2cff208"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "originalGames": 1000,
+  "prefixBytes": 781312000,
+  "sha256": "a02b90a056d83e8ad0acd650344477a7662233712ab0922118db750051e53ea2",
+  "expandedPrefixMatches": true,
+  "expandedGames": 10000,
+  "expandedRows": 1280000,
+  "splitRows": {
+    "train": 1024000,
+    "validation": 128000,
+    "test": 128000
+  },
+  "originalGameRecordsMatch": true,
+  "trainingSeedsDisjointFromOriginalHeldOut": true,
+  "actionCounts": {
+    "build": 456601,
+    "network": 200453,
+    "pass": 184254,
+    "scout": 66476,
+    "develop": 175224,
+    "loan": 166776,
+    "sell": 30216
+  }
+}
