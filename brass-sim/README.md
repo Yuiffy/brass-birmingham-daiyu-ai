@@ -10,6 +10,12 @@
 
 ## Economy calibration experiment
 
+The calibrated game also offers an experimental human-guide strategy for `guided` search:
+open `/?rules=economy-v2&strategy=human-guide-v1`, then select guided players.
+It combines the frozen value network with action-efficiency guidance and legal double rails.
+See [sources, independent four-player results and reproduction](docs/human-strategy-research.md).
+The arena displays both fixed-opponent results and candidate self-play.
+
 The optional `/?rules=economy-v2` game and `/arena.html?rules=economy-v2` arena separate corrected income, loans, era flow, market supply and multi-sale handling from historical training. They use a distinct model schema and fresh data. This remains a partial rules calibration, not a complete official-rules implementation. See [scope and limitations](docs/economy-calibration.md) and [independent score comparisons](docs/economy-training-results.md). The default URL preserves the historical rules and mature checkpoints.
 
 ## World Model / AI Imagination MVP

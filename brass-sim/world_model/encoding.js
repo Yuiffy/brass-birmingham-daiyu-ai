@@ -80,7 +80,7 @@
         const v = actions.map(x => +(a.action === x));
         for (let p = 0; p < 4; p++) v.push(+(s.currentPlayerId === p));
         const slotKey = t.key || `${t.cityId}_${t.slotIndex}`;
-        v.push(...slots.map(x => +(t.keys?t.keys.includes(x):x === slotKey)), ...links.map(x => +(x === t.connectionId)));
+        v.push(...slots.map(x => +(t.keys?t.keys.includes(x):x === slotKey)), ...links.map(x => +(t.connectionIds?t.connectionIds.includes(x):x === t.connectionId)));
         v.push(...types.map(x => +(x === (t.industryType || t.type1 || t.tile?.type))),
             ...types.map(x => +(x === t.type2)));
         const discarded = (a.cardIndices || [a.cardIndex]).map(i => s.currentPlayer.hand[i]).filter(Boolean);

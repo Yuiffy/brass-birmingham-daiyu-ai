@@ -44,6 +44,9 @@
     api.setup=()=>{
         const enabled=document.getElementById('ai-enabled'), status=document.getElementById('model-status');
         const corrected=globalThis.BRASS_RULES==='economy-v2';
+        const strategy=document.getElementById('guided-strategy');
+        strategy.disabled=!corrected;
+        if(corrected&&new URLSearchParams(location.search).get('strategy')==='human-guide-v1')strategy.value='human-guide-v1';
         document.getElementById('rules-status').textContent=corrected?'经济规则校准版：无终局收入加分，收入轨/贷款/时代/市场已修正；仍非完整官方规则，不能直接与真人比赛分数比较。':'历史训练版：保留旧规则与权重，含额外终局收入分。';
         if(corrected)document.querySelectorAll('a[href="arena.html"]').forEach(a=>a.href='arena.html?rules=economy-v2');
         const setEnabled=()=>{
@@ -67,6 +70,7 @@
     class Controller {
         constructor(state,ui,kinds){
             this.state=state;this.ui=ui;this.kinds=state.players.map((_,i)=>kinds[i]||'human');
+            this.strategy=state.rulesVersion==='economy-v2'&&document.getElementById('guided-strategy')?.value==='human-guide-v1'?'human-guide-v1':null;
             this.running=true;this.timer=null;this.disposed=false;this.selection=null;
             const panel=document.createElement('div');panel.id='ai-toolbar';
             panel.innerHTML='<span id="ai-turn-label"></span><button class="ai-button" id="ai-pause">暂停 AI</button><button class="ai-button" id="ai-step">AI 走一步</button><button class="ai-button" id="ai-inspect">AI 推演 / 预测对照</button><a href="arena.html" target="_blank" rel="noopener">对战实验室 ↗</a>';
@@ -91,7 +95,7 @@
             const type=this.kinds[this.state.currentPlayerId];
             const active=type!=='human'&&!this.state.gameOver;
             document.getElementById('game-screen').classList.toggle('ai-turn',active);
-            document.getElementById('ai-turn-label').textContent=`${this.state.currentPlayer.name} · ${P.TYPES[type]}${this.state.gameOver?' · 已结束':''}`;
+            document.getElementById('ai-turn-label').textContent=`${this.state.currentPlayer.name} · ${P.TYPES[type]}${type==='guided'&&this.strategy?' · 攻略增强':''}${this.state.gameOver?' · 已结束':''}`;
             document.getElementById('ai-pause').textContent=this.running?'暂停 AI':'继续 AI';
             document.getElementById('ai-step').disabled=!active;
             document.getElementById('ai-inspect').disabled=this.state.gameOver||!api.getWorld(this.state.numPlayers);
@@ -100,8 +104,12 @@
         move(){
             if(this.disposed||this.state.gameOver)return;
             const type=this.kinds[this.state.currentPlayerId];if(type==='human')return;
-            try{const result=P.plan(this.state,{type,world:type==='guided'?api.getGuided(this.state.numPlayers):api.getWorld(this.state.numPlayers),policy:api.getPolicy(this.state.numPlayers),depth:2,width:8});this.lastPlan=result;this.apply(result.selected);}
+            try{const result=P.plan(this.state,this.planOptions(type,2));this.lastPlan=result;this.apply(result.selected);}
             catch(e){this.running=false;this.ui.showToast(e.message,'error');this.refresh();}
+        }
+        planOptions(type,depth){
+            return {type,world:type==='guided'?api.getGuided(this.state.numPlayers):api.getWorld(this.state.numPlayers),
+                policy:api.getPolicy(this.state.numPlayers),depth,width:8,strategy:type==='guided'?this.strategy||null:null};
         }
         apply(action){
             const id=this.state.currentPlayerId,era=this.state.era;
@@ -117,8 +125,10 @@
             this.previewToken=JSON.stringify(Sim.snapshot(this.state));
             try{
                 const depth=Number(document.getElementById('ai-depth').value);
-                const result=P.plan(this.state,{type:'world',world,depth,width:8});this.preview=result;
-                document.getElementById('ai-plan-info').textContent=`预比较 ${result.candidatePoolSize} 个动作 · 深入 ${result.branches.length} 个候选 · ${depth} 步上限 · ${fmt(result.elapsedMs)} ms · 使用 ${this.state.numPlayers} 人动力学${world.data.valueModel?.incomeBonusWeight===1?' · 预计 VP 不含终局收入加分':''}`;
+                const active=this.kinds[this.state.currentPlayerId],type=active==='human'?'world':active;
+                const result=P.plan(this.state,this.planOptions(type,depth));this.preview=result;
+                this.dialog?.querySelector('h2')?.replaceChildren(document.createTextNode(type==='guided'||type==='search'?'规则推演与局面估值':'在模型中想象未来'));
+                document.getElementById('ai-plan-info').textContent=`${P.TYPES[type]}${result.strategy?' · 攻略增强':''} · 预比较 ${result.candidatePoolSize} 个动作 · ${depth} 步上限 · ${fmt(result.elapsedMs)} ms`;
                 document.getElementById('ai-candidates').innerHTML=result.branches.map((b,i)=>`<button class="candidate-button ${i===0?'best':''}" data-index="${i}"><span>${i===0?'推荐 · ':''}${esc(b.label)}</span><b>${fmt(b.score)}</b><small>${b.steps.map(s=>esc(s.label)).join(' → ')}${b.steps.length<depth?' · 预测状态无后续候选，提前停止':''}</small></button>`).join('');
                 document.querySelectorAll('.candidate-button').forEach(b=>b.onclick=()=>this.compare(Number(b.dataset.index)));
                 if(result.branches.length)this.compare(0);
@@ -127,6 +137,12 @@
         compare(index){
             if(this.previewToken!==JSON.stringify(Sim.snapshot(this.state))){document.getElementById('ai-comparison').textContent='棋局已变化，请重新推演。';return;}
             const branch=this.preview.branches[index],before=E.encodeState(this.state),action=branch.action;
+            if(action.target?.connectionIds){
+                const truth=E.encodeState(Sim.step(this.state,action).state);
+                const rows=E.fields.map((f,i)=>({name:f.name,b:before[i]*f.scale,t:truth[i]*f.scale})).filter(r=>Math.abs(r.t-r.b)>.1);
+                document.getElementById('ai-comparison').innerHTML=`<p><strong>${esc(branch.label)}</strong></p><p class="ai-note" id="ai-truth-status">规则引擎预览（尚未执行）。现有世界模型未训练双铁路，本动作展示真实模拟变化。</p><button class="ai-button primary" id="ai-execute">执行真实动作</button><div class="comparison-scroll"><table class="ai-table"><thead><tr><th>字段</th><th>当前</th><th>真实结果</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${fmt(r.b)}</td><td>${fmt(r.t)}</td></tr>`).join('')}</tbody></table></div>`;
+                this.bindExecute(action);return;
+            }
             const world=api.getWorld(this.state.numPlayers),predicted=world.predict(before,E.encodeAction(action,this.state)),truth=E.encodeState(Sim.step(this.state,action).state);
             const rows=E.fields.map((f,i)=>({name:f.name,b:before[i]*f.scale,p:predicted[i]*f.scale,t:truth[i]*f.scale,group:f.group}))
                 .filter(r=>Math.abs(r.t-r.b)>.1||Math.abs(r.p-r.b)>.5)
@@ -142,6 +158,9 @@
             }
             const max=Math.max(...errors.map(e=>e.mae),0.001);
             document.getElementById('ai-comparison').innerHTML=`<p><strong>${esc(branch.label)}</strong></p><p class="ai-note" id="ai-truth-status">真实模拟器预览（尚未执行）· 展示变化或预测变化的字段 ${rows.length} 项</p><button class="ai-button primary" id="ai-execute">执行真实动作并比较</button><div class="comparison-scroll"><table class="ai-table"><thead><tr><th>字段</th><th>当前</th><th>模型预测</th><th>真实结果</th><th>取整匹配</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${fmt(r.b)}</td><td>${fmt(r.p)}</td><td>${fmt(r.t)}</td><td class="${Math.round(r.p)===Math.round(r.t)?'match':'mismatch'}">${Math.round(r.p)===Math.round(r.t)?'✓':'✗'}</td></tr>`).join('')}</tbody></table></div><h3>递归预测：误差如何累积</h3><p class="ai-note">固定同一段真实合法动作序列，模型连续预测，中间不校正。下列数值为标准化 MAE；与左侧自由规划分支分开评估。</p><div class="rollout-bars">${errors.map(e=>`<div><span>${e.d} 步</span><i style="width:${e.mae/max*65}%"></i><b>${e.mae.toFixed(4)}</b></div>`).join('')}</div>`;
+            this.bindExecute(action);
+        }
+        bindExecute(action){
             document.getElementById('ai-execute').onclick=()=>{
                 if(this.previewToken!==JSON.stringify(Sim.snapshot(this.state))){document.getElementById('ai-truth-status').textContent='棋局已变化，请重新推演。';return;}
                 try{this.apply(action);document.getElementById('ai-truth-status').textContent='已执行真实动作 · 表中真实结果与当前执行结果一致';document.getElementById('ai-execute').disabled=true;}

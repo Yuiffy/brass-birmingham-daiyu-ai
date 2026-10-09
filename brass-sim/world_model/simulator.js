@@ -31,7 +31,7 @@
         const l = new Logic(state), p = state.currentPlayerId, t = a.target || {};
         switch (a.action) {
             case 'build': return l.executeBuild(p, t.cityId, t.slotIndex, t.industryType, a.cardIndex);
-            case 'network': return l.executeNetwork(p, t.connectionId, a.cardIndex);
+            case 'network': return t.connectionIds ? l.executeNetworkLinks(p,t.connectionIds,a.cardIndex,t.beerKey) : l.executeNetwork(p, t.connectionId, a.cardIndex);
             case 'develop': return l.executeDevelop(p, t.type1, t.type2, a.cardIndex);
             case 'sell': return l.executeSell(p, t.keys||[t.key], a.cardIndex);
             case 'loan': return l.executeLoan(p, a.cardIndex);
@@ -41,9 +41,14 @@
         }
     }
 
-    function candidates(state) {
+    function candidates(state, {doubleRail = false} = {}) {
         if (state.gameOver || !state.currentPlayer?.hand.length) return [];
         const list = bot.collectCandidates(state, new Logic(state), state.currentPlayerId);
+        if (doubleRail) {
+            const discard = list.find(a => a.action === 'network' || a.action === 'pass')?.cardIndex;
+            if (discard !== undefined) for (const target of new Logic(state).getValidDoubleNetworkTargets(state.currentPlayerId))
+                list.push({action:'network',target,cardIndex:discard,score:0});
+        }
         // The legacy bot retries a Develop when executeDevelop reports insufficient
         // iron. Remove those known failures without altering its ranking or rules.
         const iron = state.findIronSource(state.currentPlayerId).length;
@@ -63,10 +68,11 @@
     // executions cannot partially mutate the live state because we use a clone.
     const key = a => JSON.stringify([a.action, a.cardIndex, a.cardIndices,
         a.target?.cityId, a.target?.slotIndex, a.target?.industryType,
-        a.target?.connectionId, a.target?.type1, a.target?.type2, a.target?.key, a.target?.keys]);
+        a.target?.connectionId, a.target?.type1, a.target?.type2, a.target?.key, a.target?.keys,
+        a.target?.connectionIds, a.target?.beerKey]);
     function step(state, action, { validate = true } = {}) {
         if (state.gameOver) throw Error('Game is over');
-        if (validate && !candidates(state).some(a => key(a) === key(action))) {
+        if (validate && !candidates(state,{doubleRail:!!action.target?.connectionIds}).some(a => key(a) === key(action))) {
             throw Error('Action is no longer an available candidate');
         }
         const next = clone(state);

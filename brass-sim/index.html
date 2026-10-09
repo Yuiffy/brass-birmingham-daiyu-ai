@@ -32,6 +32,10 @@
                 </div>
 
                 <label class="ai-enable"><input id="ai-enabled" type="checkbox" checked> 启用 AI 实验模块</label>
+                <label class="ai-note">学习增强搜索策略
+                    <select id="guided-strategy"><option value="">原版</option><option value="human-guide-v1">攻略增强（实验）</option></select>
+                </label>
+                <p class="ai-note">攻略增强考虑跨时代产业、兑现所需行动和双铁路，仅用于经济校准版。<a href="docs/human-strategy-research.md">查看测试与攻略来源</a></p>
                 <p id="rules-status" class="ai-note">历史训练规则：含额外终局收入分。</p>
                 <p class="ai-note"><a href="?rules=economy-v2">经济规则校准版（实验）</a> · <a href="?rules=legacy-v1">历史训练版</a></p>
                 <p id="model-status" class="ai-note" role="status">正在加载训练权重…</p>
@@ -230,6 +234,7 @@
     <script src="world_model/encoding.js"></script>
     <script src="world_model/value_features.js"></script>
     <script src="world_model/inference.js"></script>
+    <script src="world_model/human_strategy.js"></script>
     <script src="world_model/planner.js"></script>
     <script src="world_model/runtime_models.js"></script>
     <script src="js/aiController.js"></script>

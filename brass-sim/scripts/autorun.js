@@ -326,7 +326,7 @@ function actionLabel(candidate) {
             return `build ${INDUSTRY_DISPLAY[candidate.target.industryType].name} Lv${tile.level} in ${CITIES[candidate.target.cityId].name}`;
         }
         case ACTIONS.NETWORK: {
-            return `network ${candidate.target.connectionId}`;
+            return `network ${(candidate.target.connectionIds || [candidate.target.connectionId]).join(' + ')}`;
         }
         case ACTIONS.DEVELOP:
             return `develop ${candidate.target.type1}${candidate.target.type2 ? ` + ${candidate.target.type2}` : ''}`;

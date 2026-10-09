@@ -17,6 +17,7 @@ const {
     CONNECTIONS,
     CANAL_LINK_COST,
     RAIL_LINK_COST,
+    RAIL_DOUBLE_LINK_COST,
     LOAN_AMOUNT,
     LOAN_INCOME_PENALTY,
     isSellableIndustry,
@@ -84,7 +85,7 @@ class GameLogic {
                                 break;
                             }
                         }
-                        if (hasOwnTile) continue;
+                        if (hasOwnTile && !(this.state.rulesVersion === 'economy-v2' && existing?.playerId === playerId)) continue;
                     }
 
                     // Check if slot is empty or can be overbuilt
@@ -98,6 +99,8 @@ class GameLogic {
                                 continue;
                             }
                         } else {
+                            if (this.state.rulesVersion === 'economy-v2' &&
+                                (existing.type !== indType || nextTile.level <= existing.tileData.level)) continue;
                             // Opponent tile: can only replace Coal/Iron when 0 cubes of that resource exist
                             if (existing.type === INDUSTRY_TYPES.COAL_MINE ||
                                 existing.type === INDUSTRY_TYPES.IRON_WORKS) {
@@ -303,6 +306,13 @@ class GameLogic {
     // ========================================================================
 
     getValidNetworkTargets(playerId) {
+        if (this.state.rulesVersion === 'economy-v2') {
+            return CONNECTIONS.flatMap(conn => {
+                const plan = this.planNetwork(playerId, [conn.id]);
+                return plan ? [{connectionId:conn.id,cities:conn.cities,cost:plan.cost,
+                    type:this.state.era === ERA.CANAL ? 'canal' : 'rail'}] : [];
+            });
+        }
         const player = this.state.players[playerId];
         const targets = [];
         const era = this.state.era;
@@ -356,6 +366,9 @@ class GameLogic {
     }
 
     executeNetwork(playerId, connectionId, cardIndex) {
+        if (this.state.rulesVersion === 'economy-v2') {
+            return this.executeNetworkLinks(playerId, [connectionId], cardIndex);
+        }
         const player = this.state.players[playerId];
         const conn = CONNECTIONS.find(c => c.id === connectionId);
         if (!conn) return { success: false, message: 'Invalid connection' };
@@ -403,6 +416,94 @@ class GameLogic {
         const city2 = CITIES[conn.cities[1]]?.name || MERCHANTS[conn.cities[1]]?.name || conn.cities[1];
 
         return { success: true, message: `Built ${linkType} link: ${city1} - ${city2}` };
+    }
+
+    // Rulebook: place each link before consuming its coal. The second link may
+    // extend the first, but cannot supply coal retroactively to the first.
+    planNetwork(playerId, connectionIds, beerKey = null) {
+        const current = this.state.players[playerId];
+        const rail = this.state.era === ERA.RAIL;
+        if (this.state.rulesVersion !== 'economy-v2' || !current ||
+            !Array.isArray(connectionIds) || !connectionIds.length || connectionIds.length > (rail ? 2 : 1) ||
+            new Set(connectionIds).size !== connectionIds.length ||
+            current.linksRemaining[rail ? 'rail' : 'canal'] < connectionIds.length) return null;
+        const cost = rail ? (connectionIds.length === 2 ? RAIL_DOUBLE_LINK_COST : RAIL_LINK_COST) : CANAL_LINK_COST;
+        if (current.money < cost) return null;
+        // Reject impossible first links before allocating a transactional copy.
+        const first = CONNECTIONS.find(c => c.id === connectionIds[0]);
+        if (!first || this.state.boardLinks[first.id] || !(rail ? first.rail : first.canal)) return null;
+        const owns = Object.values(this.state.boardLinks).some(l => l.playerId === playerId) ||
+            Object.values(this.state.boardIndustries).some(t => t.playerId === playerId) ||
+            Object.values(this.state.breweryFarmTiles).some(t => t?.playerId === playerId);
+        if (owns && !first.cities.some(city => this.state.isInNetwork(playerId, city))) return null;
+        // Network actions only change money, income, links and resource tiles.
+        // Isolate those fields rather than cloning every card and industry stack.
+        const trial = Object.assign(Object.create(Object.getPrototypeOf(this.state)), this.state, {
+            players:this.state.players.map(p => ({...p,hand:p.hand.slice(),linksRemaining:{...p.linksRemaining}})),
+            moneySpentThisRound:{...this.state.moneySpentThisRound},
+            boardLinks:{...this.state.boardLinks},
+            boardIndustries:Object.fromEntries(Object.entries(this.state.boardIndustries).map(([k,t]) => [k,{...t}])),
+            breweryFarmTiles:Object.fromEntries(Object.entries(this.state.breweryFarmTiles).map(([k,t]) => [k,t?{...t}:t]))
+        });
+        trial.spendMoney(playerId, cost);
+        let total = cost;
+        for (const id of connectionIds) {
+            const conn = CONNECTIONS.find(c => c.id === id);
+            if (!conn || trial.boardLinks[id] || !(rail ? conn.rail : conn.canal)) return null;
+            const ownsTile = Object.values(trial.boardLinks).some(l => l.playerId === playerId) ||
+                Object.values(trial.boardIndustries).some(t => t.playerId === playerId) ||
+                Object.values(trial.breweryFarmTiles).some(t => t?.playerId === playerId);
+            if (ownsTile && !conn.cities.some(city => trial.isInNetwork(playerId, city))) return null;
+            trial.boardLinks[id] = {playerId, type:rail ? 'rail' : 'canal'};
+            trial.players[playerId].linksRemaining[rail ? 'rail' : 'canal']--;
+            if (rail) {
+                const source = trial.findCoalSource(conn.cities[0], playerId)[0];
+                if (!source) return null;
+                if (source.free) trial.consumeResource(source.key);
+                else {
+                    if (trial.players[playerId].money < source.price) return null;
+                    trial.spendMoney(playerId, source.price);
+                    trial.coalMarket = Math.max(0, trial.coalMarket - 1);
+                    total += source.price;
+                }
+            }
+        }
+        let beer = null;
+        if (connectionIds.length === 2) {
+            const second = CONNECTIONS.find(c => c.id === connectionIds[1]);
+            const sources = trial.findBeerSources(second.cities[0], playerId).filter(s => s.type !== 'merchant');
+            beer = beerKey ? sources.find(s => s.key === beerKey) :
+                sources.find(s => s.type === 'opponent') || sources[0];
+            if (!beer || !trial.consumeResource(beer.key)) return null;
+        }
+        return {state:trial,cost:total,beerKey:beer?.key || null};
+    }
+
+    getValidDoubleNetworkTargets(playerId) {
+        if (this.state.rulesVersion !== 'economy-v2' || this.state.era !== ERA.RAIL ||
+            this.state.players[playerId].money < RAIL_DOUBLE_LINK_COST ||
+            this.state.players[playerId].linksRemaining.rail < 2) return [];
+        const targets = [];
+        const firstLinks = this.getValidNetworkTargets(playerId);
+        for (const first of firstLinks) for (const second of CONNECTIONS) {
+            if (!second.rail || second.id === first.connectionId || this.state.boardLinks[second.id]) continue;
+            const ids = [first.connectionId, second.id];
+            const plan = this.planNetwork(playerId, ids);
+            if (plan) targets.push({connectionIds:ids,connectionId:ids[0],
+                cities:[...new Set(first.cities.concat(second.cities))],type:'rail',cost:plan.cost,beerKey:plan.beerKey});
+        }
+        return targets;
+    }
+
+    executeNetworkLinks(playerId, connectionIds, cardIndex, beerKey = null) {
+        const player = this.state.players[playerId];
+        if (!Number.isInteger(cardIndex) || !player?.hand[cardIndex])
+            return {success:false,message:'Choose a card to discard'};
+        const plan = this.planNetwork(playerId, connectionIds, beerKey);
+        if (!plan) return {success:false,message:'Cannot afford or supply this network action'};
+        Object.assign(this.state, plan.state);
+        this.discardCard(playerId, cardIndex);
+        return {success:true,message:`Built ${this.state.era} links: ${connectionIds.join(' + ')}`};
     }
 
     // ========================================================================

@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-10-09T13:49:13.326Z",
+  "modelSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+  "sourceSHA256": {
+    "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+    "planner.js": "3c83a7aacddf31eee083d57d77a4ba3d0a8660691b4bb365c24bcaac2b7fb702",
+    "simulator.js": "baee44015b97e2434cdb4916243ac8d9eaa787c243d045ae69432a98fd313eb7",
+    "encoding.js": "937d8eb7611447461e8760919c7be1e7ec884a5fdafaf1ded2229bba387103d4",
+    "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "inference.js": "14c9beef87834d8a58cc4cddd42a650c97700cf3c00671de968547b3872e5469",
+    "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+    "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893",
+    "human_benchmark.js": "aad48eac3622cf792f0737dbc0feadd851a5c57b26dc1f302d938b32058d5cd1"
+  },
+  "fixedOpponents": {
+    "independentGroups": 30,
+    "meanVP": 121.60833333333333,
+    "meanVP95CI": [
+      119,
+      124.05833333333334
+    ],
+    "atLeast140": 0.125,
+    "atLeast14095CI": [
+      0.075,
+      0.175
+    ],
+    "atLeast150": 0.008333333333333333,
+    "atLeast15095CI": [
+      0,
+      0.025
+    ]
+  },
+  "baselineSelfPlay": {
+    "independentGroups": 30,
+    "meanVP": 78.28333333333333,
+    "meanVP95CI": [
+      75.60833333333333,
+      80.95
+    ],
+    "atLeast140": 0,
+    "atLeast14095CI": [
+      0,
+      0
+    ],
+    "atLeast150": 0,
+    "atLeast15095CI": [
+      0,
+      0
+    ]
+  },
+  "candidateSelfPlay": {
+    "independentGroups": 30,
+    "meanVP": 124.38333333333334,
+    "meanVP95CI": [
+      121.46666666666667,
+      127.175
+    ],
+    "atLeast140": 0.19166666666666668,
+    "atLeast14095CI": [
+      0.13333333333333333,
+      0.25
+    ],
+    "atLeast150": 0.06666666666666667,
+    "atLeast15095CI": [
+      0.03333333333333333,
+      0.10833333333333334
+    ]
+  },
+  "pairedGain": {
+    "independentGroups": 30,
+    "meanVP": 43.325,
+    "meanVP95CI": [
+      39.96666666666667,
+      46.65833333333333
+    ]
+  },
+  "supported": {
+    "improvementOverBaseline": true,
+    "stable140": false,
+    "stable150": false
+  },
+  "deployment": "explicit experimental option; original guided default and weights retained",
+  "notes": [
+    "95% percentile bootstrap, 10000 deterministic draws of whole seed groups.",
+    "Stable means at least 80% of appearances above the threshold in both tested environments.",
+    "Self-play rotations with identical profiles can repeat games; groups remain the sampling unit.",
+    "These intervals concern game-seed variability with one frozen model, not human-level skill or training-seed variability.",
+    "Different root and continuation pools make this a strategy-package comparison, not equal-compute architecture superiority."
+  ]
+}

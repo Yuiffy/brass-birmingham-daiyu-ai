@@ -4,6 +4,10 @@
 <a href="index.html">← 返回游戏</a><p class="arena-kicker">BRASS BIRMINGHAM / LEARNED WORLD MODEL</p>
 <h1>学会预测，也学会判断未来。</h1>
 <p>比较世界模型、神经网络与搜索树，也让学习到的局面价值指导搜索。</p>
+<section class="arena-card" id="human-guide"><h2>攻略增强 · 四人局独立测试</h2>
+<p id="human-guide-caption" class="ai-note">读取攻略增强实验…</p><div class="comparison-scroll" id="human-guide-results"></div>
+<p class="arena-note">使用经济校准规则，无终局收入加分。每组 120 局、30 个独立种子，完整轮换座位。攻略估值与原价值网络共同引导规则引擎搜索；世界模型权重保持原版。</p>
+<a href="index.html?rules=economy-v2&amp;strategy=human-guide-v1">试用攻略增强</a> · <a href="docs/human-strategy-research.md">攻略来源与复现</a></section>
 <nav class="arena-tabs"><a href="#competition">分数排名</a><a href="#score-training">分数续训</a><a href="#upgrade">架构改进</a><a href="#continuation">历史续训</a><a href="#evaluation">预测评估</a><a href="#mechanism">工作方式</a></nav>
 <section class="arena-card" id="competition"><h2>轮换座位，比较真实终局成绩</h2>
 <p class="ai-note">按项目终局平均 VP 排名，另列扣除终局收入加分后的分数。每组局数等于玩家人数，使用相同种子并轮换座位；保留的分支宽度与深度相同，新版先比较更多动作，实际耗时另行报告。</p>

@@ -71,14 +71,15 @@ async function loadVersion(){
     const tournamentFile=lineup==='strong'?version.strong:lineup==='guided'?(version.guided||'tournament-guided.json'):version.tournament;
     const specialized=$('arena-version').value==='current'&&lineup==='strong'&&players<4;
     const tournamentURL=calibrated?(lineup==='strong'?`world_model/experiments/economy-20260920/${players}p/runtime-tournament.json`:null):specialized?`world_model/experiments/dynamics-small-study/tournament-${players}p-candidate.json`:tournamentFile?`world_model/${version.reports}/${tournamentFile}`:null;
-    const evaluationURL=calibrated?`world_model/experiments/economy-20260920/${players}p/prediction/evaluation.json`:specialized?`world_model/experiments/dynamics-small-study/prediction-${players}p-candidate/evaluation.json`:`world_model/${version.evaluation||version.reports}/evaluation.json`;
+    // Calibrated prediction reports were not included in the consolidated repo.
+    const evaluationURL=calibrated?null:specialized?`world_model/experiments/dynamics-small-study/prediction-${players}p-candidate/evaluation.json`:`world_model/${version.evaluation||version.reports}/evaluation.json`;
     lastReport=null;$('arena-export').disabled=true;$('tournament-result').querySelector('tbody').innerHTML='';
     $('arena-status').textContent='正在读取所选版本…';
     $('eval-caption').textContent='正在读取所选版本的测试评估…';
     for(const id of ['eval-summary','eval-fields','eval-rollout','eval-caveat','eval-actions','eval-samples','arena-details'])$(id).innerHTML='';
     await Promise.all([
         (tournamentURL?read(tournamentURL):Promise.reject(Error('No saved lineup'))).then(r=>{if(token===versionRequest)renderTournament(r,true);}).catch(()=>{if(token===versionRequest)$('arena-status').textContent='所选版本与阵容还没有保存的对战结果。';}),
-        read(evaluationURL).then(r=>{if(token===versionRequest)renderEvaluation(r);}).catch(e=>{if(token===versionRequest)$('eval-caption').textContent=`所选版本评估报告不可用：${e.message}`;})
+        (evaluationURL?read(evaluationURL):Promise.reject(Error('经济校准版的预测评估报告未随仓库发布。'))).then(r=>{if(token===versionRequest)renderEvaluation(r);}).catch(e=>{if(token===versionRequest)$('eval-caption').textContent=`所选版本评估报告不可用：${e.message}`;})
     ]);
 }
 if(calibrated){
@@ -139,3 +140,9 @@ read('world_model/reports/learning-curve.json').then(r=>{
             }).join('')+'</tbody></table></div><p class="arena-note">采用门槛使用每个阶段三个人数校正后的 98.33% 区间，并要求全桌均分不下降。两阶段的对手不同，不能把表中两类 AI 当成同桌排名。旧规则和真人赛事分数不与本表直接比较。</p><a href="docs/economy-training-results.md">完整结果</a> · <a href="docs/economy-calibration.md">规则范围与剩余限制</a>';
     }).catch(e=>{$('score-training').innerHTML=`<h2>新规则下的独立复测</h2><p>${escapeHTML(e.message)}</p>`;});
 }
+
+read('world_model/experiments/human-guide-20261009/summary.json').then(r=>{
+    const configurations=[['对三个原版',r.fixedOpponents],['四席均为攻略增强',r.candidateSelfPlay],['四席均为原版',r.baselineSelfPlay]];
+    $('human-guide-results').innerHTML='<table class="ai-table"><thead><tr><th>四人阵容</th><th>平均 VP / 95% 区间</th><th>≥140 分</th><th>≥150 分</th></tr></thead><tbody>'+configurations.map(([label,m])=>`<tr><td>${label}</td><td>${vp(m.meanVP)} [${m.meanVP95CI.map(vp).join(', ')}]</td><td>${pct(m.atLeast140)}</td><td>${pct(m.atLeast150)}</td></tr>`).join('')+'</tbody></table>';
+    $('human-guide-caption').textContent=`配对增分 ${vp(r.pairedGain.meanVP)} [${r.pairedGain.meanVP95CI.map(vp).join(', ')}]；${r.supported.stable140?'支持稳定 140 分':'尚未支持稳定 140 分'}，${r.supported.stable150?'支持稳定 150 分':'尚未支持稳定 150 分'}。保留为可选实验策略。`;
+}).catch(()=>{$('human-guide-caption').textContent='正式实验报告尚不可用；完成后显示实际分数。';});
