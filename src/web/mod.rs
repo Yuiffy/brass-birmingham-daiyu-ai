@@ -18,6 +18,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
+use tower_http::{compression::CompressionLayer, decompression::RequestDecompressionLayer};
 
 use crate::board::resources::{BeerSellSource, BreweryBeerSource, ResourceSource};
 use crate::core::types::*;
@@ -151,7 +152,7 @@ pub async fn start_server(port: u16) {
     let app = Router::new()
         .route(
             "/api/browser_request",
-            post(browser::request).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
+            browser_request_route(),
         )
         .route("/api/new_game", post(api_new_game))
         .route("/api/games", get(api_games))
@@ -182,9 +183,10 @@ pub async fn start_server(port: u16) {
     let app = Router::new()
         .route(
             "/api/browser_request",
-            post(browser::request).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
+            browser_request_route(),
         )
         .route("/api/industry_data", get(api_industry_data))
+        .with_state(state)
         .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
         .fallback(static_handler);
 
@@ -192,6 +194,13 @@ pub async fn start_server(port: u16) {
     println!("Starting Brass Birmingham at http://localhost:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+fn browser_request_route() -> axum::routing::MethodRouter<SharedState> {
+    post(browser::request)
+        .layer::<_, std::convert::Infallible>(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024))
+        .layer::<_, std::convert::Infallible>(RequestDecompressionLayer::new())
+        .layer(CompressionLayer::new())
 }
 
 fn now_unix() -> i64 {

@@ -2321,3 +2321,9 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Local three-AI seed 123 completed through stateless requests; actual user's failed saved session still needs diagnostics.
 - Svelte build, standard game client, and injected backend-error UI reproduction passed; screenshot inspected.
 
+## 2026-10-11 Vercel payload recovery
+- Confirmed production a3a29b5 rejects 6,380,371-byte (3P) and 8,936,796-byte (4P) session requests with HTTP 413 FUNCTION_PAYLOAD_TOO_LARGE; 3,710,794-byte 2P succeeds. Local 64 MiB limit did not cover the Vercel gateway.
+- Gzip browser session requests and responses on the shared browser-request route. Full IndexedDB saves, action/replay/analysis data, and uncompressed API compatibility remain intact.
+- Real browser transport regression restored 2/3/4P saves, preserved 78/105/124 replay positions and exact action logs, and created new games from each oversized save. Wire requests are 122,806 / 216,099 / 383,953 bytes.
+- Validation: 125 Rust release tests, Svelte build, actual Dockerfile.vercel build, 2–4P pause/step/resume/manual cancel/undo/reload smoke, standard game client and visually inspected screenshots; no browser errors.
+- Pending: production deployment, same oversized-save reproduction on live hosting, and user Chrome recovery.
