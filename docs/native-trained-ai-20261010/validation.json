@@ -1,0 +1,26 @@
+{
+  "model": "human-teacher-20261009-epoch105-native-v1",
+  "sourceHashesLf": {
+    "src/game/trained_ai.rs": "caf59150335a6e8e989cb8db1cad53e714838a7624902b2542db78bc20f5deb6",
+    "src/game/models/teacher-value.json": "7d5c1c0a9978525f3efa29cbafcb7a7ef5f86896e4670a3b8f3abd8ad8fa458a",
+    "src/game/rule_ai.rs": "0a4fc325c5d5958b9beb02f71195b4aececfff60ec06a536f96f9b69f6791e5f",
+    "src/web/mod.rs": "5f0af9dfe268c86c3835c0cbb83df93d85ecdf099cbe8f0281577e2c166ea58d",
+    "src/web/browser.rs": "c4cf08dd204cd15f334d8fe8eaf1b4344ecb3f886c82550f632748b54c854e4e",
+    "ui/src/lib/browserSession.ts": "98c8f9b1a66a5ece0cc63a214601a14e63567f5b6ae6dfd2385e7841dcf43d61"
+  },
+  "rustTests": 125,
+  "jsInferenceCases": 16,
+  "jsMaxAbsoluteError": 1e-8,
+  "semanticFeatures": 125,
+  "browserPlayers": [
+    2,
+    3,
+    4
+  ],
+  "nativeScreenGames": 12,
+  "cloudSessionGames": 3,
+  "cloudActions": 307,
+  "dockerImage": "fast-brass-native-trained:20261010",
+  "dockerImageSha": "8bf795fc11b66140746b9a0ee0d6c0198e2f64073fa2e556212dd8b33e05fc7e",
+  "scope": "Integration verification; native strength/means remain preliminary"
+}

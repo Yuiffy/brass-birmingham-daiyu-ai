@@ -1,4 +1,5 @@
 import { get } from 'svelte/store';
+import { readBrowserSession, saveBrowserSession } from './browserSession';
 import {
 	gameState, turnPhase, actionsAvailable, logMessage,
 	moneyAtTurnStart, snapshotMoney, currentAction, playerName,
@@ -46,13 +47,11 @@ const MUTATION_ENDPOINTS = new Set([
 ]);
 let mutationQueue: Promise<void> = Promise.resolve();
 const browserSessions = import.meta.env.VITE_BRASS_BROWSER_SESSIONS === 'true';
-const browserSessionKey = 'brass-original-saved-games-v1';
 let browserSession: unknown;
 
-function getBrowserSession() {
+async function getBrowserSession() {
 	if (browserSession === undefined) {
-		const saved = localStorage.getItem(browserSessionKey);
-		browserSession = saved ? JSON.parse(saved) : {};
+		browserSession = await readBrowserSession();
 	}
 	return browserSession;
 }
@@ -97,7 +96,7 @@ export async function api(endpoint: string, body?: unknown): Promise<any> {
 				? await fetch('/api/browser_request', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ endpoint, body: body ?? null, session: getBrowserSession() })
+					body: JSON.stringify({ endpoint, body: body ?? null, session: await getBrowserSession() })
 				})
 				: await fetch('/api/' + endpoint, opts);
 			if (!res.ok) { logMessage(`Server error: ${res.status}`); return null; }
@@ -106,7 +105,7 @@ export async function api(endpoint: string, body?: unknown): Promise<any> {
 			const data = JSON.parse(text);
 			if (!data.ok) { logMessage('Error: ' + (data.error || 'unknown')); return null; }
 			if (browserSessions && data.browser_session) {
-				localStorage.setItem(browserSessionKey, JSON.stringify(data.browser_session));
+				await saveBrowserSession(data.browser_session);
 				browserSession = data.browser_session;
 			}
 			if (data.state) gameState.set(data.state);
@@ -325,10 +324,10 @@ export async function endTurn() {
 	return data;
 }
 
-export type AnalysisMode = 'auto' | 'rule';
+export type AnalysisMode = 'trained' | 'auto' | 'rule';
 
 function analysisStages(simulations: number, mode: AnalysisMode): number[] {
-	if (mode === 'rule') return [1];
+	if (mode !== 'auto') return [1];
 	return [...new Set([100, 400, 800, 3000, simulations])]
 		.filter(stage => stage > 0 && stage <= simulations)
 		.sort((left, right) => left - right);
@@ -336,19 +335,19 @@ function analysisStages(simulations: number, mode: AnalysisMode): number[] {
 
 export async function analyzePosition(
 	simulations: number,
-	mode: AnalysisMode = 'rule'
+	mode: AnalysisMode = 'trained'
 ): Promise<AnalysisReport | null> {
 	return analyzePositionProgressive(simulations, mode);
 }
 
 export async function analyzePositionProgressive(
 	simulations: number,
-	mode: AnalysisMode = 'rule'
+	mode: AnalysisMode = 'trained'
 ): Promise<AnalysisReport | null> {
 	const runId = ++analysisRunId;
 	const invalidationVersion = get(analysisInvalidationVersion);
 	const stages = analysisStages(simulations, mode);
-	const progressTarget = mode === 'rule' ? 1 : simulations;
+	const progressTarget = mode !== 'auto' ? 1 : simulations;
 	analysisLoading.set(true);
 	analysisError.set(null);
 	analysisProgress.set({
@@ -370,7 +369,7 @@ export async function analyzePositionProgressive(
 				totalStages: stages.length
 			});
 			const data = await api('analyze', {
-				simulations: mode === 'rule' ? 1 : simulations,
+				simulations: mode !== 'auto' ? 1 : simulations,
 				progress_to: progressTo,
 				top_n: 3,
 				mode
@@ -395,7 +394,9 @@ export async function analyzePositionProgressive(
 			});
 		}
 		if (latestReport) {
-			if (mode === 'rule') {
+			if (mode === 'trained') {
+				logMessage(`学习增强 v2 评估了 ${latestReport.evaluated_action_count} 个候选动作，用时 ${latestReport.elapsed_ms}ms`);
+			} else if (mode === 'rule') {
 				logMessage(`CPU 规则树评估了 ${latestReport.root_action_count} 个合法动作，用时 ${latestReport.elapsed_ms}ms`);
 			} else {
 				logMessage(`AI analyzed ${latestReport.completed_simulations} continuations in ${latestReport.elapsed_ms}ms`);

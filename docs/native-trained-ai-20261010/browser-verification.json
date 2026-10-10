@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "players": 2,
+      "model": "human-teacher-20261009-epoch105-native-v1",
+      "pause": true,
+      "step": true,
+      "resume": true,
+      "explanation": true,
+      "manualCancel": true,
+      "manualUndo": true,
+      "reload": true
+    },
+    {
+      "players": 3,
+      "model": "human-teacher-20261009-epoch105-native-v1",
+      "pause": true,
+      "step": true,
+      "resume": true,
+      "explanation": true,
+      "manualCancel": true,
+      "manualUndo": true,
+      "reload": true
+    },
+    {
+      "players": 4,
+      "model": "human-teacher-20261009-epoch105-native-v1",
+      "pause": true,
+      "step": true,
+      "resume": true,
+      "explanation": true,
+      "manualCancel": true,
+      "manualUndo": true,
+      "reload": true
+    }
+  ],
+  "errors": []
+}

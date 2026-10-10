@@ -131,12 +131,13 @@ async fn execute(req: Request) -> Result<serde_json::Value, String> {
     // only for operations that need it, retaining the revision stale check.
     if matches!(req.endpoint.as_str(), "apply_analyzed_action" | "explain") {
         if let Some(body) = &req.session.analysis_request {
-            let analysis = api_analyze(
-                State(state.clone()),
-                Json(serde_json::from_value(body.clone()).map_err(|error| error.to_string())?),
-            )
-            .await
-            .0;
+            let mut analysis_request: AnalyzeRequest =
+                serde_json::from_value(body.clone()).map_err(|error| error.to_string())?;
+            // Restoring a process-local cache must not duplicate saved replay frames.
+            analysis_request.skip_replay_recording = true;
+            let analysis = api_analyze(State(state.clone()), Json(analysis_request))
+                .await
+                .0;
             if analysis["ok"] != true {
                 return Ok(analysis);
             }
@@ -239,6 +240,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn trained_recommendations_remain_identical_after_restoring_midgame() {
+        let original: Value =
+            serde_json::from_str(include_str!("fixtures/trained-session.json")).unwrap();
+        let mut expected = None;
+        for _ in 0..20 {
+            let mut session = original.clone();
+            let result = call(
+                &mut session,
+                "analyze",
+                json!({"simulations": 1, "top_n": 3}),
+            )
+            .await;
+            let recommendations = result["analysis"]["recommendations"].clone();
+            if let Some(expected) = &expected {
+                assert_eq!(&recommendations, expected);
+            } else {
+                expected = Some(recommendations);
+            }
+            let analysis_frames = |session: &Value| {
+                let events: Vec<Value> =
+                    serde_json::from_str(session["games"][0]["action_log"].as_str().unwrap())
+                        .unwrap();
+                events
+                    .iter()
+                    .filter(|e| e["kind"] == "replay_analysis")
+                    .count()
+            };
+            let frames_before = analysis_frames(&session);
+            call(
+                &mut session,
+                "apply_analyzed_action",
+                json!({
+                    "revision": result["analysis"]["revision"],
+                    "action_key": result["analysis"]["recommendations"][0]["action_key"]
+                }),
+            )
+            .await;
+            assert_eq!(
+                analysis_frames(&session),
+                frames_before,
+                "cache restoration duplicated replay analysis"
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn restores_pending_choices_confirmed_actions_and_undo() {
         let mut session = json!({});
         call(
@@ -279,12 +326,29 @@ mod tests {
         )
         .await;
         call(&mut session, "start_turn", Value::Null).await;
-        let analysis = call(
+        let analysis = call(&mut session, "analyze", json!({"simulations": 1})).await;
+        assert_eq!(
+            analysis["analysis"]["method"],
+            crate::game::trained_ai::METHOD
+        );
+        assert_eq!(
+            analysis["analysis"]["model_id"],
+            crate::game::trained_ai::MODEL_ID
+        );
+        let explanation = call(
             &mut session,
-            "analyze",
-            json!({"mode": "rule", "simulations": 1}),
+            "explain",
+            json!({
+                "revision": analysis["analysis"]["revision"],
+                "action_key": analysis["analysis"]["recommendations"][0]["action_key"],
+                "question": "这个评分可靠吗？"
+            }),
         )
         .await;
+        assert!(explanation["explanation"]["caveat"]
+            .as_str()
+            .unwrap()
+            .contains("不是胜率"));
         let body = json!({"revision": analysis["analysis"]["revision"],
             "action_key": analysis["analysis"]["recommendations"][0]["action_key"]});
         call(&mut session, "apply_analyzed_action", body.clone()).await;

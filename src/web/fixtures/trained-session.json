@@ -1,0 +1,21 @@
+{
+  "active_game_id": 1,
+  "analysis_request": {
+    "simulations": 1,
+    "top_n": 3
+  },
+  "games": [
+    {
+      "action_log": "[{\"kind\":\"start_turn\"},{\"kind\":\"start_action\",\"action_type\":\"DevelopDouble\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Iron\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Goods\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"},{\"kind\":\"end_turn\"},{\"kind\":\"start_turn\"},{\"kind\":\"start_action\",\"action_type\":\"Develop\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Goods\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"},{\"kind\":\"end_turn\"},{\"kind\":\"start_turn\"},{\"kind\":\"start_action\",\"action_type\":\"Develop\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Goods\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"},{\"kind\":\"end_turn\"},{\"kind\":\"start_turn\"},{\"kind\":\"start_action\",\"action_type\":\"BuildBuilding\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Beer\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"build_location\",\"value\":15},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"},{\"kind\":\"start_action\",\"action_type\":\"Develop\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Iron\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"},{\"kind\":\"end_turn\"},{\"kind\":\"start_turn\"},{\"kind\":\"start_action\",\"action_type\":\"Develop\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"card\",\"value\":0},{\"kind\":\"apply_choice\",\"choice_kind\":\"industry\",\"value\":\"Iron\"},{\"kind\":\"apply_choice\",\"choice_kind\":\"iron_source\",\"value\":\"Market\"},{\"kind\":\"confirm_action\"}]",
+      "created_at": 1791641514,
+      "era": "Canal",
+      "id": 1,
+      "num_players": 3,
+      "round_in_phase": 1,
+      "seed": "730001",
+      "updated_at": 1791641519
+    }
+  ],
+  "observer_player": null,
+  "revision": 8
+}

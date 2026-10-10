@@ -15,9 +15,12 @@ Vercel 容器服务属于 Beta。
 `/api/browser_request` 发送当前浏览器的存档。后端为每次请求重建独立临时
 数据库和游戏状态，完成操作后返还更新后的动作日志；临时文件随请求结束清理。
 这沿用原引擎的存档回放，避免云端实例重启丢局或不同访客共用一个当前对局。
-种子以字符串保存，保留完整的 64 位值。AI 使用原版默认 CPU 规则分析。
+种子以字符串保存，保留完整的 64 位值。AI 默认使用学习增强 v2 原生适配版：
+冻结教师价值头、真人策略、手牌评估与两步原生合法动作前瞻。权重嵌入 Rust
+二进制，在 Vercel 容器内以 CPU 推理，无需本机程序或额外推理服务。
+见[接入验证](native-trained-ai.md)。
 
-存档保存在 `localStorage` 的 `brass-original-saved-games-v1`，刷新后可在
+存档保存在 IndexedDB 的 `brass-original-saves`，旧 `localStorage` 存档自动迁移，刷新后可在
 **Join Game** 找到。它们属于当前浏览器，不会跨设备同步；清除站点数据会清除存档。
 JavaScript 模拟器的旧存档不兼容 Rust 引擎，两个入口使用独立存档键。
 

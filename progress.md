@@ -2305,3 +2305,13 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Browser smoke passed all 60 labels and teacher 2P/3P/4P actual play/pause/step/inspect/rethink/execute; mobile 375px has no horizontal overflow; no console errors. Standard skill client passed. Desktop, mobile and per-player inspection screenshots viewed.
 - Tests exercised the static /ai-lab/ package on local port 8098. Packaging supports a separate Vercel frontend alongside concurrent original Rust UI restoration; do not replace the homepage or move project root back to brass-sim.
 - Public evidence: docs/browser-ai-benchmarks.md; world_model/experiments/browser-options-20261010 protocol, summaries, raw traces, frozen source zip and browser-verification.json. Reusable UI check: scripts/browser-options-smoke.cjs.
+
+## 2026-10-10 original UI with latest trained AI
+
+- User request: preserve the original physical board/card interface, use the latest AI. Default web play and analysis now use teacher-trained-v2 native adapter for 2–4 players, with embedded frozen value head and human/card guidance on authoritative native transitions. No external inference service.
+- Preserved old board/cards/manual controls. Added concise model identity, honest position-score labels, 2–4 player observation; fixed pause unexpectedly restarting.
+- Full cloud-game tests caught Debug allocation-address sorting in hidden cards; semantic sorting and 20 fresh midgame reconstruction regression fixed it. Cache restoration no longer duplicates analysis snapshots.
+- Full replay saves exceeded the old 4 MiB request/localStorage limits. IndexedDB keeps full replay format and migrates old saves; session request accepts 64 MiB. Browser verified actual 3.7/6.4/8.9 MB completed saves, reload, and legacy migration.
+- Validation: 125 Rust release library tests, Svelte build, actual Dockerfile.vercel build, standard game client and inspected screenshots; 2–4 player browser controls/manual/undo/reload, no errors. 12 native screen games audited every legal action and terminal VP/cash/income. Three complete stateless cloud games, 307 actions, restored terminal; matched offline same-seed scores.
+- Evidence: docs/native-trained-ai.md and native-trained-ai-20261010. JS 163/152/128 averages are not transferred to native engine; this integration screen is too small to establish strength superiority.
+- Delivery: commit/push PR and merge main, then confirm production deployment commit/alias.

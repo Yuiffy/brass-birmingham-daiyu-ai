@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "players": 2,
+      "actions": 78,
+      "terminal": true,
+      "restored": true,
+      "sessionBytes": 3710751,
+      "scores": [
+        149,
+        113
+      ]
+    },
+    {
+      "players": 3,
+      "actions": 105,
+      "terminal": true,
+      "restored": true,
+      "sessionBytes": 6380328,
+      "scores": [
+        148,
+        124,
+        101
+      ]
+    },
+    {
+      "players": 4,
+      "actions": 124,
+      "terminal": true,
+      "restored": true,
+      "sessionBytes": 8936753,
+      "scores": [
+        99,
+        122,
+        117,
+        119
+      ]
+    }
+  ],
+  "errors": []
+}

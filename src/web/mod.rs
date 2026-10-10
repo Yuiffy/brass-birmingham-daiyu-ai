@@ -149,7 +149,10 @@ pub async fn start_server(port: u16) {
 
     #[cfg(not(feature = "cloud-ui"))]
     let app = Router::new()
-        .route("/api/browser_request", post(browser::request))
+        .route(
+            "/api/browser_request",
+            post(browser::request).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
+        )
         .route("/api/new_game", post(api_new_game))
         .route("/api/games", get(api_games))
         .route("/api/load_game", post(api_load_game))
@@ -177,7 +180,10 @@ pub async fn start_server(port: u16) {
 
     #[cfg(feature = "cloud-ui")]
     let app = Router::new()
-        .route("/api/browser_request", post(browser::request))
+        .route(
+            "/api/browser_request",
+            post(browser::request).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
+        )
         .route("/api/industry_data", get(api_industry_data))
         .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
         .fallback(static_handler);
@@ -744,6 +750,8 @@ async fn api_industry_data() -> Json<serde_json::Value> {
 
 #[derive(Deserialize)]
 struct AnalyzeRequest {
+    #[serde(skip)]
+    skip_replay_recording: bool,
     simulations: Option<u64>,
     progress_to: Option<u64>,
     top_n: Option<usize>,
@@ -800,16 +808,16 @@ async fn api_analyze(
     State(state): State<SharedState>,
     Json(req): Json<AnalyzeRequest>,
 ) -> Json<serde_json::Value> {
-    // CPU rule analysis is the safe default for play. Search/neural modes
-    // remain explicit opt-ins so a missing client field cannot consume GPU
-    // resources or turn an interactive move into a long-running rollout.
-    let use_rule_mode = match req.mode.as_deref().unwrap_or("rule") {
+    // The embedded teacher uses native transitions and needs no inference service.
+    let mode = req.mode.as_deref().unwrap_or("trained");
+    let use_trained_mode = mode == "trained";
+    let use_rule_mode = match mode {
         "rule" => true,
-        "auto" | "search" | "neural" => false,
+        "trained" | "auto" | "search" | "neural" => false,
         _ => {
             return Json(serde_json::json!({
                 "ok": false,
-                "error": "mode must be one of auto, search, neural, or rule"
+                "error": "mode must be one of trained, auto, search, neural, or rule"
             }))
         }
     };
@@ -859,7 +867,17 @@ async fn api_analyze(
     let started = Instant::now();
     let mut previous_session = previous_session;
     let mut retained_session = None;
-    let report_result = if use_rule_mode {
+    let report_result = if use_trained_mode {
+        let trained_runner = runner.clone();
+        match tokio::task::spawn_blocking(move || {
+            crate::game::trained_ai::trained_decision_report(&trained_runner, top_n)
+        })
+        .await
+        {
+            Ok(result) => result,
+            Err(error) => Err(format!("trained analysis task failed: {error}")),
+        }
+    } else if use_rule_mode {
         let rule_runner = runner.clone();
         let rule_config = RuleDecisionConfig {
             recommendation_count: top_n,
@@ -950,7 +968,7 @@ async fn api_analyze(
         elapsed_ms,
         reveal_private_cards,
     );
-    if progress_to == simulations {
+    if progress_to == simulations && !req.skip_replay_recording {
         if let Some(game_id) = guard.active_game_id {
             match (
                 serde_json::to_value(serialize_state_for_observer(&runner, guard.observer_player)),

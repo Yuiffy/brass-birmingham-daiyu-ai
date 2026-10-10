@@ -71,6 +71,7 @@
 
 <div class="setup">
 	<h1>Brass Birmingham</h1>
+	<p>AI：学习增强 v2 · 支持 2～4 人</p>
 
 	<div class="tabs">
 		<button class:active={activeTab === 'new'} on:click={() => switchTab('new')}>New Game</button>

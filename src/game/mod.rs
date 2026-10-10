@@ -6,6 +6,7 @@ pub mod runner;
 pub mod search;
 pub mod self_play;
 pub mod training;
+pub mod trained_ai;
 
 pub use framework::*;
 pub use hidden_information::*;

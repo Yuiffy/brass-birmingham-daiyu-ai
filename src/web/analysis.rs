@@ -140,7 +140,9 @@ pub fn serialize_analysis_for_observer(
     AnalysisJson {
         revision,
         method: report.method.clone(),
-        method_label: if report.method == BATCHED_NEURAL_PUCT_METHOD {
+        method_label: if report.method == crate::game::trained_ai::METHOD {
+            "学习增强 v2 · 真人策略与手牌评估"
+        } else if report.method == BATCHED_NEURAL_PUCT_METHOD {
             "策略价值网络 · 多层 PUCT · 隐藏牌确定化"
         } else if report.method == RULE_ECONOMIC_METHOD {
             "经济规划 v2 · 回合组合与资金周转"
@@ -209,6 +211,28 @@ pub fn explain_analysis_question_for_observer(
     let top = report.recommendations.first();
     let serialized =
         serialize_candidate(candidate, runner, report.root_player, reveal_private_cards);
+    if candidate.value_source == crate::game::trained_ai::VALUE_SOURCE {
+        let effect = effect_sentence(&serialized.immediate_effect);
+        let caveat = "评分结合冻结教师价值网络与真人策略评估，不是胜率或保证的终局分数；主站规则与实验室不同，均分需单独测量。";
+        let mut answer = format!("这步排在第 {}，两步前瞻后的局面评分为 {:.2}。{} 评分由 20% 教师网络和 80% 真人策略组成，考虑产业翻面、线路收益、资金周转、剩余动作与手牌可达性。", candidate.rank, candidate.rule_score.unwrap_or(0.0), effect);
+        if let Some(other) = report
+            .recommendations
+            .iter()
+            .find(|c| c.action_key != action_key)
+        {
+            answer.push_str(&format!(
+                "另一候选的局面评分为 {:.2}。",
+                other.rule_score.unwrap_or(0.0)
+            ));
+        }
+        return Ok(ExplanationJson {
+            revision, action_key: action_key.into(), question: question.into(), answer,
+            evidence: vec![format!("动作：{}", serialized.summary), format!("模型：{}", report.model_id.as_deref().unwrap_or("未知")),
+                format!("候选覆盖：{}/{}；最大深度：{}", report.evaluated_action_count, report.root_action_count, report.max_search_depth.unwrap_or(0)),
+                "按原生合法动作推进；未知手牌与未来牌堆采用确定化采样。前瞻可能受候选裁剪、隐藏牌样本和模型迁移误差影响。".into()],
+            caveat: caveat.into(),
+        });
+    }
     let question_lower = question.to_lowercase();
     let asks_probability = question_lower.contains("胜率")
         || question_lower.contains("概率")
