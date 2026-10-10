@@ -2280,3 +2280,12 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - PR #1 remains merged on main (8c69940). New draft was not auto-merged; experimental prior/control artifacts do not replace browser defaults.
 - Published JSON metadata uses LF, and delivery-manifest hashes match Git blob bytes; frozen-source.zip preserves execution bytes independently of checkout line-ending conversions.
 - No outstanding work for this training/test round. Future tuning must treat this holdout as development and create new independent seeds.
+
+## 2026-10-10 simpler browser opponent setup
+
+- User request: label AI choices with measured mean VP and explain the AI experiment module; follow-up removes the redundant enable checkbox entirely.
+- Each seat's human/AI choice now determines controller creation. All-human games bypass model readiness and have no AI toolbar; mixed games retain controls.
+- Added readable labels with rounded benchmark averages keyed by rules, seat count and profile. Unsupported/unmeasured combinations explicitly say unmeasured/4P-only; source details distinguish self-play and mixed matchups. No model/default promotion.
+- Experiment controls, rule details and benchmark explanations are collapsed under advanced options. Existing automatic matches remain available.
+- Verified desktop/mobile screenshots, profile/count label changes, no selection reset on profile change, all-human and mixed games, plus standard web-game client. Teacher pause/step/inspect/execute/resume/double-rail smoke passes; no browser console errors. Full Node suite: 85 passed.
+- Vercel Git project uses brass-sim on main. Deployment updates automatically after this UI delivery; model weights/training evidence remain unchanged.

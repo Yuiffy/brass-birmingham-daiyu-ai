@@ -44,8 +44,19 @@
     api.getWorld=(players,profile)=>profile==='teacher-trained-v2'?(players===4?api.teacherWorld||null:null):api.worldByPlayers[players]||null;
     api.getPolicy=players=>api.policyByPlayers[players]||null;
     api.getGuided=(players,profile)=>profile==='teacher-trained-v2'?api.getWorld(players,profile):api.guidedByPlayers[players]||api.getWorld(players);
+    api.updateLabels=()=>{
+        const strategy=document.getElementById('guided-strategy');
+        const context={players:Number(document.querySelector('.count-btn.active').dataset.count),profile:strategy.value,rules:globalThis.BRASS_RULES};
+        document.querySelectorAll('.player-ai-select option').forEach(option=>{
+            option.textContent=BrassAILabels.optionLabel(option.value,context);
+        });
+        [...strategy.options].forEach(option=>option.textContent=BrassAILabels.profileLabel(option.value,context));
+        const evidence=BrassAILabels.evidence(context);
+        document.getElementById('ai-score-evidence').textContent=evidence.text;
+        document.getElementById('ai-score-source').href=evidence.url;
+    };
     api.readyFor=(kinds,players=4)=>{
-        if(!document.getElementById('ai-enabled').checked)return true;
+        if(kinds.every(type=>type==='human'))return true;
         if(document.getElementById('guided-strategy')?.value==='teacher-trained-v2'&&kinds.some(t=>t==='world'||t==='guided')) {
             if(players!==4){document.getElementById('model-status').textContent='教师训练版目前仅支持四人局。';return false;}
             if(!api.teacherWorld){document.getElementById('model-status').textContent='教师训练权重尚未就绪。'+(api.teacherError||'');return false;}
@@ -57,28 +68,27 @@
         return true;
     };
     api.setup=()=>{
-        const enabled=document.getElementById('ai-enabled'), status=document.getElementById('model-status');
+        const status=document.getElementById('model-status');
         const corrected=globalThis.BRASS_RULES==='economy-v2';
         const strategy=document.getElementById('guided-strategy');
         strategy.disabled=!corrected;
         const requested=new URLSearchParams(location.search).get('strategy');
         if(corrected&&['human-guide-v1','teacher-trained-v2'].includes(requested))strategy.value=requested;
-        strategy.addEventListener('change',()=>{if(strategy.value==='teacher-trained-v2')api.loadTeacher().then(ok=>{
+        strategy.addEventListener('change',()=>{api.updateLabels();if(strategy.value==='teacher-trained-v2')api.loadTeacher().then(ok=>{
             status.textContent=ok?'四人教师训练权重已就绪（实验）。':`教师权重加载失败：${api.teacherError}`;
         });});
         if(strategy.value==='teacher-trained-v2')api.loadTeacher();
         document.getElementById('rules-status').textContent=corrected?'经济规则校准版：无终局收入加分，收入轨/贷款/时代/市场已修正；仍非完整官方规则，不能直接与真人比赛分数比较。':'历史训练版：保留旧规则与权重，含额外终局收入分。';
         if(corrected)document.querySelectorAll('a[href="arena.html"]').forEach(a=>a.href='arena.html?rules=economy-v2');
-        const setEnabled=()=>{
-            document.querySelectorAll('.player-ai-select').forEach(s=>{s.disabled=!enabled.checked;if(!enabled.checked)s.value='human';});
-            if(enabled.checked){status.textContent='正在加载 2P / 3P / 4P 训练权重…';api.load().then(ok=>{status.textContent=ok?`模型已就绪 · 已按玩家人数加载 2P / 3P / 4P 动力学 · 4P 数据 ${api.world.data.datasetGames.toLocaleString()} 局 · 学习增强搜索可用`:`模型加载失败：${api.error}。搜索型和人类玩家仍可使用。`;});}
-            else status.textContent='AI 模块已关闭 · 保留原游戏操作';
-        };
-        enabled.addEventListener('change',setEnabled);setEnabled();
-        document.querySelectorAll('.count-btn').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.player-ai-select').forEach(s=>s.disabled=!enabled.checked)));
+        status.textContent='正在准备电脑对手…';
+        api.load().then(ok=>{status.textContent=ok?'电脑对手已就绪':`模型加载失败：${api.error}。搜索型和人类玩家仍可使用。`;});
+        document.querySelectorAll('.count-btn').forEach(b=>b.addEventListener('click',()=>{
+            api.updateLabels();
+        }));
         if(strategy.value==='teacher-trained-v2')document.querySelector('.count-btn[data-count="4"]')?.click();
+        api.updateLabels();
         document.getElementById('ai-demo-btn').addEventListener('click',async()=>{
-            const button=document.getElementById('ai-demo-btn');button.disabled=true;enabled.checked=true;
+            const button=document.getElementById('ai-demo-btn');button.disabled=true;
             try{
                 const ok=await api.load();
                 if(!ok){status.textContent=`模型加载失败：${api.error}`;return;}
