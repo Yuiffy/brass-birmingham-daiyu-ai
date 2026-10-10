@@ -1,0 +1,3 @@
+# Vercel's Git checkout does not fetch LFS objects. Ship playable UI art as
+# ordinary Git blobs so every deployment includes the actual image bytes.
+** -filter -diff -merge -text
