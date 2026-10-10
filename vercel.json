@@ -1,13 +1,24 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
+    "ai-lab": {
+      "root": "brass-sim",
+      "framework": null,
+      "installCommand": "node --version",
+      "buildCommand": "node scripts/build-static.cjs",
+      "outputDirectory": "dist"
+    },
     "game": {
       "root": ".",
       "runtime": "container",
       "entrypoint": "Dockerfile.vercel"
     }
   },
+  "redirects": [
+    { "source": "/ai-lab", "destination": "/ai-lab/", "permanent": true }
+  ],
   "rewrites": [
+    { "source": "/ai-lab/:path*", "destination": { "service": "ai-lab" } },
     { "source": "/(.*)", "destination": { "service": "game" } }
   ]
 }

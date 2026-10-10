@@ -2301,7 +2301,7 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 ## 2026-10-10 all browser AI scores complete
 
 - Finished all 38 frozen configurations / 60 browser combinations: 1,216 complete games, 127,264 replayed legal actions, all terminal VP/cash/income matches. Every option now shows a measured average for current rules/count/profile.
-- Economy teacher guided means: 2P 163.40625 (game-bootstrap 95% CI 156.421875-169.421875); 3P 151.9166667 (148.6666667-154.9791667); 4P 128.25 (125.8828125-130.515625). Guide means 156.203125 / 140.7291667 / 120.40625. Self-play results do not certify human match strength.
+- Economy teacher guided means: 2P 163.40625 (game-bootstrap 95% CI 156.421875-169.421875); 3P 151.9166667 (148.6666667-154.9791667); 4P 128.25 (125.8828125-130.515625). Guide means 156.203125 / 140.7291667 / 120.4140625. Self-play results do not certify human match strength.
 - Browser smoke passed all 60 labels and teacher 2P/3P/4P actual play/pause/step/inspect/rethink/execute; mobile 375px has no horizontal overflow; no console errors. Standard skill client passed. Desktop, mobile and per-player inspection screenshots viewed.
 - Tests exercised the static /ai-lab/ package on local port 8098. Packaging supports a separate Vercel frontend alongside concurrent original Rust UI restoration; do not replace the homepage or move project root back to brass-sim.
 - Public evidence: docs/browser-ai-benchmarks.md; world_model/experiments/browser-options-20261010 protocol, summaries, raw traces, frozen source zip and browser-verification.json. Reusable UI check: scripts/browser-options-smoke.cjs.

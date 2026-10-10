@@ -18,7 +18,7 @@ JavaScript 学习增强搜索的攻略增强实验入口：
 可选“学习增强搜索”棋手；[攻略来源和四人局测试](brass-sim/docs/human-strategy-research.md)
 说明本轮改动。此实验与 Rust AI 独立。
 
-教师＋保牌版现支持 2～4 人：`/?rules=economy-v2&strategy=teacher-trained-v2&players=2`。
+独立 JavaScript [AI 对练入口](https://brass-birmingham-daiyu-ai.vercel.app/ai-lab/?rules=economy-v2&strategy=teacher-trained-v2&players=2)：教师＋保牌版现支持 2～4 人。
 网页每种 AI 的均分已按规则、人数和版本统一实测，见[完整测试与迁移说明](brass-sim/docs/browser-ai-benchmarks.md)。
 
 `Brass Birmingham Daiyu AI` is an unofficial browser game and AI analysis project for

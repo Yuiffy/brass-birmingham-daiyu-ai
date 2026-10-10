@@ -2,6 +2,8 @@
 
 教师＋保牌版的学习增强 AI 现在支持 2、3、4 人局。所有网页 AI 选项的括号均分使用本轮统一实测结果，切换人数、规则或版本会显示对应数据。
 
+线上入口为 `/ai-lab/`，使用本目录的 JavaScript 引擎和 AI。网站首页的原版 Rust/Svelte 游戏使用另一套独立 AI，本报告不用于标注它的棋力。
+
 此前教师训练、模型编码和验证都围绕四人局，因此网页直接限制四人。本轮为二、三人学习增强搜索迁移已冻结的四人估值网络，继续用真实规则引擎展开动作，并沿用保牌策略。这是估值迁移，**没有重新训练二、三人神经网络**。二、三人纯世界模型 AI 继续使用各自原有动态模型；四人教师版保留原模型。原权重、默认版本均未升级替换。
 
 直接选择：[两人教师版](../?rules=economy-v2&strategy=teacher-trained-v2&players=2)、[三人教师版](../?rules=economy-v2&strategy=teacher-trained-v2&players=3)、[四人教师版](../?rules=economy-v2&strategy=teacher-trained-v2&players=4)。
