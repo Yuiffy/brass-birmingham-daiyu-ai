@@ -92,11 +92,20 @@ export async function api(endpoint: string, body?: unknown): Promise<any> {
 			opts.method = 'POST';
 		}
 		try {
+			// Full saved games include replay snapshots. Compress them on the wire
+			// to stay below the hosting gateway's 4.5 MB request limit.
+			let cloudBody: ArrayBuffer | undefined;
+			if (browserSessions) {
+				const json = JSON.stringify({ endpoint, body: body ?? null, session: await getBrowserSession() });
+				cloudBody = await new Response(
+					new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))
+				).arrayBuffer();
+			}
 			const res = browserSessions
 				? await fetch('/api/browser_request', {
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ endpoint, body: body ?? null, session: await getBrowserSession() })
+					headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+					body: cloudBody
 				})
 				: await fetch('/api/' + endpoint, opts);
 			if (!res.ok) { logMessage(`Server error: ${res.status}`); return null; }
