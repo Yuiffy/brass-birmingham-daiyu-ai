@@ -3,6 +3,7 @@ WORKDIR /build/ui
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
 COPY ui/ ./
+RUN node -e "const fs=require('node:fs'); for(const entry of fs.readdirSync('static/assets',{recursive:true,withFileTypes:true})) { if(entry.isFile()) { const path=require('node:path').join(entry.parentPath,entry.name); if(fs.readFileSync(path).subarray(0,42).toString().startsWith('version https://git-lfs.github.com/spec/v1')) throw new Error('Missing LFS asset: '+path); } }"
 ENV VITE_BRASS_BROWSER_SESSIONS=true
 RUN npm run build
 
