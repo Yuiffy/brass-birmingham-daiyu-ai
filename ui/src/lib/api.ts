@@ -45,6 +45,17 @@ const MUTATION_ENDPOINTS = new Set([
 	'end_turn', 'apply_analyzed_action', 'resolve_shortfalls'
 ]);
 let mutationQueue: Promise<void> = Promise.resolve();
+const browserSessions = import.meta.env.VITE_BRASS_BROWSER_SESSIONS === 'true';
+const browserSessionKey = 'brass-original-saved-games-v1';
+let browserSession: unknown;
+
+function getBrowserSession() {
+	if (browserSession === undefined) {
+		const saved = localStorage.getItem(browserSessionKey);
+		browserSession = saved ? JSON.parse(saved) : {};
+	}
+	return browserSession;
+}
 
 function cpName(): string {
 	const gs = get(gameState);
@@ -82,12 +93,22 @@ export async function api(endpoint: string, body?: unknown): Promise<any> {
 			opts.method = 'POST';
 		}
 		try {
-			const res = await fetch('/api/' + endpoint, opts);
+			const res = browserSessions
+				? await fetch('/api/browser_request', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ endpoint, body: body ?? null, session: getBrowserSession() })
+				})
+				: await fetch('/api/' + endpoint, opts);
 			if (!res.ok) { logMessage(`Server error: ${res.status}`); return null; }
 			const text = await res.text();
 			if (!text) { logMessage('Empty response'); return null; }
 			const data = JSON.parse(text);
 			if (!data.ok) { logMessage('Error: ' + (data.error || 'unknown')); return null; }
+			if (browserSessions && data.browser_session) {
+				localStorage.setItem(browserSessionKey, JSON.stringify(data.browser_session));
+				browserSession = data.browser_session;
+			}
 			if (data.state) gameState.set(data.state);
 			return data;
 		} catch (e: any) {
@@ -96,7 +117,7 @@ export async function api(endpoint: string, body?: unknown): Promise<any> {
 		}
 	};
 
-	if (!MUTATION_ENDPOINTS.has(endpoint)) return request();
+	if (!browserSessions && !MUTATION_ENDPOINTS.has(endpoint)) return request();
 	const queued = mutationQueue.then(request, request);
 	// Always release the queue, including failed requests.  `request` already
 	// converts transport/application errors to null for its caller.
