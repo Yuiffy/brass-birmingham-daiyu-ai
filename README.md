@@ -1,5 +1,11 @@
 # Brass Birmingham Daiyu AI
 
+> **主游戏界面：** [线上伯明翰](https://brass-birmingham-daiyu-ai.vercel.app/) 使用
+> `ui/` 的实体棋盘、扇形彩色手牌和 Rust 规则引擎。Vercel 从仓库根目录的
+> `Dockerfile.vercel` 构建，不能把 `brass-sim/` 设为主站入口。
+> 线上存档保存在当前浏览器，刷新后通过 **Join Game** 继续；部署说明见
+> [原版界面部署](docs/original-ui-deployment.md)。
+
 > **仓库整合（2026-10-09）：** 原 `brass-birmingham` 与 `brass-birmingham-sim` 的
 > JavaScript 游戏、自动对局、世界模型、训练权重和实验报告已合入
 > [brass-sim/](brass-sim/README.md)，并保留原提交历史。运行
