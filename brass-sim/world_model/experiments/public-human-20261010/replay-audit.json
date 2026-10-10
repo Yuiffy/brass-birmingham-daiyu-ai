@@ -1,0 +1,7 @@
+{
+  "games": 400,
+  "distinctSeedLineups": 220,
+  "replayedActions": 27280,
+  "allTerminalScoresAndSettlementsMatch": true,
+  "duplicatePolicy": "Identical seed and lineup records must have identical complete actions and outcomes; replay once."
+}

@@ -5,6 +5,7 @@
     const E=node?require('./encoding'):root.BrassEncoding;
     const Human=node?require('./human_strategy'):root.BrassHumanStrategy;
     const Chain=node?require('./production_chain'):root.BrassProductionChain;
+    const Intent=node?require('./human_intent'):root.BrassHumanIntent;
     const TYPES={human:'人类玩家',heuristic:'原启发式 AI',search:'搜索树逻辑型',neural:'神经网络型',world:'世界模型型',guided:'学习增强搜索'};
     function shortlist(state,width=8,version='legacy'){
         const all=Sim.candidates(state).sort((a,b)=>b.score-a.score);
@@ -38,7 +39,7 @@
         }if(!added)break;}
         return pool;
     }
-    function plan(state,{type='world',world,policy,depth=3,width=8,strategy=null,knowledgeWeight=.8,doubleRail=false}={}) {
+    function plan(state,{type='world',world,policy,depth=3,width=8,strategy=null,knowledgeWeight=.8,doubleRail=false,intentPrior=null,intentWeight=0}={}) {
         if(!['heuristic','search','neural','world','guided'].includes(type))throw Error('Invalid AI type');
         if(type==='world'&&!world)throw Error('世界模型权重未加载');
         if(type==='neural'&&!policy)throw Error('神经网络权重未加载');
@@ -50,10 +51,14 @@
         if(strategy&&!['human-guide-v1','human-chain-v2','human-finance-v2','human-card-v2','double-rail-v1'].includes(strategy))throw Error('Unknown strategy profile');
         if(strategy&&(type!=='guided'||state.rulesVersion!=='economy-v2'))throw Error('Strategy profiles require calibrated guided search');
         if(!Number.isFinite(knowledgeWeight)||knowledgeWeight<0||knowledgeWeight>1)throw Error('Invalid knowledge weight');
+        if(!Number.isFinite(intentWeight)||intentWeight<0||intentWeight>2)throw Error('Use bounded intent weight 0–2');
+        if(intentWeight&&(!intentPrior||type!=='guided'||state.rulesVersion!=='economy-v2'||!strategy))throw Error('Intent prior requires calibrated guided strategy');
         const human=['human-guide-v1','human-chain-v2','human-finance-v2','human-card-v2'].includes(strategy);
         const knowledge=['human-chain-v2','human-finance-v2'].includes(strategy)?Chain:Human;
         const options={doubleRail:doubleRail||!!strategy||!!world?.data?.planningDoubleRail,retainCards:['human-chain-v2','human-card-v2'].includes(strategy)};
         const started=performance.now(),actor=state.currentPlayerId,initial=E.encodeState(state);
+        const intentProbability=intentWeight?Intent.probabilities(intentPrior,state,actor):null;
+        const intentBonus=a=>intentProbability?Intent.bonus(intentPrior,intentProbability,a,intentWeight):0;
         const productionPlans=strategy==='human-chain-v2'?Chain.plans(state,actor):[];
         const chainBonus=action=>Math.max(0,...productionPlans.filter(p=>{
             const first=p.trace[0];
@@ -83,7 +88,7 @@
         if(strategy||(['world','guided'].includes(type)&&world.data?.planningCandidates==='learned-pool-v1')||(type==='search'&&state.rulesVersion==='economy-v2')){
             const pool=candidatePool(state,strategy?64:32,options);
             for(const a of pool)rootCache.set(Sim.key(a),transition(engine?searchRoot:state,initial,a));
-            list=pool.sort((a,b)=>evaluate(rootCache.get(Sim.key(b)).vector,actor,rootCache.get(Sim.key(b)).state)+chainBonus(b)-evaluate(rootCache.get(Sim.key(a)).vector,actor,rootCache.get(Sim.key(a)).state)-chainBonus(a)).slice(0,width);
+            list=pool.sort((a,b)=>evaluate(rootCache.get(Sim.key(b)).vector,actor,rootCache.get(Sim.key(b)).state)+chainBonus(b)+intentBonus(b)-evaluate(rootCache.get(Sim.key(a)).vector,actor,rootCache.get(Sim.key(a)).state)-chainBonus(a)-intentBonus(a)).slice(0,width);
         }
         for(const action of list) {
             if(type==='heuristic'||type==='neural') {
@@ -121,7 +126,7 @@
                 beam=expanded.sort((a,b)=>b.score-a.score).slice(0,2);
             }
             const best=beam.sort((a,b)=>b.score-a.score)[0];
-            branches.push({action,label:Sim.label(action),score:best.score+chainBonus(action),steps:best.steps});
+            branches.push({action,label:Sim.label(action),score:best.score+chainBonus(action)+intentBonus(action),intentBonus:intentBonus(action),steps:best.steps});
         }
         branches.sort((a,b)=>b.score-a.score);
         return {type,depth,width,strategy,knowledgeWeight:human?knowledgeWeight:0,productionPlans,candidatePoolSize:rootCache.size||list.length,branches,selected:branches[0]?.action,elapsedMs:performance.now()-started};
