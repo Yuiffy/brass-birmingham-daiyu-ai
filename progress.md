@@ -2315,3 +2315,9 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Validation: 125 Rust release library tests, Svelte build, actual Dockerfile.vercel build, standard game client and inspected screenshots; 2–4 player browser controls/manual/undo/reload, no errors. 12 native screen games audited every legal action and terminal VP/cash/income. Three complete stateless cloud games, 307 actions, restored terminal; matched offline same-seed scores.
 - Evidence: docs/native-trained-ai.md and native-trained-ai-20261010. JS 163/152/128 averages are not transferred to native engine; this integration screen is too small to establish strength superiority.
 - Delivery: commit/push PR and merge main, then confirm production deployment commit/alias.
+
+## 2026-10-11 production new-game diagnosis
+- Confirmed the user's Chrome tab remains on setup after Start New Game; errors were written only to the hidden game log. Expose API failures on setup without changing replay behavior.
+- Local three-AI seed 123 completed through stateless requests; actual user's failed saved session still needs diagnostics.
+- Svelte build, standard game client, and injected backend-error UI reproduction passed; screenshot inspected.
+
