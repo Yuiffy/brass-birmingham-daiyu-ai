@@ -47,11 +47,6 @@
 	export let controlMode: GameControlMode = 'human-vs-ai';
 	export let humanPlayerIndex = 0;
 	export let controlSyncing = false;
-	const budgets = [
-		{ value: 800, label: '快速' },
-		{ value: 3000, label: '标准' },
-		{ value: 15000, label: '深入' }
-	];
 	const playbackDelays = [
 		{ value: 4000, label: '0.5×' },
 		{ value: 2000, label: '1×' },
@@ -60,10 +55,8 @@
 
 	type Exchange = { question: string; response: AnalysisExplanation };
 
-	let simulations = 3000;
-	// Playing and reviewing locally should stay on the explainable CPU policy.
-	// The neural/search path remains available as an explicit user choice.
-	let analysisMode: 'auto' | 'rule' = 'rule';
+	const simulations = 1;
+	const analysisMode = 'trained';
 	let question = '';
 	let asking = false;
 	let applying = false;
@@ -82,6 +75,8 @@
 	$: usesSuccessorValues = report?.value_source === 'batched_successor_model';
 	$: usesNeuralTree = report?.value_source === 'batched_neural_tree_search';
 	$: usesRuleTree = report?.value_source === 'rule_immediate_state_score';
+	$: usesTrained = report?.value_source === 'teacher_value_human_card_native';
+	$: usesScore = usesRuleTree || usesTrained;
 	$: selected = $selectedAnalysisCandidate;
 	$: phase = $turnPhase;
 	$: gs = $gameState;
@@ -140,7 +135,7 @@
 		canRunAi &&
 		!$analysisLoading &&
 		!applying &&
-		$aiPlayback.status !== 'running' &&
+		$aiPlayback.status === 'idle' &&
 		aiPositionKey &&
 		aiPositionKey !== lastAutoStartKey
 	) {
@@ -162,16 +157,6 @@
 	function toggleAutoAnalysis(event: Event) {
 		lastAutoAnalysisKey = null;
 		analysisAutoEnabled.set((event.currentTarget as HTMLInputElement).checked);
-	}
-
-	function setAnalysisMode(mode: 'auto' | 'rule') {
-		if (analysisMode === mode) return;
-		pauseAutoplay();
-		analysisMode = mode;
-		exchanges = [];
-		lastAutoAnalysisKey = null;
-		lastAutoStartKey = null;
-		invalidateAnalysis();
 	}
 
 	function selectCandidate(candidate: AnalysisCandidate) {
@@ -267,7 +252,7 @@
 			while (generation === loopGeneration && get(aiPlayback).status === 'running') {
 				const stateAtLoopStart = get(gameState);
 				if (!stateAtLoopStart || !stateAllowsAi(stateAtLoopStart)) {
-					aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
+					aiPlayback.update(state => ({ ...state, status: 'idle', error: null }));
 					return;
 				}
 				let currentReport = get(analysisReport);
@@ -279,7 +264,7 @@
 					}
 					const currentState = get(gameState);
 					if (currentState && !stateAllowsAi(currentState)) {
-						aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
+						aiPlayback.update(state => ({ ...state, status: 'idle', error: null }));
 						return;
 					}
 					throw new Error('当前局面无法分析');
@@ -300,7 +285,7 @@
 					return;
 				}
 				if (!stateAllowsAi(result.state as GameState)) {
-					aiPlayback.update(state => ({ ...state, status: 'paused', error: null }));
+					aiPlayback.update(state => ({ ...state, status: 'idle', error: null }));
 					return;
 				}
 			}
@@ -406,6 +391,7 @@
 	}
 
 	function valueSampleLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'teacher_value_human_card_native') return '训练增强评估';
 		if (candidate.value_source === 'rule_immediate_state_score') return '浅树评估';
 		if (candidate.value_source === 'batched_neural_tree_search') return '次树回传';
 		if (candidate.value_source === 'batched_successor_model') return '个后继样本';
@@ -413,6 +399,7 @@
 	}
 
 	function valueMetricLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'teacher_value_human_card_native') return '局面评分';
 		if (candidate.value_source === 'rule_immediate_state_score') return '浅树评分';
 		if (candidate.value_source === 'batched_neural_tree_search') return '树搜索胜分';
 		if (candidate.value_source === 'batched_successor_model') return '一步模型胜分';
@@ -420,6 +407,7 @@
 	}
 
 	function marginMetricLabel(candidate: AnalysisCandidate): string {
+		if (candidate.value_source === 'teacher_value_human_card_native') return '动作后分差';
 		if (candidate.value_source === 'rule_immediate_state_score') return '动作后分差';
 		if (candidate.value_source === 'batched_neural_tree_search') return '树搜索分差';
 		if (candidate.value_source === 'batched_successor_model') return '模型分差';
@@ -437,19 +425,10 @@
 	</header>
 
 	<div class="analysis-controls">
-		<div class="budget-control" aria-label="分析深度">
-			{#each budgets as budget}
-				<button
-					class:active={simulations === budget.value}
-					on:click={() => simulations = budget.value}
-					disabled={$analysisLoading}
-				>{budget.label}</button>
-			{/each}
-		</div>
 		<button class="analyze-button" on:click={runAnalysis} disabled={!canAnalyze || $analysisLoading}>
 			{#if $analysisLoading}
 				<span class="spin"><LoaderCircle size={17} aria-hidden="true" /></span>
-				<span>搜索中{#if $analysisProgress} · {$analysisProgress.completed.toLocaleString()}/{$analysisProgress.target.toLocaleString()}{/if}</span>
+				<span>思考中</span>
 			{:else if report}
 				<RefreshCw size={17} aria-hidden="true" />
 				<span>重新分析</span>
@@ -459,10 +438,7 @@
 			{/if}
 		</button>
 	</div>
-	<div class="mode-control" aria-label="分析模式">
-		<button class:active={analysisMode === 'auto'} on:click={() => setAnalysisMode('auto')} disabled={$analysisLoading}>策略搜索</button>
-		<button class:active={analysisMode === 'rule'} on:click={() => setAnalysisMode('rule')} disabled={$analysisLoading}>CPU 规则</button>
-	</div>
+	<div class="mode-control" aria-label="当前 AI"><span>学习增强 v2 · 2～4 人</span></div>
 	<label class="auto-analysis-toggle">
 		<input type="checkbox" checked={$analysisAutoEnabled} on:change={toggleAutoAnalysis} />
 		<span>自动分析玩家回合</span>
@@ -508,7 +484,7 @@
 		<div class="error-note">{$analysisError}</div>
 	{/if}
 
-	{#if $analysisLoading && $analysisProgress}
+	{#if $analysisLoading && $analysisProgress && analysisMode !== 'trained'}
 		<div class="analysis-progress" aria-live="polite">
 			<div class="progress-copy">
 				<span>分阶段搜索</span>
@@ -527,13 +503,13 @@
 		</div>
 	{:else if report}
 		<div class="coverage-line">
-			<span>{usesRuleTree ? `${report.root_action_count.toLocaleString()} 个动作评估` : `${report.completed_simulations.toLocaleString()} 次模拟`}</span>
+			<span>{usesScore ? `${report.completed_simulations.toLocaleString()} 次评估` : `${report.completed_simulations.toLocaleString()} 次模拟`}</span>
 			<span>{report.evaluated_action_count}/{report.root_action_count} 估值 · {report.visited_action_count} 访问</span>
 			<span>{(report.elapsed_ms / 1000).toFixed(2)}s</span>
 		</div>
 		<div class="method-line">
 			<span class:model={report.model_id != null} title={report.model_id ?? report.method}>
-				{usesRuleTree ? 'CPU 规则树' : usesNeuralTree ? '深层 PUCT' : usesSuccessorValues ? '一步价值 PUCT' : report.model_id ? '策略 PUCT' : '随机 UCB'}
+				{usesTrained ? '训练增强' : usesRuleTree ? 'CPU 规则树' : usesNeuralTree ? '深层 PUCT' : usesSuccessorValues ? '一步价值 PUCT' : report.model_id ? '策略 PUCT' : '随机 UCB'}
 			</span>
 			<strong>{report.method_label}</strong>
 			{#if report.root_model_shared_win_rate != null}
@@ -565,11 +541,11 @@
 					<span class="rank" class:first={candidate.rank === 1}>{candidate.rank}</span>
 					<span class="candidate-copy">
 						<strong>{candidate.summary}</strong>
-						<span>{candidate.visits} 次访问 · {candidate.value_sample_count} {valueSampleLabel(candidate)} · SE {percent(candidate.shared_win_rate_standard_error)}</span>
+						<span>{usesTrained ? '真人策略 · 手牌保留 · 两步前瞻' : `${candidate.visits} 次访问 · ${candidate.value_sample_count} ${valueSampleLabel(candidate)} · SE ${percent(candidate.shared_win_rate_standard_error)}`}</span>
 					</span>
 					<span class="candidate-score">
-						<strong>{usesRuleTree ? signedScore(candidate.rule_score) : percent(candidate.estimated_shared_win_rate)}</strong>
-						<span>{usesRuleTree ? '规则评分' : `${percent(candidate.visit_share)} 访问`}</span>
+						<strong>{usesScore ? signedScore(candidate.rule_score) : percent(candidate.estimated_shared_win_rate)}</strong>
+						<span>{usesTrained ? '局面评分' : usesRuleTree ? '规则评分' : `${percent(candidate.visit_share)} 访问`}</span>
 					</span>
 				</button>
 			{/each}
@@ -597,10 +573,15 @@
 				{/if}
 
 				<div class="metric-grid">
+					{#if usesTrained}
+						<div><span>局面评分</span><strong>{signedScore(selected.rule_score)}</strong></div>
+						<div><span>前瞻深度</span><strong>{report.max_search_depth}</strong></div>
+					{:else}
 					<div><span>访问占比</span><strong>{percent(selected.visit_share)}</strong></div>
 					<div><span>{valueMetricLabel(selected)}</span><strong>{percent(selected.estimated_shared_win_rate)}</strong></div>
 					<div><span>{usesRuleTree ? '相对偏好' : '策略概率'}</span><strong>{percent(selected.policy_probability)}</strong></div>
 					<div><span>校准胜率</span><strong>{percent(selected.calibrated_win_rate)}</strong></div>
+					{/if}
 				</div>
 				<div class="secondary-metrics">
 					{#if selected.estimated_outright_win_rate != null}<span>独赢 {percent(selected.estimated_outright_win_rate)}</span>{/if}
@@ -628,6 +609,7 @@
 					{/each}
 				</div>
 
+				{#if !usesTrained}
 				<button class="continuation-toggle" on:click={() => continuationOpen = !continuationOpen}>
 					<span>{selected.sample_random_continuation.label}</span>
 					<ChevronDown size={16} class={continuationOpen ? 'open' : ''} />
@@ -640,13 +622,14 @@
 						<div class="final-score">终局 VP {selected.sample_random_continuation.final_victory_points.join(' / ')}</div>
 					</div>
 				{/if}
+				{/if}
 			</section>
 
 			<section class="why-section">
 				<div class="why-heading"><MessageCircle size={17} /><h3>为什么这样走？</h3></div>
 				<div class="quick-questions">
 					<button on:click={() => ask('为什么这是当前选择？')}>选择依据</button>
-					<button on:click={() => ask('这个胜率可靠吗？')}>胜率可信度</button>
+					<button on:click={() => ask(usesTrained ? '这个评分可靠吗？' : '这个胜率可靠吗？')}>{usesTrained ? '评分含义' : '胜率可信度'}</button>
 					<button on:click={() => ask('这步的风险在哪里？')}>主要风险</button>
 					{#if selected.rank > 1}<button on:click={() => ask('和一选相比差在哪里？')}>对比一选</button>{/if}
 				</div>
@@ -692,15 +675,8 @@
 	.analysis-header { display: flex; align-items: center; justify-content: space-between; }
 	.eyebrow { font-size: 10px; font-weight: 700; color: #737975; }
 	h2 { margin: 2px 0 0; font-size: 22px; line-height: 1.1; letter-spacing: 0; }
-	.analysis-controls { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 16px; }
-	.budget-control { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #c9ceca; border-radius: 6px; overflow: hidden; }
-	.budget-control button { border: 0; border-right: 1px solid #c9ceca; background: #fff; color: #606662; font-size: 12px; cursor: pointer; min-height: 34px; }
-	.budget-control button:last-child { border-right: 0; }
-	.budget-control button.active { background: #242826; color: #fff; }
-	.mode-control { display: grid; grid-template-columns: 1fr 1fr; margin-top: 8px; border: 1px solid #c9ceca; border-radius: 6px; overflow: hidden; }
-	.mode-control button { min-height: 30px; border: 0; border-right: 1px solid #c9ceca; background: #fff; color: #606662; font-size: 11px; cursor: pointer; }
-	.mode-control button:last-child { border-right: 0; }
-	.mode-control button.active { background: #087f5b; color: #fff; }
+	.analysis-controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }
+	.mode-control { padding: 8px; font-size: 12px; color: #087f5b; margin-top: 8px; border: 1px solid #c9ceca; border-radius: 6px; overflow: hidden; }
 	.analyze-button, .apply-button { border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; font-weight: 700; cursor: pointer; }
 	.analyze-button { color: #fff; background: #087f5b; }
 	.apply-button { color: #fff; background: #b54031; white-space: nowrap; }

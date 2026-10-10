@@ -1,0 +1,354 @@
+{
+  "scope": "Small native-engine integration screen, not evidence of superior strength",
+  "games": 12,
+  "protocol": {
+    "benchmarkScope": "Rust engine, distinct from JS economy-v2",
+    "gamesPerPlayerCountAndPolicy": 2,
+    "lineups": [
+      "trained-selfplay",
+      "rule-selfplay"
+    ],
+    "model": "human-teacher-20261009-epoch105-native-v1",
+    "observation": "own-hand-public-board-sampled-hidden-cards",
+    "protocol": "native-trained-integration-screen-v1",
+    "seeds": "730001 + game index"
+  },
+  "results": [
+    {
+      "decisionMaxMs": 495,
+      "decisionP95Ms": 442,
+      "elapsedMs": 20051,
+      "players": 2,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          149,
+          34,
+          56
+        ],
+        [
+          113,
+          5,
+          31
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 78
+    },
+    {
+      "decisionMaxMs": 952,
+      "decisionP95Ms": 550,
+      "elapsedMs": 13817,
+      "players": 2,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          139,
+          67,
+          43
+        ],
+        [
+          147,
+          55,
+          61
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 78
+    },
+    {
+      "decisionMaxMs": 901,
+      "decisionP95Ms": 699,
+      "elapsedMs": 21813,
+      "players": 2,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          176,
+          27,
+          83
+        ],
+        [
+          138,
+          16,
+          30
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 78
+    },
+    {
+      "decisionMaxMs": 809,
+      "decisionP95Ms": 480,
+      "elapsedMs": 10483,
+      "players": 2,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          181,
+          34,
+          75
+        ],
+        [
+          142,
+          33,
+          35
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 78
+    },
+    {
+      "decisionMaxMs": 582,
+      "decisionP95Ms": 494,
+      "elapsedMs": 21531,
+      "players": 3,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          148,
+          16,
+          29
+        ],
+        [
+          124,
+          27,
+          51
+        ],
+        [
+          101,
+          5,
+          14
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 105
+    },
+    {
+      "decisionMaxMs": 1304,
+      "decisionP95Ms": 686,
+      "elapsedMs": 18690,
+      "players": 3,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          165,
+          44,
+          56
+        ],
+        [
+          128,
+          40,
+          44
+        ],
+        [
+          144,
+          31,
+          33
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 105
+    },
+    {
+      "decisionMaxMs": 1093,
+      "decisionP95Ms": 647,
+      "elapsedMs": 30586,
+      "players": 3,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          105,
+          23,
+          52
+        ],
+        [
+          121,
+          5,
+          35
+        ],
+        [
+          167,
+          9,
+          32
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 105
+    },
+    {
+      "decisionMaxMs": 629,
+      "decisionP95Ms": 373,
+      "elapsedMs": 14143,
+      "players": 3,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          136,
+          49,
+          36
+        ],
+        [
+          116,
+          50,
+          37
+        ],
+        [
+          135,
+          53,
+          37
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 105
+    },
+    {
+      "decisionMaxMs": 935,
+      "decisionP95Ms": 487,
+      "elapsedMs": 30911,
+      "players": 4,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          99,
+          66,
+          43
+        ],
+        [
+          122,
+          9,
+          28
+        ],
+        [
+          117,
+          8,
+          34
+        ],
+        [
+          119,
+          20,
+          41
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 124
+    },
+    {
+      "decisionMaxMs": 652,
+      "decisionP95Ms": 435,
+      "elapsedMs": 19382,
+      "players": 4,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          125,
+          32,
+          43
+        ],
+        [
+          125,
+          46,
+          42
+        ],
+        [
+          108,
+          31,
+          42
+        ],
+        [
+          148,
+          42,
+          38
+        ]
+      ],
+      "seed": 730001,
+      "terminal": true,
+      "actionCount": 124
+    },
+    {
+      "decisionMaxMs": 1734,
+      "decisionP95Ms": 674,
+      "elapsedMs": 37338,
+      "players": 4,
+      "policy": "trained-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          122,
+          5,
+          66
+        ],
+        [
+          113,
+          32,
+          11
+        ],
+        [
+          119,
+          30,
+          8
+        ],
+        [
+          109,
+          33,
+          51
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 124
+    },
+    {
+      "decisionMaxMs": 3400,
+      "decisionP95Ms": 438,
+      "elapsedMs": 19669,
+      "players": 4,
+      "policy": "rule-selfplay",
+      "replayVerified": true,
+      "scores": [
+        [
+          117,
+          31,
+          30
+        ],
+        [
+          102,
+          66,
+          24
+        ],
+        [
+          112,
+          30,
+          50
+        ],
+        [
+          90,
+          41,
+          30
+        ]
+      ],
+      "seed": 730002,
+      "terminal": true,
+      "actionCount": 124
+    }
+  ]
+}

@@ -5,6 +5,9 @@
 > `Dockerfile.vercel` 构建，不能把 `brass-sim/` 设为主站入口。
 > 线上存档保存在当前浏览器，刷新后通过 **Join Game** 继续；部署说明见
 > [原版界面部署](docs/original-ui-deployment.md)。
+> 主站对手和分析默认使用 **学习增强 v2 原生适配版**，支持 2～4 人：冻结教师
+> 网络、真人策略与手牌评估在 Rust 合法动作上做两步前瞻，云端无需本机 AI 服务。
+> [接入说明与独立验证](docs/native-trained-ai.md)。实验室均分不能直接视为主站均分。
 
 > **仓库整合（2026-10-09）：** 原 `brass-birmingham` 与 `brass-birmingham-sim` 的
 > JavaScript 游戏、自动对局、世界模型、训练权重和实验报告已合入
@@ -16,7 +19,7 @@
 JavaScript 学习增强搜索的攻略增强实验入口：
 `http://127.0.0.1:8086/?rules=economy-v2&strategy=human-guide-v1`。
 可选“学习增强搜索”棋手；[攻略来源和四人局测试](brass-sim/docs/human-strategy-research.md)
-说明本轮改动。此实验与 Rust AI 独立。
+说明实验策略。主站现已接入教师价值头与真人策略；两个入口的规则和基准仍独立。
 
 独立 JavaScript [AI 对练入口](https://brass-birmingham-daiyu-ai.vercel.app/ai-lab/?rules=economy-v2&strategy=teacher-trained-v2&players=2)：教师＋保牌版现支持 2～4 人。
 网页每种 AI 的均分已按规则、人数和版本统一实测，见[完整测试与迁移说明](brass-sim/docs/browser-ai-benchmarks.md)。
@@ -31,7 +34,12 @@ can show several candidate moves, the search share and model signals behind each
 contextual answers to Chinese follow-up questions such as why the first choice is preferred over
 the second.
 
-> **AI update (2026-09-06): economic planning v2.** The default CPU opponent plans both actions
+> **AI update (2026-10-10): teacher-trained-v2 native adapter.** The default opponent and
+> analysis use the frozen teacher value network with human/card guidance on Rust transitions.
+> Two-, three-, and four-player games use the same embedded model without an inference service.
+> See [integration and validation](docs/native-trained-ai.md). JS averages do not transfer to this engine.
+>
+> **Previous AI (2026-09-06): economic planning v2.** The rule opponent plans both actions
 > of its turn, budgets shared future income and loan capacity, and considers merchant Beer and
 > future link scoring. The rulebook audit also fixes loans, card refill/setup, scouting, merchant
 > link icons and income tiebreaks. Start a fresh game: historical replays used different rules.
@@ -158,17 +166,17 @@ Open `http://127.0.0.1:5173`, create a two-, three-, or four-player game, and en
 panel can show the Top 3 candidate moves, answer follow-up questions about the selected move, apply
 one recommendation, or advance the AI side one move at a time.
 
-The control bar defaults to `人机对练`. Choose `Coade` or `Brunel` under `你的席位`; the other
-seat is then controlled by the AI. Your hand stays visible during the opponent's turn, while the
+The control bar defaults to `人机对练`. Choose your player under `你的席位`; the other
+seats are then controlled by the trained AI. Your hand stays visible during the opponent's turn, while the
 AI's private cards remain hidden.
 
 On your turn:
 
 1. Use `对局` to make the move manually, or open `AI 分析` for coaching.
-2. Choose `快速`, `标准`, or `深入`, then click `分析局面`.
+2. Click `分析局面`; the default is the embedded learning-enhanced v2 adapter.
 3. Inspect the first, second, and third choices. Select any row to see its exact action and search
    statistics.
-4. Ask `选择依据`, `胜率可信度`, `主要风险`, or enter a temporary free-form question such as
+4. Ask `选择依据`, `评分含义`, `主要风险`, or enter a temporary free-form question such as
    `为什么一选比二选好？`.
 5. Click `采用此步` if you want the AI to play that recommendation for you.
 
@@ -187,13 +195,15 @@ that was available at that moment, including the first, second, and third recomm
 games record these snapshots automatically as actions are analyzed or applied. Saves created
 before replay recording was added may not contain snapshots and will show an empty-history notice.
 
-Use `AI 观战` to let the AI control both seats, or `全部手动` to operate every seat yourself.
-Search visit share, backed-up model value, and policy prior are separate estimates; the displayed
-model value is not yet a calibrated real-world win probability.
+Use `AI 观战` to let the AI control all seats in a 2–4 player game, or `全部手动` to operate every seat yourself.
+The trained adapter displays a position score, rather than a win probability or a promised final score.
 
 ## AI Status
 
-- The default rule policy uses economic conversion evaluation, with exact legal actions and
+- The default web AI uses the embedded teacher value head and human/card guidance on exact native
+  transitions. It samples hidden cards, keeps the physical-board UI and browser saves, and needs no
+  GPU or external inference endpoint. See [native adapter validation](docs/native-trained-ai.md).
+- The optional rule policy uses economic conversion evaluation, with exact legal actions and
   explainable score components. Its development and optional same-turn planning use only known
   hand cards. No model checkpoint or GPU is required. The old rule policy and neural pipeline
   remain available for comparison. See [the rule-AI evaluation protocol](docs/rule-ai-economy.md).
@@ -209,9 +219,9 @@ model value is not yet a calibrated real-world win probability.
 - The deployed champion has beaten only the project's initial smoke baseline. A later candidate won
   60% of a 40-game, seat-rotated PUCT match, but its paired 95% confidence lower bound remained below
   zero, so it was correctly not promoted. The project does not yet claim top-level strength.
-- Model checkpoints and generated self-play data are local artifacts under `output/` and are not
-  included in this repository. Set `FAST_BRASS_INFERENCE_URL` to a compatible inference service to
-  enable neural analysis; an unset URL retains the non-neural search path.
+- The teacher value checkpoint is embedded from `src/game/models/teacher-value.json`. The separate
+  legacy PUCT pipeline uses local artifacts under `output/`; `FAST_BRASS_INFERENCE_URL` enables that
+  optional pipeline for explicit `auto`/`neural` API requests and does not change the trained web default.
 
 ### Generate model-guided self-play
 
