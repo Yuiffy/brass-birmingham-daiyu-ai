@@ -1,0 +1,167 @@
+{
+  "observedCombinations": 60,
+  "observed": [
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约68分）",
+        "搜索 AI（平均约41分）",
+        "神经网络 AI（平均约65分）",
+        "世界模型 AI（平均约121分）",
+        "学习增强 AI（平均约128分）"
+      ]
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约63分）",
+        "搜索 AI（平均约64分）",
+        "神经网络 AI（平均约65分）",
+        "世界模型 AI（平均约124分）",
+        "学习增强 AI（平均约126分）"
+      ]
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约63分）",
+        "搜索 AI（平均约72分）",
+        "神经网络 AI（平均约74分）",
+        "世界模型 AI（平均约122分）",
+        "学习增强 AI（平均约130分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约56分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约92分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约56分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约156分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约56分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约163分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约60分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约73分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约60分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约141分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约60分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约14分）",
+        "学习增强 AI（平均约152分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约54分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约22分）",
+        "学习增强 AI（平均约78分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约54分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约22分）",
+        "学习增强 AI（平均约120分）"
+      ]
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "labels": [
+        "人类玩家",
+        "基础 AI（平均约0分）",
+        "搜索 AI（平均约58分）",
+        "神经网络 AI（平均约0分）",
+        "世界模型 AI（平均约10分）",
+        "学习增强 AI（平均约128分）"
+      ]
+    }
+  ],
+  "teacherPlayCounts": [
+    2,
+    3,
+    4
+  ],
+  "errors": []
+}

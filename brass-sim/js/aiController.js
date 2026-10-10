@@ -32,18 +32,22 @@
     };
     let teacherLoading=null;
     api.loadTeacher=()=>{
-        if(api.teacherWorld)return Promise.resolve(true);
+        if(api.teacherWorld&&[2,3,4].every(p=>api.teacherByPlayers?.[p]))return Promise.resolve(true);
         if(teacherLoading)return teacherLoading;
         teacherLoading=(async()=>{
             try {const url='world_model/experiments/human-teacher-20261009/models/world-model.json',r=await fetch(url);
                 if(!r.ok)throw Error(`${url}: HTTP ${r.status}`);
-                api.teacherWorld=new BrassWorldModel.Network(await r.json());api.teacherError=null;return true;
+                const teacher=await r.json();
+                if(!await api.load())throw Error(api.error||'Native player models are unavailable');
+                const models=Object.fromEntries([2,3,4].map(players=>[players,new BrassWorldModel.Network(
+                    BrassRuntimeModels.teacherDataForPlayers(players,api.worldByPlayers[players].data,teacher))]));
+                api.teacherByPlayers=models;api.teacherWorld=models[4];api.teacherError=null;return true;
             }catch(e){api.teacherError=e.message;return false;}finally{teacherLoading=null;}
         })();return teacherLoading;
     };
-    api.getWorld=(players,profile)=>profile==='teacher-trained-v2'?(players===4?api.teacherWorld||null:null):api.worldByPlayers[players]||null;
+    api.getWorld=(players,profile)=>profile==='teacher-trained-v2'&&players===4?api.teacherWorld||null:api.worldByPlayers[players]||null;
     api.getPolicy=players=>api.policyByPlayers[players]||null;
-    api.getGuided=(players,profile)=>profile==='teacher-trained-v2'?api.getWorld(players,profile):api.guidedByPlayers[players]||api.getWorld(players);
+    api.getGuided=(players,profile)=>profile==='teacher-trained-v2'?api.teacherByPlayers?.[players]||null:api.guidedByPlayers[players]||api.getWorld(players);
     api.updateLabels=()=>{
         const strategy=document.getElementById('guided-strategy');
         const context={players:Number(document.querySelector('.count-btn.active').dataset.count),profile:strategy.value,rules:globalThis.BRASS_RULES};
@@ -57,13 +61,14 @@
     };
     api.readyFor=(kinds,players=4)=>{
         if(kinds.every(type=>type==='human'))return true;
-        if(document.getElementById('guided-strategy')?.value==='teacher-trained-v2'&&kinds.some(t=>t==='world'||t==='guided')) {
-            if(players!==4){document.getElementById('model-status').textContent='教师训练版目前仅支持四人局。';return false;}
-            if(!api.teacherWorld){document.getElementById('model-status').textContent='教师训练权重尚未就绪。'+(api.teacherError||'');return false;}
+        const profile=document.getElementById('guided-strategy')?.value;
+        if(profile==='teacher-trained-v2'&&
+            (kinds.includes('guided')&&!api.getGuided(players,profile)||kinds.includes('world')&&!api.getWorld(players,profile))) {
+            document.getElementById('model-status').textContent='教师＋保牌版尚未就绪。'+(api.teacherError||'');return false;
         }
-        const world=api.getWorld(players),missing=(kinds.includes('world')&&!world)||(kinds.includes('neural')&&!api.getPolicy(players));
+        const world=api.getWorld(players,profile),missing=(kinds.includes('world')&&!world)||(kinds.includes('neural')&&!api.getPolicy(players));
         if((kinds.includes('guided')||kinds.includes('world'))&&!world){document.getElementById('model-status').textContent=`${players} 人模型尚未加载。`;return false;}
-        if(kinds.includes('guided')&&!api.getGuided(players)?.valueLayers){document.getElementById('model-status').textContent='学习增强搜索需要已训练的局面估值权重。';return false;}
+        if(kinds.includes('guided')&&!api.getGuided(players,profile)?.valueLayers){document.getElementById('model-status').textContent='学习增强搜索需要已训练的局面估值权重。';return false;}
         if(missing){document.getElementById('model-status').textContent='训练权重尚不可用，请等待加载或改选搜索型 / 人类玩家。'+(api.error||'');return false;}
         return true;
     };
@@ -75,7 +80,7 @@
         const requested=new URLSearchParams(location.search).get('strategy');
         if(corrected&&['human-guide-v1','teacher-trained-v2'].includes(requested))strategy.value=requested;
         strategy.addEventListener('change',()=>{api.updateLabels();if(strategy.value==='teacher-trained-v2')api.loadTeacher().then(ok=>{
-            status.textContent=ok?'四人教师训练权重已就绪（实验）。':`教师权重加载失败：${api.teacherError}`;
+            status.textContent=ok?'教师＋保牌版已就绪 · 支持 2～4 人':`教师权重加载失败：${api.teacherError}`;
         });});
         if(strategy.value==='teacher-trained-v2')api.loadTeacher();
         document.getElementById('rules-status').textContent=corrected?'经济规则校准版：无终局收入加分，收入轨/贷款/时代/市场已修正；仍非完整官方规则，不能直接与真人比赛分数比较。':'历史训练版：保留旧规则与权重，含额外终局收入分。';
@@ -85,7 +90,8 @@
         document.querySelectorAll('.count-btn').forEach(b=>b.addEventListener('click',()=>{
             api.updateLabels();
         }));
-        if(strategy.value==='teacher-trained-v2')document.querySelector('.count-btn[data-count="4"]')?.click();
+        const requestedPlayers=Number(new URLSearchParams(location.search).get('players'));
+        if([2,3,4].includes(requestedPlayers))document.querySelector(`.count-btn[data-count="${requestedPlayers}"]`)?.click();
         api.updateLabels();
         document.getElementById('ai-demo-btn').addEventListener('click',async()=>{
             const button=document.getElementById('ai-demo-btn');button.disabled=true;
@@ -102,7 +108,7 @@
         constructor(state,ui,kinds){
             this.state=state;this.ui=ui;this.kinds=state.players.map((_,i)=>kinds[i]||'human');
             this.profile=state.rulesVersion==='economy-v2'?document.getElementById('guided-strategy')?.value:null;
-            this.strategy=this.profile==='teacher-trained-v2'?'human-card-v2':this.profile==='human-guide-v1'?'human-guide-v1':null;
+            this.strategy=BrassRuntimeModels.strategyForProfile(this.profile);
             this.running=true;this.timer=null;this.disposed=false;this.selection=null;
             const panel=document.createElement('div');panel.id='ai-toolbar';
             panel.innerHTML='<span id="ai-turn-label"></span><button class="ai-button" id="ai-pause">暂停 AI</button><button class="ai-button" id="ai-step">AI 走一步</button><button class="ai-button" id="ai-inspect">AI 推演 / 预测对照</button><a href="arena.html" target="_blank" rel="noopener">对战实验室 ↗</a>';

@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 process.env.BRASS_RULES='economy-v2';
 const root=path.resolve(__dirname,'..'),Sim=require('../world_model/simulator'),E=require('../world_model/encoding'),P=require('../world_model/planner'),{Network}=require('../world_model/inference');
 const read=f=>JSON.parse(fs.readFileSync(path.join(root,f)));
-test('teacher weights load once, reject unsupported seats and route moves/inspection consistently',async()=>{
+test('teacher loads once and transfers guided value to 2P/3P without replacing native world dynamics',async()=>{
  const nodes=new Map(),plans=[],requests=[];
  const get=id=>{if(!nodes.has(id))nodes.set(id,{checked:true,value:id==='guided-strategy'?'teacher-trained-v2':'1',textContent:'',innerHTML:''});return nodes.get(id);};
  const ctx=vm.createContext({console,BrassSimulator:Sim,BrassEncoding:E,BrassRuntimeModels:require('../world_model/runtime_models'),BrassWorldModel:{Network},
@@ -11,14 +11,21 @@ test('teacher weights load once, reject unsupported seats and route moves/inspec
  vm.runInContext(fs.readFileSync(path.join(root,'js/aiController.js'),'utf8'),ctx);const api=ctx.BrassAI;
  await api.load();await Promise.all([api.loadTeacher(),api.loadTeacher()]);await api.loadTeacher();
  assert.equal(requests.filter(u=>u.includes('human-teacher')).length,1);
- for(const count of [2,3]){assert.equal(api.getWorld(count,'teacher-trained-v2'),null);assert.equal(api.readyFor(['guided'],count),false);assert.equal(api.readyFor(['human'],count),true);}
+ for(const count of [2,3]){
+  assert.equal(api.getWorld(count,'teacher-trained-v2'),api.worldByPlayers[count]);
+  assert.notEqual(api.getGuided(count,'teacher-trained-v2'),api.worldByPlayers[count]);
+  assert.equal(api.getGuided(count,'teacher-trained-v2').data.layers,api.worldByPlayers[count].data.layers);
+  assert.equal(api.getGuided(count,'teacher-trained-v2').data.valueModel,api.teacherWorld.data.valueModel);
+  assert.equal(api.readyFor(['guided'],count),true);assert.equal(api.readyFor(['human'],count),true);
+ }
  assert.equal(api.readyFor(['guided','world'],4),true);
- for(const kind of ['guided','world']){
-  const c=Object.create(api.Controller.prototype);c.state=Sim.create(4,4423);c.kinds=Array(4).fill(kind);
+ for(const count of [2,3,4])for(const kind of ['guided','world']){
+  const expected=kind==='guided'?api.getGuided(count,'teacher-trained-v2'):api.getWorld(count,'teacher-trained-v2');
+  const c=Object.create(api.Controller.prototype);c.state=Sim.create(count,4423);c.kinds=Array(count).fill(kind);
   c.profile='teacher-trained-v2';c.strategy='human-card-v2';c.refresh=()=>{};c.ui={showToast:m=>assert.fail(m)};c.apply=a=>assert.doesNotThrow(()=>Sim.step(c.state,a));
-  c.move();assert.equal(plans.at(-1).world,api.teacherWorld);
+  c.move();assert.equal(plans.at(-1).world,expected);
   if(kind==='guided')assert.equal(plans.at(-1).strategy,'human-card-v2');
-  c.inspect();assert.equal(plans.at(-1).world,api.teacherWorld);assert.ok(c.preview.branches.length);
+  c.inspect();assert.equal(plans.at(-1).world,expected);assert.ok(c.preview.branches.length);
  }
 });
 test('exported teacher value predictions agree with the Python fixture and frozen protocol',()=>{

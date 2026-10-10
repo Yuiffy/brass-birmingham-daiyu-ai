@@ -2289,3 +2289,19 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
 - Experiment controls, rule details and benchmark explanations are collapsed under advanced options. Existing automatic matches remain available.
 - Verified desktop/mobile screenshots, profile/count label changes, no selection reset on profile change, all-human and mixed games, plus standard web-game client. Teacher pause/step/inspect/execute/resume/double-rail smoke passes; no browser console errors. Full Node suite: 85 passed.
 - Vercel Git project uses brass-sim on main. Deployment updates automatically after this UI delivery; model weights/training evidence remain unchanged.
+
+## 2026-10-10 all-player teacher transfer and browser benchmark (active)
+
+- User request: expand strongest learning-enhanced profile to 2-4 players and measure every browser AI; concurrent UI work belongs to another chat and must be preserved when synchronizing main.
+- Isolated branch codex/all-player-ai-benchmarks. Teacher guided 2P/3P transfers only the frozen 4P value head and card strategy; real-engine transitions remain authoritative. Native per-player pure world agents unchanged. No neural retraining or default promotion.
+- Frozen benchmark running: 60 browser combinations, 38 unique configurations, 32 independent full self-play games each (1,216 total); every action trace replay-audited for legality, terminal VP/cash/income. No source/model tuning during evaluation.
+- Full Node suite passed 85 tests; targeted runtime checks include actual 2P/3P/4P teacher move/inspection and native world routing. All 11 model SHA-256 values match Git blobs; frozen-sources.zip preserves 14 execution sources' original bytes.
+- Remaining: finish final jobs, publish result tables, run all-option browser smoke and standard skill client, inspect screenshots, synchronize remote UI changes, commit/push/merge and confirm Vercel deployment SHA.
+
+## 2026-10-10 all browser AI scores complete
+
+- Finished all 38 frozen configurations / 60 browser combinations: 1,216 complete games, 127,264 replayed legal actions, all terminal VP/cash/income matches. Every option now shows a measured average for current rules/count/profile.
+- Economy teacher guided means: 2P 163.40625 (game-bootstrap 95% CI 156.421875-169.421875); 3P 151.9166667 (148.6666667-154.9791667); 4P 128.25 (125.8828125-130.515625). Guide means 156.203125 / 140.7291667 / 120.40625. Self-play results do not certify human match strength.
+- Browser smoke passed all 60 labels and teacher 2P/3P/4P actual play/pause/step/inspect/rethink/execute; mobile 375px has no horizontal overflow; no console errors. Standard skill client passed. Desktop, mobile and per-player inspection screenshots viewed.
+- Tests exercised the static /ai-lab/ package on local port 8098. Packaging supports a separate Vercel frontend alongside concurrent original Rust UI restoration; do not replace the homepage or move project root back to brass-sim.
+- Public evidence: docs/browser-ai-benchmarks.md; world_model/experiments/browser-options-20261010 protocol, summaries, raw traces, frozen source zip and browser-verification.json. Reusable UI check: scripts/browser-options-smoke.cjs.

@@ -1,0 +1,828 @@
+{
+  "version": 1,
+  "gamesPerConfig": 32,
+  "seed": 620260101,
+  "depth": 2,
+  "width": 8,
+  "entries": [
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/2/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/3/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/4/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/4/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/4/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "heuristic",
+      "key": "economy-v2/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "search",
+      "key": "economy-v2/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "neural",
+      "key": "economy-v2/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "world",
+      "key": "economy-v2/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/2/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "heuristic",
+      "key": "economy-v2/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "search",
+      "key": "economy-v2/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "neural",
+      "key": "economy-v2/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "world",
+      "key": "economy-v2/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/2/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/2/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "heuristic",
+      "key": "economy-v2/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "search",
+      "key": "economy-v2/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "neural",
+      "key": "economy-v2/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "world",
+      "key": "economy-v2/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/3/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "heuristic",
+      "key": "economy-v2/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "search",
+      "key": "economy-v2/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "neural",
+      "key": "economy-v2/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "world",
+      "key": "economy-v2/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/3/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/3/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "heuristic",
+      "key": "economy-v2/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "search",
+      "key": "economy-v2/4/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "neural",
+      "key": "economy-v2/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "world",
+      "key": "economy-v2/4/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/4/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "heuristic",
+      "key": "economy-v2/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "search",
+      "key": "economy-v2/4/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "neural",
+      "key": "economy-v2/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "world",
+      "key": "economy-v2/4/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/4/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/4/search/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/4/world/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/4/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    }
+  ],
+  "jobs": [
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 2,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/2/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 3,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/3/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "heuristic",
+      "key": "legacy-v1/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "search",
+      "key": "legacy-v1/4/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "neural",
+      "key": "legacy-v1/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "world",
+      "key": "legacy-v1/4/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "legacy-v1",
+      "players": 4,
+      "profile": "",
+      "type": "guided",
+      "key": "legacy-v1/4/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/2/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/2/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/2/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/2/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/2/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/2/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 2,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/2/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/3/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/3/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/3/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/3/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/3/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/3/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 3,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/3/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "heuristic",
+      "key": "economy-v2/4/heuristic/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "search",
+      "key": "economy-v2/4/search/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "neural",
+      "key": "economy-v2/4/neural/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "world",
+      "key": "economy-v2/4/world/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "",
+      "type": "guided",
+      "key": "economy-v2/4/guided/standard",
+      "effective": ""
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "human-guide-v1",
+      "type": "guided",
+      "key": "economy-v2/4/guided/human-guide-v1",
+      "effective": "human-guide-v1"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "search",
+      "key": "economy-v2/4/search/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "world",
+      "key": "economy-v2/4/world/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    },
+    {
+      "rules": "economy-v2",
+      "players": 4,
+      "profile": "teacher-trained-v2",
+      "type": "guided",
+      "key": "economy-v2/4/guided/teacher-trained-v2",
+      "effective": "teacher-trained-v2"
+    }
+  ],
+  "sourceAndModelSHA256": {
+    "browser_benchmark.js": "65c735ec5a33dc23334585d057861d2563accc29fa87af070d9751509071f6ec",
+    "runtime_models.js": "55254bcfaea766f2c1b428bc61ef38cf0a6b0b980d67ba3e486552b5dc6b87b7",
+    "planner.js": "902c6c96bf71c31189d012ac3f42aedbb3462bfc84e213691eff5110c1a13a15",
+    "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+    "production_chain.js": "421581540cce6f2947841376b060cb3920a30e3e80816111925a6ff04da9176e",
+    "human_intent.js": "58456ab3934e4785fa9d3212e7aa5b9b79e274c0da2bf265e9951a859e0abbe4",
+    "simulator.js": "222e785002dd67446f480d58cc785f0a39dad1eae27759c7069702d5995ac8ff",
+    "encoding.js": "62cdfd94001b23d1651c6d75edaf7ebe56de7ecf92dc5b7a9404d3906750f725",
+    "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "inference.js": "af1230f91a134298dfba76237c0ea93eed4eb0abf96a995f609c73ed915cdd4e",
+    "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+    "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893",
+    "models/world-model.json": "4ebb5e7cf5ead3f30aa6ff102d7d885796f97c32c44cd134a838c009f00de05c",
+    "models/neural-policy.json": "3cef0edf2cb93565e2cd376cfc8fbaa23bf51b0593f29a8240d4a1b4798b83ca",
+    "experiments/human-teacher-20261009/models/world-model.json": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+    "experiments/dynamics-2p-active/models/world-model.json": "2f383f7f3eb9072369da645b35c8de6d35b2c6e58d8397ac75fae820148cb489",
+    "experiments/dynamics-3p-active/models/world-model.json": "453a8161496666882105753d2c7cb60ea2f4fe4da2fe74ac7de86e96f9cd2708",
+    "experiments/economy-20260920/2p/direct/world-model.json": "75f5e05f8ad6fdc62aca0df8a331bd2ddc049595cc435c7364332cf7bf1042f0",
+    "experiments/economy-20260920/2p/direct/neural-policy.json": "bae6218e57b6c44f3ec108a5006175835585f58ff1cd497b3c0b87048349859f",
+    "experiments/economy-20260920/3p/direct/world-model.json": "4a556e1e04d2d65b62430c147fa7f267da20fea6461f6eb01c5d527802e41076",
+    "experiments/economy-20260920/3p/direct/neural-policy.json": "9289866ad6d756a143daeb50ce99a5e59246182b929db02fc63aa965f8fb86d7",
+    "experiments/economy-20260920/4p/direct/world-model.json": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+    "experiments/economy-20260920/4p/direct/neural-policy.json": "5a99c07b7deace017c84be220c0ef6272a85f8a7f30b605effa48fa4a3930cff"
+  },
+  "methodology": "All seats use the same AI. Each game has a distinct seed; identical-policy seat rotations are not duplicated. Bootstrap resamples complete games, never individual seats.",
+  "transfer": "2P/3P guided teacher uses the frozen 4P value head and card-retention strategy with real-engine transitions. Native 2P/3P world agents remain unchanged. No additional neural training.",
+  "notes": [
+    "Legacy and economy scores are incomparable. Self-play scores do not predict scores against humans or certify official rules.",
+    "Identical runtime options share one measured result; every browser combination has an explicit mapping."
+  ]
+}
