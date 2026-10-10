@@ -2,6 +2,7 @@
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { listSavedGames, loadGame, newGame } from '$lib/api';
 	import type { SavedGameSummary } from '$lib/api';
+	import { logs } from '$lib/store';
 	import { History, Play } from 'lucide-svelte';
 
 	const dispatch = createEventDispatcher<{ started: void; replay: number }>();
@@ -12,6 +13,7 @@
 	let savedGames: SavedGameSummary[] = [];
 	let loadingGames = false;
 	let loadingError = '';
+	$: requestError = $logs.find(message => /^(Error:|Server error:|Network error:|Empty response)/.test(message));
 
 	function formatCreatedAt(createdAt: number | string) {
 		const fromString = typeof createdAt === 'string' ? Number(createdAt) : createdAt;
@@ -72,6 +74,9 @@
 <div class="setup">
 	<h1>Brass Birmingham</h1>
 	<p>AI：学习增强 v2 · 支持 2～4 人</p>
+	{#if requestError}
+		<p class="seed-error" role="alert">{requestError}</p>
+	{/if}
 
 	<div class="tabs">
 		<button class:active={activeTab === 'new'} on:click={() => switchTab('new')}>New Game</button>
