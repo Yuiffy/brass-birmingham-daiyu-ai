@@ -10,6 +10,14 @@
 
 ## Economy calibration experiment
 
+The calibrated game also offers an experimental human-guide strategy for `guided` search:
+open `/?rules=economy-v2&strategy=human-guide-v1`, then select guided players.
+It combines the frozen value network with action-efficiency guidance and legal double rails.
+See [sources, independent four-player results and reproduction](docs/human-strategy-research.md).
+The arena displays both fixed-opponent results and candidate self-play.
+
+A further opt-in four-player profile is available at `/?rules=economy-v2&strategy=teacher-trained-v2`. It combines synthetic-teacher value training with card retention; retrained dynamics support ordered double rails and brewery identity. Independent self-play improves, but fixed-opponent gain remains uncertain, so this stays experimental. See [training, frozen match results and human-data limits](docs/human-teacher-training-results.md) and [packaged reproduction evidence](world_model/experiments/human-teacher-20261009/reproducibility/README.md).
+
 The optional `/?rules=economy-v2` game and `/arena.html?rules=economy-v2` arena separate corrected income, loans, era flow, market supply and multi-sale handling from historical training. They use a distinct model schema and fresh data. This remains a partial rules calibration, not a complete official-rules implementation. See [scope and limitations](docs/economy-calibration.md) and [independent score comparisons](docs/economy-training-results.md). The default URL preserves the historical rules and mature checkpoints.
 
 ## World Model / AI Imagination MVP
@@ -28,7 +36,7 @@ The current model was trained with geographic scoring features and additional ga
 The latest replay continuation and search ablations are recorded in [next-round training](docs/next-training.md); candidates are kept separate until they pass independent seed groups.
 The game now selects trained dynamics for 2, 3, or 4 players automatically. The demo uses only guided/world agents, and the current strong lineup in the arena supports all three player counts. The 2P/3P models gained 19.54 / 12.13 mean VP with fixed guided opponents in independent paired tournaments; 4P retains the existing weights. See [small-player training and runtime integration](docs/small-player-dynamics.md).
 
-Git includes the current 2P/3P/4P checkpoints, the historical checkpoints selectable in the arena, and their evaluation reports. Raw replay datasets and other local candidate checkpoints are not included; older experiment documents also reference those local artifacts. Playing the game requires only Node.js 18 or newer. Training additionally requires Python and `world_model/requirements.txt`.
+Git includes the current 2P/3P/4P checkpoints, the historical checkpoints selectable in the arena, and their evaluation reports. The 2026-10-09 synthetic teacher experiment also includes compressed datasets and frozen source snapshots. Older raw replay datasets and other local candidate checkpoints are not included; older experiment documents also reference those local artifacts. Playing the game requires only Node.js 18 or newer. Training additionally requires Python and `world_model/requirements.txt`.
 
 The original game and autorun instructions follow below.
 

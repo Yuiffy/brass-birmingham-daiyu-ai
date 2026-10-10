@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-10-09T15:43:52.443Z",
+  "candidate": "trainedcards",
+  "incumbent": "human",
+  "modelSHA256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+  "candidateModelSHA256": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+  "sourceSHA256": {
+    "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+    "production_chain.js": "421581540cce6f2947841376b060cb3920a30e3e80816111925a6ff04da9176e",
+    "planner.js": "fbfa0c1ec187e9bd660eb7ceb46dfec749faf65a0813316b29335f5dd04e1b27",
+    "simulator.js": "e0c815128211abebdb3e875cced6f37ed0c12553a6e73ed47efccbffb7e5ae82",
+    "encoding.js": "62cdfd94001b23d1651c6d75edaf7ebe56de7ecf92dc5b7a9404d3906750f725",
+    "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "inference.js": "14c9beef87834d8a58cc4cddd42a650c97700cf3c00671de968547b3872e5469",
+    "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+    "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893",
+    "human_benchmark.js": "b8f53beeb535f9cae0dd9d19ec241be58523319008e75c936e006115635e9ce6"
+  },
+  "fixedOpponents": {
+    "independentGroups": 30,
+    "meanVP": 127.84166666666667,
+    "meanVP95CI": [
+      125.23333333333333,
+      130.45
+    ],
+    "atLeast140": 0.23333333333333334,
+    "atLeast14095CI": [
+      0.16666666666666666,
+      0.3
+    ],
+    "atLeast150": 0.09166666666666666,
+    "atLeast15095CI": [
+      0.05,
+      0.13333333333333333
+    ]
+  },
+  "candidateSelfPlay": {
+    "independentGroups": 30,
+    "meanVP": 130.96666666666667,
+    "meanVP95CI": [
+      127.51666666666667,
+      134.2
+    ],
+    "atLeast140": 0.325,
+    "atLeast14095CI": [
+      0.25,
+      0.4
+    ],
+    "atLeast150": 0.15833333333333333,
+    "atLeast15095CI": [
+      0.10833333333333334,
+      0.20833333333333334
+    ]
+  },
+  "incumbentSelfPlay": {
+    "independentGroups": 30,
+    "meanVP": 123.675,
+    "meanVP95CI": [
+      120.81666666666666,
+      126.63333333333334
+    ],
+    "atLeast140": 0.16666666666666666,
+    "atLeast14095CI": [
+      0.1,
+      0.23333333333333334
+    ],
+    "atLeast150": 0.03333333333333333,
+    "atLeast15095CI": [
+      0.008333333333333333,
+      0.06666666666666667
+    ]
+  },
+  "pairedGain": {
+    "meanVP": 4.166666666666667,
+    "meanVP95CI": [
+      -0.175,
+      8.55
+    ]
+  },
+  "selfPlayGain": {
+    "meanVP": 7.291666666666667,
+    "meanVP95CI": [
+      3.025,
+      11.658333333333333
+    ]
+  },
+  "under100": {
+    "mixed": 0.041666666666666664,
+    "selfplay": 0.058333333333333334,
+    "incumbent": 0.075
+  },
+  "supported": {
+    "improvementOverIncumbent": false,
+    "selfPlayImprovement": true,
+    "tailNotWorse": true,
+    "stable140": false,
+    "stable150": false
+  },
+  "notes": [
+    "Whole independent seed groups bootstrap; identical self-play rotations are correlated.",
+    "Current human-guide-v1 is the opponent and reference, not the weak historical guided agent.",
+    "All hands public; synthetic teacher training does not establish human match strength."
+  ]
+}

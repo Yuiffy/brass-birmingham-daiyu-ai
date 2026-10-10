@@ -1,0 +1,30 @@
+{
+  "developmentSeeds": {
+    "intent": 79100113,
+    "world": 79120113
+  },
+  "developmentGames": 16,
+  "intentWeights": [
+    0,
+    0.5,
+    1,
+    2
+  ],
+  "developmentCriterion": "Highest mixed candidate mean among positive prior weights, with under100 fraction no more than baseline + .05; otherwise .5 diagnostic, no promotion.",
+  "incumbent": "teacher-trained-v2 plus human-card-v2; f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+  "finalSettings": {
+    "games": 120,
+    "groups": 30,
+    "depth": 2,
+    "width": 8,
+    "knowledgeWeight": 0.8
+  },
+  "finalCriteria": [
+    "paired fixed-opponent score and whole-group CI",
+    "selfplay gain",
+    "under100 tail",
+    "runtime",
+    "world comparison"
+  ],
+  "policy": "Freeze all candidates and sources before generating fresh final seeds. Never tune after holdout. Optional human prior does not imply stronger play or hidden-information certification."
+}

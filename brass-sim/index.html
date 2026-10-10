@@ -31,14 +31,24 @@
                     <div class="player-name-inputs"></div>
                 </div>
 
-                <label class="ai-enable"><input id="ai-enabled" type="checkbox" checked> 启用 AI 实验模块</label>
-                <p id="rules-status" class="ai-note">历史训练规则：含额外终局收入分。</p>
-                <p class="ai-note"><a href="?rules=economy-v2">经济规则校准版（实验）</a> · <a href="?rules=legacy-v1">历史训练版</a></p>
+                <p class="ai-note">每个座位可选人类或 AI。自己选“人类玩家”，电脑对练建议选“学习增强 AI”。</p>
+                <label class="ai-note">AI 版本
+                    <select id="guided-strategy"><option value="">原版</option><option value="human-guide-v1">攻略增强（实验）</option><option value="teacher-trained-v2">教师训练＋保牌（四人实验）</option></select>
+                </label>
                 <p id="model-status" class="ai-note" role="status">正在加载训练权重…</p>
-                <p class="ai-note">实验 AI 可见所有当前手牌，无法读取未来牌序。世界模型会自动选择对应 2 / 3 / 4 人的训练权重。</p>
+                <p class="ai-note">括号为当前人数与版本的已存测试均分，仅供选对手参考；实际得分随对手和局面变化。</p>
+                <details class="ai-setup-details">
+                    <summary>测试说明与高级选项</summary>
+                    <p id="ai-score-evidence" class="ai-note"></p>
+                    <a id="ai-score-source" class="ai-note" href="docs/higher-scores.md">查看均分来源</a>
+                    <p class="ai-note">“均分待测”表示没有对应测试记录。世界模型 AI 用于研究预测，日常对练建议选学习增强 AI。</p>
+                    <p id="rules-status" class="ai-note">历史训练规则：含额外终局收入分。</p>
+                    <p class="ai-note"><a href="?rules=economy-v2">经济规则校准版</a> · <a href="?rules=legacy-v1">历史训练版</a></p>
+                    <p class="ai-note">AI 可见所有当前手牌，无法读取未来牌序。当前规则仍非完整官方规则，模拟器均分不代表真人赛事水平。</p>
+                    <button id="ai-demo-btn" class="ai-button">观看电脑自动对战</button>
+                    <a href="arena.html" class="ai-link">AI 测试页：看成绩与预测误差（不影响正常对局）</a>
+                </details>
                 <button id="start-game-btn" class="btn-primary">Begin Game</button>
-                <button id="ai-demo-btn" class="ai-button">学习增强搜索 / 世界模型自动对战</button>
-                <a href="arena.html" class="ai-link">AI 对战实验室 · 模型评估</a>
             </div>
         </div>
     </div>
@@ -230,8 +240,11 @@
     <script src="world_model/encoding.js"></script>
     <script src="world_model/value_features.js"></script>
     <script src="world_model/inference.js"></script>
+    <script src="world_model/human_strategy.js"></script>
+    <script src="world_model/production_chain.js"></script>
     <script src="world_model/planner.js"></script>
     <script src="world_model/runtime_models.js"></script>
+    <script src="js/aiLabels.js"></script>
     <script src="js/aiController.js"></script>
     <script src="js/main.js"></script>
 </body>

@@ -26,8 +26,14 @@ test('calibrated game loads correct policy schema and routes guided moves indepe
  for(const players of [2,3,4])for(const type of ['guided','world']){
   assert.equal(api.readyFor([type],players),true);const controller=Object.create(api.Controller.prototype);
   controller.state=Sim.create(players,2);controller.kinds=Array(players).fill(type);controller.refresh=()=>{};controller.ui={showToast:message=>assert.fail(message)};controller.apply=a=>assert.ok(a);
-  controller.move();assert.equal(plans.at(-1).world,type==='guided'?api.getGuided(players):api.getWorld(players));
+ controller.move();assert.equal(plans.at(-1).world,type==='guided'?api.getGuided(players):api.getWorld(players));
  }
+ const controller=Object.create(api.Controller.prototype);
+ controller.state=Sim.create(4,31);controller.kinds=Array(4).fill('guided');controller.strategy='human-guide-v1';
+ controller.refresh=()=>{};controller.ui={showToast:message=>assert.fail(message)};controller.apply=a=>assert.ok(a);
+ controller.move();assert.equal(plans.at(-1).strategy,'human-guide-v1');
+ controller.inspect();assert.equal(plans.at(-1).type,'guided');assert.equal(plans.at(-1).strategy,'human-guide-v1');
+ assert.equal(controller.preview.type,'guided');assert.ok(controller.preview.branches.length);
 });
 test('calibrated worker uses the same accepted per-type models as the game',async()=>{
  const messages=[];let selected;

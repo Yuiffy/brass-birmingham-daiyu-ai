@@ -14,6 +14,24 @@ from train_value import targets
 
 
 class TrainingTests(unittest.TestCase):
+    def test_structured_reference_rejects_different_action_encoding(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from train_structured import train
+        class FakeDataset:
+            state_dim=2;action_dim=1;input_dim=3
+            def __init__(self,split,seed,encoding):
+                self.schema={'version':'test','fields':['a','b'],'actionEncoding':encoding}
+                self.games=[dict(split=split,seed=seed)];self.splits={'train':[0]}
+        ds=FakeDataset('train',1,'resource-network-v2')
+        validation=FakeDataset('validation',2,'resource-network-v2')
+        reference=FakeDataset('test',3,'legacy')
+        with tempfile.TemporaryDirectory() as tmp:
+            args=SimpleNamespace(data='train',validation_data='validation',out=tmp,epochs=1,batch_size=1,lr=.001,
+                replay=None,reference_data='reference',reference_weight=.25,reference_games=1,replay_stride=1,seed=42)
+            with patch('train_structured.Dataset',side_effect=[ds,validation,reference]):
+                with self.assertRaisesRegex(ValueError,'Reference action encoding mismatch'):train(args)
+
     def test_only_present_players_contribute_value_examples_and_opponent_targets(self):
         from train_value import active_samples
         schema=json.loads(subprocess.check_output(['node','-e',"console.log(JSON.stringify(require('./world_model/encoding').schema))"],cwd=Path(__file__).resolve().parents[1]))

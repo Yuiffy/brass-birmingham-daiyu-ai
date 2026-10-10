@@ -52,8 +52,10 @@ def train(args):
     heldout={g['seed'] for g in vds.games if g['split']!='train'}
     if heldout.intersection(g['seed'] for g in games):raise ValueError('Held-out seed leakage')
     if ds.schema['fields']!=vds.schema['fields']:raise ValueError('Validation schema mismatch')
+    if ds.schema.get('actionEncoding','legacy')!=vds.schema.get('actionEncoding','legacy'):raise ValueError('Validation action encoding mismatch')
     if reference:
         if ds.schema['fields']!=reference.schema['fields']:raise ValueError('Reference schema mismatch')
+        if ds.schema.get('actionEncoding','legacy')!=reference.schema.get('actionEncoding','legacy'):raise ValueError('Reference action encoding mismatch')
         if {g['seed'] for g in reference.games if g['split']!='train'}&{g['seed'] for g in games}:raise ValueError('Reference held-out seed leakage')
     inherited={};base_epoch=0;restored={}
     if args.resume:
@@ -83,7 +85,8 @@ def train(args):
         metadata=dict(inherited,epoch=epoch,seed=args.seed,observation=ds.schema['observation'],
             datasetGames=ds.schema['games']+(replay.schema['games'] if replay else 0),trainingGames=len(games),trainingRows=mixture.size,
             selectionMetric='Weighted validationMSE + 0.1 * three-step validation MSE' if reference else 'validationMSE + 0.1 * three-step validation MSE',
-            dynamicsReplay=dict(primary=args.data,replay=args.replay,replayStride=args.replay_stride,rows=[len(rows) for rows in mixture.rows]) if replay else None)
+            dynamicsReplay=dict(primary=args.data,replay=args.replay,replayStride=args.replay_stride,rows=[len(rows) for rows in mixture.rows]) if replay else None,
+            actionEncoding=ds.schema.get('actionEncoding','legacy'))
         if args.resume and epoch==base_epoch:metadata=dict(artifact)
         write_json(out/'world-model.json',model.export(**metadata))
         for name,component in [('delta',model.delta),('gate',model.gate),('control',model.control)]:component.save_optimizer(out/(name+'-optimizer.npz'))

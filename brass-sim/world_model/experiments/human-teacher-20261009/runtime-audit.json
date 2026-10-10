@@ -1,0 +1,48 @@
+{
+  "runtimeSHA256": {
+    "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+    "production_chain.js": "421581540cce6f2947841376b060cb3920a30e3e80816111925a6ff04da9176e",
+    "planner.js": "fbfa0c1ec187e9bd660eb7ceb46dfec749faf65a0813316b29335f5dd04e1b27",
+    "simulator.js": "e0c815128211abebdb3e875cced6f37ed0c12553a6e73ed47efccbffb7e5ae82",
+    "encoding.js": "62cdfd94001b23d1651c6d75edaf7ebe56de7ecf92dc5b7a9404d3906750f725",
+    "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "inference.js": "af1230f91a134298dfba76237c0ea93eed4eb0abf96a995f609c73ed915cdd4e",
+    "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+    "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893",
+    "human_benchmark.js": "b8f53beeb535f9cae0dd9d19ec241be58523319008e75c936e006115635e9ce6"
+  },
+  "frozenSHA256": {
+    "human_strategy.js": "a10f5f9c95f19e716f86f12603a4f2175b8013bc53464c966d8958d9a90e9861",
+    "production_chain.js": "421581540cce6f2947841376b060cb3920a30e3e80816111925a6ff04da9176e",
+    "planner.js": "fbfa0c1ec187e9bd660eb7ceb46dfec749faf65a0813316b29335f5dd04e1b27",
+    "simulator.js": "e0c815128211abebdb3e875cced6f37ed0c12553a6e73ed47efccbffb7e5ae82",
+    "encoding.js": "62cdfd94001b23d1651c6d75edaf7ebe56de7ecf92dc5b7a9404d3906750f725",
+    "value_features.js": "f455f80ffcd6a7fbcd80b31b73bdf45402f58beb34039afa09c25e8275f5e6e3",
+    "inference.js": "14c9beef87834d8a58cc4cddd42a650c97700cf3c00671de968547b3872e5469",
+    "../js/gameLogic.js": "eee3a0467bc3e2f620489ab94eaf62c7ad40479b937efa5d22e3fc68c2cb9c2f",
+    "../js/gameState.js": "d46c95ab18f015f8c6b9925fa135ec52eae7f1fb6e664883009c19200087e143",
+    "../js/gameData.js": "c33e64a83f3b0eace3fff4e2b103ad75d8c9ae65f07a0ff77525b5318b90166a",
+    "../scripts/autorun.js": "8e45e1d8dd3276b00ef3d5cc745dd81e668607452bce324b96011e9cbbed6893",
+    "human_benchmark.js": "b8f53beeb535f9cae0dd9d19ec241be58523319008e75c936e006115635e9ce6"
+  },
+  "changed": [
+    "inference.js"
+  ],
+  "change": "Reject unknown model action encoding only; accepted weights and numerical inference unchanged",
+  "models": {
+    "incumbent": {
+      "sha256": "d018dec0706753331aae1da449406522865e23c481c63065c40e7bb785a08dbd",
+      "checkedStates": 433,
+      "exactPredictionAgreement": true,
+      "exactValueAgreement": true
+    },
+    "candidate": {
+      "sha256": "f690e0d626e97ab959bda4e0b8da5396664c4df20cc43ef605e7102a8e3b96ed",
+      "checkedStates": 433,
+      "exactPredictionAgreement": true,
+      "exactValueAgreement": true
+    }
+  }
+}

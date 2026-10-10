@@ -1,0 +1,13 @@
+{
+  "phase":"frozen-holdout",
+  "developmentSeeds":[209100001,209109974],
+  "fixedOpponentAndPairedBaseline":{"seed":209900001,"groups":30,"games":120},
+  "candidateSelfPlay":{"seed":210900001,"groups":30,"games":120},
+  "depth":2,"width":8,"knowledgeWeight":0.8,
+  "strategy":"human-guide-v1",
+  "target":{"meanVP":140,"fractionAtLeast140":0.8,"fractionAtLeast150":0.8},
+  "targetInterpretation":"Stable 140 and stable 150 are evaluated separately by their threshold fractions; no human mastery inference.",
+  "promotion":"Keep as explicit experimental option. No default or model-weight replacement.",
+  "confidence":"95% bootstrap interval over complete independent seed groups, 10000 draws. Mixed human compared with baseline-all at matching seed and seat.",
+  "sourceFreeze":"Benchmark hashes all computational source files and immutable weights before and after running; refuse changed runs. No tuning on holdout seeds."
+}

@@ -1,5 +1,41 @@
 Original prompt: 我想找一个工业革命伯明翰的顶级AI进行人机对练或者观察ai局，来提升我的伯明翰实力。你帮我找找有没有现成的，没有的话找找有没有开源游戏我们拿来自己训练，还没有的话我们看规则书开发一个游戏然后练ai。我们项目里有ai训练经验。
 
+## 2026-10-09 teacher training and strategy experiments
+
+- Executed docs/human-replay-next-experiment.md on codex/brass-human-strategy; preserve the unrelated Manila checkout.
+- Engine-based financing/production chains implemented and tested but did not beat the incumbent in development; retained experimental profiles.
+- Teacher: 160 synthetic human-guide-v1 self-play games, 128/16/16 whole-game split; no human training rows. Audited 10,874 extra legal training-only doubles.
+- Explicit resource-network-v2 encoding captures rail order/brewery source. Value trained 48 epochs, dynamics 40; immutable candidate hash in protocol.json.
+- Original 16-game prediction test reused for encoding design, relabeled development. New 40-game prediction holdout fully audited after model freeze: value RMSE 59.90 -> 11.91 VP; double link exact 0 -> 62.70%.
+- Formal 360 games completed, 30 fresh seed groups per setting: old selfplay 123.675, candidate selfplay 130.967, candidate vs three incumbent 127.842. Paired fixed gain +4.17 CI [-.175,8.55], not confirmed; selfplay +7.29 CI [3.025,11.658]. No default promotion or post-holdout tuning.
+- World 40-game mixed comparison completed: new 45.70, old 38.125; still poor. Public hands / partial JS rules do not establish tabletop or human strength.
+- New opt-in teacher-trained-v2 UI; only four-player AI. Browser pause/step/inspect/rethink/execute/resume/double preview verified; screenshots inspected; no console errors. Standard skill client also passed.
+- Full 76 Node + 11 Python tests pass. Published dataset/source snapshots verify and unpack all 20 manifest artifacts; additional runtime guard audit checks equivalent accepted inference.
+- Results, reproducibility, evidence limitations and remaining causal diagnostics in brass-sim/docs/human-teacher-training-results.md.
+- Remaining delivery: verify final staged evidence, commit/push same branch, update draft PR #1, verify remote SHA. Real expert replay acquisition, complete official/hidden-information rules and unsold/development causal attribution remain follow-up research, not claims of this release.
+
+## 2026-10-09 active goal: human strategy for guided search
+
+User goal: 我看网上都是说稳140 150分的。你去看他们的攻略或者教程，也可以看B站的视频教程或者比赛对局，学习他们的经验用到我们的学习增强搜索里，是不是就能达到他们的水平了？你试试
+
+- Working branch: `codex/brass-human-strategy`, managed worktree `brass-human-strategy`.
+- Research: read ChrisLuv, Erik Twice and Dave C / Skypray Huang guides; checked network rules.
+  Bilibili public API verifies the 150+ video's description says three CPU opponents; subtitles are absent.
+- Scope: calibrated JavaScript `guided` search, exact legal double rails, human action-efficiency guidance,
+  frozen-opponent comparisons and full candidate self-play on independent seeds. No human-level claim from VP alone.
+- Completed: atomic single/double network plans, canal own overbuild, same-type/higher-tier opponent overbuild;
+  source-derived strategy blends 80% guidance / 20% frozen learned value, root 64 / continuation 12.
+- Frozen holdout: 120 mixed + 120 baseline + 120 candidate self-play, 30 independent groups each.
+  Candidate mixed mean 121.61; candidate self-play 124.38; baseline self-play 78.28.
+  Paired gain +43.33 [39.97, 46.66] VP. Self-play >=140 19.17%, >=150 6.67%; stable targets NOT achieved.
+- UI: explicit experimental option in calibrated JavaScript guided search; inspection follows actual agent.
+  World dynamics / weights and Rust AI unchanged. Double preview uses real engine, not untrained dynamics.
+- Validation: 59 Node tests, 10 Python tests; provided Playwright client and four-player control/double-rail
+  smoke; screenshots inspected, controls verified. Arena final result table verified. Removed request for
+  absent calibrated prediction report (existing 404); explicitly shows that this report is unavailable.
+- Remaining research: financing / production-chain failures (heldout worst 71 VP), farm building, complete
+  resource/card/merchant choices, hidden hands and official map/industry audit. No further tuning on holdout.
+
 ## Product direction
 
 - Browser UI remains SvelteKit/TypeScript.
@@ -2210,3 +2246,46 @@ A restrained industrial drafting desk: the real board dominates, neutral graphit
   are announced through the existing live status region; closing pinned details restores focus.
 - Final production build and standard web-game startup client passed. Temporary backend 3012
   is stopped, and the normal preview remains on http://127.0.0.1:5176/ with API port 3011.
+
+## 2026-10-10 next training round (active)
+
+- PR #1 is merged at 8c69940; next work isolated on codex/brass-next-training.
+- Public native replays: six four-player human-vs-AI games fully legal and terminal, 372 human action-intent rows (248/62/62 whole-game train/validation/test). Expert status is unverified. Foreign final scores never become JS value targets.
+- Human public-feature MLP trained (best epoch 11); classification is not playing strength. Bounded optional root prior and settlement diagnostics being integrated and validated.
+- Old prediction holdout is now development diagnosis: next-player accuracy ~86%; new independent seeds required after candidate freeze.
+- Local private SQLite audit found no clean, complete usable trajectory. No private raw DB published.
+- Remaining: audit integrity/privacy/parity tests; development prior ablation; critical-field world training; freeze and independent games/predictions; document artifacts, push draft PR. No default promotion without evidence.
+
+## 2026-10-10 candidate freeze and independent evaluation
+
+- Public human prior selected weight .5 on four development seed groups. Critical categorical controls trained 100 epochs; prior prediction test is now development evidence (~86% -> 95% current-player exactness).
+- Frozen 53 source files and candidate models before fresh final seeds 217122949 (strategy), 218122949 (world), 219122949 (prediction). Protocol and frozen source archive saved in public-human-20261010.
+- Running 360 strategy games, 40 world comparison games, 40 new prediction trajectories. No tuning after final freeze. Results pending, no default promotion.
+- Tests: full 83 Node tests passed, then 2 new critical-control parity/pure-world tests passed; all 15 Python tests passed. Browser skill client plus teacher controls smoke passed; preview/execution screenshots inspected, no console errors.
+- Reference native replay audit includes exact source commit/tree and compiled JS module hashes. Private SQLite audit publishes aggregate anomalies only; zero accepted complete training trajectories.
+
+## 2026-10-10 next round complete (delivery pending)
+
+- 400 frozen games completed, plus 40 new independent synthetic prediction games / 4,960 transitions. All 400 recorded game traces replay-audited: 220 distinct seed/lineups, 27,280 legal actions, every terminal score and pre-settlement statistic matched.
+- Human intent vs three current teacher+cards: 131.433 VP, paired gain +3.667 CI [.10,7.117]. Selfplay 129.025 vs 127.767; gain +1.258 CI [-1.675,4.183], unconfirmed. Selfplay under100 2.5% vs 6.67%; >=140/150 fractions fell. Not stable140/150, no default promotion.
+- World control new/old mixed means 48.7/50.3, gain -1.6 CI [-12.625,8.225]; no playing-strength improvement. Independent next-player exactness 86.45% -> 95.04%, round 85.28% -> 97.02%. One-step control accuracy does not establish game improvement.
+- Public provenance, derived corpus, frozen models/sources, all compressed development/final games, new prediction data and validation manifests published in public-human-20261010. No private raw records or foreign implementation copied.
+- Tests: 85 unique Node tests (full suite 83 + new control 2), 15 Python tests; browser standard client and teacher controls, actual screenshot inspection, zero console errors.
+- Documentation: docs/public-human-training-results.md. Optional prior remains CLI-only; browser still previous teacher. Next investigations: action-specific board/resource/supply heads, stochastic future-card representation, more verified human games; use new holdouts if tuning again.
+- Remaining delivery: commit/push codex/brass-next-training, create draft PR, verify remote. Original Manila checkout untouched; PR #1 already merged.
+
+## 2026-10-10 remote delivery
+
+- Training/testing completed and pushed on codex/brass-next-training. Draft PR #2: https://github.com/Yuiffy/brass-birmingham-daiyu-ai/pull/2.
+- PR #1 remains merged on main (8c69940). New draft was not auto-merged; experimental prior/control artifacts do not replace browser defaults.
+- Published JSON metadata uses LF, and delivery-manifest hashes match Git blob bytes; frozen-source.zip preserves execution bytes independently of checkout line-ending conversions.
+- No outstanding work for this training/test round. Future tuning must treat this holdout as development and create new independent seeds.
+
+## 2026-10-10 simpler browser opponent setup
+
+- User request: label AI choices with measured mean VP and explain the AI experiment module; follow-up removes the redundant enable checkbox entirely.
+- Each seat's human/AI choice now determines controller creation. All-human games bypass model readiness and have no AI toolbar; mixed games retain controls.
+- Added readable labels with rounded benchmark averages keyed by rules, seat count and profile. Unsupported/unmeasured combinations explicitly say unmeasured/4P-only; source details distinguish self-play and mixed matchups. No model/default promotion.
+- Experiment controls, rule details and benchmark explanations are collapsed under advanced options. Existing automatic matches remain available.
+- Verified desktop/mobile screenshots, profile/count label changes, no selection reset on profile change, all-human and mixed games, plus standard web-game client. Teacher pause/step/inspect/execute/resume/double-rail smoke passes; no browser console errors. Full Node suite: 85 passed.
+- Vercel Git project uses brass-sim on main. Deployment updates automatically after this UI delivery; model weights/training evidence remain unchanged.

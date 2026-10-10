@@ -17,6 +17,11 @@
 > 经济规则校准版入口为 `http://127.0.0.1:8086/?rules=economy-v2`。
 > 详见[整合说明](docs/repository-consolidation.md)。
 
+JavaScript 学习增强搜索的攻略增强实验入口：
+`http://127.0.0.1:8086/?rules=economy-v2&strategy=human-guide-v1`。
+可选“学习增强搜索”棋手；[攻略来源和四人局测试](brass-sim/docs/human-strategy-research.md)
+说明本轮改动。此实验与 Rust AI 独立。
+
 `Brass Birmingham Daiyu AI` is an unofficial browser game and AI analysis project for
 **Brass: Birmingham**. It is a public AGPL-3.0 fork of
 [`artyom-morozov/fast_brass`](https://github.com/artyom-morozov/fast_brass), extending the Rust

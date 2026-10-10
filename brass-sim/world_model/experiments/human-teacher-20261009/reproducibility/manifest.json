@@ -1,0 +1,120 @@
+[
+  {
+    "file": "teacher-transitions/games.json",
+    "bytes": 47165,
+    "sha256": "f549b253f37542245d82038578d0d712ce77f528fb9555b4dee6ca3db6b5160e",
+    "originalSHA256": "f549b253f37542245d82038578d0d712ce77f528fb9555b4dee6ca3db6b5160e"
+  },
+  {
+    "file": "teacher-transitions/schema.json",
+    "bytes": 49178,
+    "sha256": "cbbc2bf47a958f483016726b5926fcd768fc3f34cc6d216c89727008d8ea6a56",
+    "originalSHA256": "cbbc2bf47a958f483016726b5926fcd768fc3f34cc6d216c89727008d8ea6a56"
+  },
+  {
+    "file": "teacher-transitions/splits.json",
+    "bytes": 107965,
+    "sha256": "daea9cb245ce3bcaf6e0bc86f6ca802e51d1592bffcbd7ea48613ce39c6df878",
+    "originalSHA256": "daea9cb245ce3bcaf6e0bc86f6ca802e51d1592bffcbd7ea48613ce39c6df878"
+  },
+  {
+    "file": "teacher-transitions/transitions.f32.gz",
+    "bytes": 2315320,
+    "sha256": "45be60153c266a6322a8578a5c8c59854f1c98d5cd4dc35e7ba48e803ad2432b",
+    "originalSHA256": "b75d16cfac69ccf63393487d53b41238832f5cd0f5c75f7b2e638e160ce2ae6c"
+  },
+  {
+    "file": "teacher-values/games.json",
+    "bytes": 26572,
+    "sha256": "fb454d5b3431d433ea33e9f1a12ac924fe8b8fc024a9beae7976efc7cc0fd601",
+    "originalSHA256": "fb454d5b3431d433ea33e9f1a12ac924fe8b8fc024a9beae7976efc7cc0fd601"
+  },
+  {
+    "file": "teacher-values/schema.json",
+    "bytes": 49014,
+    "sha256": "bf3177e69ed2edd5ac10958c411a4b61132e4fcc89cc7906e8e8fb4389b5bbe3",
+    "originalSHA256": "bf3177e69ed2edd5ac10958c411a4b61132e4fcc89cc7906e8e8fb4389b5bbe3"
+  },
+  {
+    "file": "teacher-values/states.f32.gz",
+    "bytes": 767425,
+    "sha256": "9c3db0cc1068887c520070b607bcae83b8fa5b7de7760ef1c8f97e65160fdcda",
+    "originalSHA256": "17c44d227df8de5afbd9c248d373c33e1a3b9b463f9bff28a6b5a7c98d5444af"
+  },
+  {
+    "file": "augmented-resource-v2/games.json",
+    "bytes": 47231,
+    "sha256": "81850cba014f4d76c1c3cda77a4aafb6d56619214a44d6c211c2d0fcbbc3a7db",
+    "originalSHA256": "81850cba014f4d76c1c3cda77a4aafb6d56619214a44d6c211c2d0fcbbc3a7db"
+  },
+  {
+    "file": "augmented-resource-v2/schema.json",
+    "bytes": 54052,
+    "sha256": "27b229aec691eb3c87c4f3560598b328e5c9f770b3765768d33fed3339fac3b5",
+    "originalSHA256": "27b229aec691eb3c87c4f3560598b328e5c9f770b3765768d33fed3339fac3b5"
+  },
+  {
+    "file": "augmented-resource-v2/splits.json",
+    "bytes": 173209,
+    "sha256": "94e7c620ca8e3f5fe99dc1948fbbd1ebe210e2752a675cff3a8a70328f916fc2",
+    "originalSHA256": "94e7c620ca8e3f5fe99dc1948fbbd1ebe210e2752a675cff3a8a70328f916fc2"
+  },
+  {
+    "file": "augmented-resource-v2/transitions.f32.gz",
+    "bytes": 3423886,
+    "sha256": "4cb9ab3d0d946dc1ed4ac7b58df70a8ff01821b9c86499c353ed2fb0fda2f2be",
+    "originalSHA256": "51cb3c007623a0698de2089e60dc6b4b18c6096419e67f080ddb405a09ec8c22"
+  },
+  {
+    "file": "frozen-teacher.zip",
+    "bytes": 97520,
+    "sha256": "cde355c0ca2b8eb4933aa5d587975b5b6703a0c99ded6238f97efc14e2f11334"
+  },
+  {
+    "file": "frozen-final.zip",
+    "bytes": 102339,
+    "sha256": "2574be8a1d02a87702ff6a40466a400abaf99d73766eb7440bc2757de2796075"
+  },
+  {
+    "file": "fresh-values/games.json",
+    "bytes": 6565,
+    "sha256": "43accb5ac18b38dd97f08a1e7cead4293b30c761a1ade8efc4f1ee6c21e98c37",
+    "originalSHA256": "43accb5ac18b38dd97f08a1e7cead4293b30c761a1ade8efc4f1ee6c21e98c37"
+  },
+  {
+    "file": "fresh-values/schema.json",
+    "bytes": 49012,
+    "sha256": "620956fecdfd0e9af0749afb448e277c43c26e3b66f17490cfd6d31290c0b756",
+    "originalSHA256": "620956fecdfd0e9af0749afb448e277c43c26e3b66f17490cfd6d31290c0b756"
+  },
+  {
+    "file": "fresh-values/states.f32.gz",
+    "bytes": 137192,
+    "sha256": "08a6bb44b9ae99ed092680a12041f2c19a721ec4ba573250849315dbcf0d60d3",
+    "originalSHA256": "45997272696f43403f048e3e7692f7e0b88aad4fa084d9cb42ab5886f43c6460"
+  },
+  {
+    "file": "fresh-reencoded-r2/games.json",
+    "bytes": 11654,
+    "sha256": "c01a54ef8b46052da9326e78a52d8c74a1dfff2c387a524678e0b7216e340958",
+    "originalSHA256": "c01a54ef8b46052da9326e78a52d8c74a1dfff2c387a524678e0b7216e340958"
+  },
+  {
+    "file": "fresh-reencoded-r2/schema.json",
+    "bytes": 49575,
+    "sha256": "932821512e8e320f4be64aa3c44f57b3e3b2e7a10808d8f52ee48314ce76a15a",
+    "originalSHA256": "932821512e8e320f4be64aa3c44f57b3e3b2e7a10808d8f52ee48314ce76a15a"
+  },
+  {
+    "file": "fresh-reencoded-r2/splits.json",
+    "bytes": 23727,
+    "sha256": "2d7461a71981bee0cbc7adb4caeb48f348602d45f15993737fa256a34e414bfb",
+    "originalSHA256": "2d7461a71981bee0cbc7adb4caeb48f348602d45f15993737fa256a34e414bfb"
+  },
+  {
+    "file": "fresh-reencoded-r2/transitions.f32.gz",
+    "bytes": 583109,
+    "sha256": "ec625c495af49ad95c61e73fd74cd5ccd943946676f966a31e937098ef7acdc7",
+    "originalSHA256": "b460c6dbe36c1823289d72e197cc3c4a767bddaafcbdf5ca7e01e01acf1a6657"
+  }
+]

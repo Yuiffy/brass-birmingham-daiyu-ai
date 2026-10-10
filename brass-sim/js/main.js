@@ -52,7 +52,7 @@ function renderPlayerInputs(count) {
             <div class="color-swatch" style="background: ${PLAYER_COLORS[i]}"></div>
             <input type="text" placeholder="${defaultNames[i]}" maxlength="20">
             <select class="player-ai-select" aria-label="Player ${i + 1} AI type">
-                ${Object.entries(BrassPlanner.TYPES).map(([value,label]) => `<option value="${value}" ${value==='guided'&&!window.BrassAI?.getWorld(count)?.valueLayers?'disabled':''}>${label}</option>`).join('')}
+                ${Object.keys(BrassPlanner.TYPES).map(value => `<option value="${value}" ${value==='guided'&&!window.BrassAI?.getWorld(count)?.valueLayers?'disabled':''}>${BrassAILabels.optionLabel(value,{players:count,profile:document.getElementById('guided-strategy').value,rules:globalThis.BRASS_RULES})}</option>`).join('')}
             </select>
         `;
         container.appendChild(div);
@@ -65,6 +65,7 @@ function renderPlayerInputs(count) {
 
 function startGame(numPlayers, playerNames, kinds = []) {
     window.brassController?.dispose();
+    window.brassController = null;
     uiManager?.events.abort();
     // Switch screens
     document.getElementById('setup-screen').classList.remove('active');
@@ -89,7 +90,7 @@ function startGame(numPlayers, playerNames, kinds = []) {
     window.render_game_to_text = () => JSON.stringify(gameState.toJSON(), null, 2);
     window.gameState = gameState;
     window.gameLogic = gameLogic;
-    if (document.getElementById('ai-enabled').checked) {
+    if (kinds.some(kind => kind !== 'human')) {
         window.brassController = new BrassAI.Controller(gameState, uiManager, kinds);
     }
 }
