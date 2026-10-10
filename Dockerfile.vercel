@@ -1,0 +1,21 @@
+FROM node:24-bookworm-slim AS ui
+WORKDIR /build/ui
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci
+COPY ui/ ./
+ENV VITE_BRASS_BROWSER_SESSIONS=true
+RUN npm run build
+
+FROM rust:1.88-bookworm AS engine
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+COPY --from=ui /build/ui/build ./ui/build
+RUN cargo build --locked --release --features cloud-ui --bin fast_brass
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=engine /build/target/release/fast_brass /usr/local/bin/fast_brass
+ENV FAST_BRASS_DB_PATH=/tmp/brass-unused.sqlite3
+EXPOSE 80
+CMD ["fast_brass", "80"]

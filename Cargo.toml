@@ -10,6 +10,7 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 default = []
+cloud-ui = []
 python-bindings = ["dep:pyo3", "pyo3/abi3-py38", "pyo3/auto-initialize"]
 python-extension = ["python-bindings", "pyo3/extension-module"]
 

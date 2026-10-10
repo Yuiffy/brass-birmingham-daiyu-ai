@@ -1,4 +1,5 @@
 pub mod analysis;
+mod browser;
 mod model_inference;
 pub mod serialize;
 
@@ -118,6 +119,11 @@ struct GameListItem {
 #[prefix = "/"]
 struct Assets;
 
+#[cfg(feature = "cloud-ui")]
+#[derive(Embed)]
+#[folder = "ui/build/"]
+struct UiAssets;
+
 pub async fn start_server(port: u16) {
     let db_path = std::env::var("FAST_BRASS_DB_PATH").unwrap_or_else(|_| {
         let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -141,7 +147,9 @@ pub async fn start_server(port: u16) {
         analysis_session: None,
     }));
 
+    #[cfg(not(feature = "cloud-ui"))]
     let app = Router::new()
+        .route("/api/browser_request", post(browser::request))
         .route("/api/new_game", post(api_new_game))
         .route("/api/games", get(api_games))
         .route("/api/load_game", post(api_load_game))
@@ -164,6 +172,14 @@ pub async fn start_server(port: u16) {
         .route("/api/cancel_action", post(api_cancel_action))
         .route("/api/end_turn", post(api_end_turn))
         .with_state(state)
+        .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
+        .fallback(static_handler);
+
+    #[cfg(feature = "cloud-ui")]
+    let app = Router::new()
+        .route("/api/browser_request", post(browser::request))
+        .route("/api/industry_data", get(api_industry_data))
+        .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
         .fallback(static_handler);
 
     let addr = format!("0.0.0.0:{}", port);
@@ -478,7 +494,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         _ => "application/octet-stream",
     };
 
-    match Assets::get(&path) {
+    #[cfg(not(feature = "cloud-ui"))]
+    let asset = Assets::get(&path);
+    #[cfg(feature = "cloud-ui")]
+    let asset = UiAssets::get(path.trim_start_matches('/'));
+    match asset {
         Some(asset) => Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, mime)

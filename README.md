@@ -1,5 +1,11 @@
 # Brass Birmingham Daiyu AI
 
+> **主游戏界面：** [线上伯明翰](https://brass-birmingham-daiyu-ai.vercel.app/) 使用
+> `ui/` 的实体棋盘、扇形彩色手牌和 Rust 规则引擎。Vercel 从仓库根目录的
+> `Dockerfile.vercel` 构建，不能把 `brass-sim/` 设为主站入口。
+> 线上存档保存在当前浏览器，刷新后通过 **Join Game** 继续；部署说明见
+> [原版界面部署](docs/original-ui-deployment.md)。
+
 > **独立桌游实验：** [马尼拉 · 船长竞价实验室](manila/README.md) 提供 3–5 人本地人机对局，
 > 用精确规则模型和配对模拟研究船长竞拍价格。在 `manila/` 中运行 `npm start`，打开
 > `http://127.0.0.1:5180`。其规则与 AI 独立于伯明翰，不需要加载伯明翰模型。
