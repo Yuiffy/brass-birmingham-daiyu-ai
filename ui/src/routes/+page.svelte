@@ -42,7 +42,7 @@
 
 	function showGameInspector() {
 		inspectorTab = 'game';
-		aiPlayback.update(playback => playback.status === 'running'
+		aiPlayback.update(playback => controlMode !== 'ai-vs-ai' && playback.status === 'running'
 			? { ...playback, status: 'paused' }
 			: playback
 		);
